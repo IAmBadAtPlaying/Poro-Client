@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="stylesheet" href="assets/css/index.css"/>
+        <script src="assets/js/index.js"></script>
+        <title>Test</title>
+    </head>
+    <body>
+        <nav>
+
+        </nav>
+        <div>
+            <h1>Test!</h1>
+            <div class="request">
+                <button onclick="restartRiotClientUX()">Restart Riot UX</button>
+            </div>
+            <br>
+            <div class="lobbyShortcuts">
+                <button onclick="createLobby(430)">Blind Pick</button>
+                <button onclick="createLobby(400)">Draft Pick</button>
+                <button onclick="createLobby(420)">Ranked Solo/Duo</button>
+                <button onclick="createLobby(440)">Ranked Flex</button>
+                <button onclick="createLobby(450)">Aram</button>
+            </div>
+            <br>
+            <div class="request">
+                <select id="requestType">
+                    <option value="GET" title="GET">GET</option>
+                    <option value="POST" title="POST">POST</option>
+                    <option value="PUT" title="PUT">PUT</option>
+                    <option value="DELETE" title="DELETE">DELETE</option>
+                    <option value="PATCH" title="PATCH">PATCH</option>
+                </select>
+                <input type="text" placeholder="LCU Endpoint" id="requestEndpoint">
+                <textarea  placeholder="Request Body" id="requestBody"></textarea>
+                <button onclick="manualLCURequest()">Make Request!</button>
+            </div>
+            <br>
+            <div class="socket-operations">
+                <input type="text" placeholder="Websocket Array" id="websocketArray">
+                <button onclick="backendWebsocketConfig()">Change Websocket Config</button>
+            </div>
+            <div>
+                <img id="preProfileIcon" class="5" alt="Loading">
+            </div>
+            <div class="gifHolder">
+                <img src="assets/gifs/Poro.gif">
+            </div>
+            <div>
+                <label class="switch taskSwitch" id="AutoAcceptQueue">
+                    <input type="checkbox">
+                    <span class="slider"></span>
+                </label>
+                <!-- Please enter options for the task here, for this task I need an input for "delay" in ms -->
+                <input type="number" id="AutoAcceptQueueDelay" placeholder="Enter delay in ms">
+
+                <label class="switch taskSwitch" id="AutoPickChamp">
+                    <input type="checkbox">
+                    <span class="slider"></span>
+                </label>
+                <!-- Please enter options for the task here, for this task I need an input for "delay" in ms and an integer id for "championId" -->
+                <input type="number" id="AutoPickChampDelay" placeholder="Enter delay in ms">
+                <input type="number" id="AutoPickChampId" placeholder="Enter champion ID">
+            </div>
+            <button id="updateTasks" onclick="updateTasks()">Update Tasks</button>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,9 @@
+#intellij
+.idea
+
+#build
+/out/
+/target/
+
+#unused
+/src/test/
