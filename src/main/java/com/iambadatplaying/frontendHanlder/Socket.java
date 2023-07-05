@@ -1,4 +1,4 @@
-package com.iambadatplaying.browser;
+package com.iambadatplaying.frontendHanlder;
 
 import com.iambadatplaying.MainInitiator;
 import org.eclipse.jetty.websocket.api.Session;

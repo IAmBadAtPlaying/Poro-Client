@@ -1,4 +1,4 @@
-package com.iambadatplaying.lcuHandler;
+package com.iambadatplaying.structs;
 
 import org.json.JSONObject;
 

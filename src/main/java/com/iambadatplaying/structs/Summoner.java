@@ -1,4 +1,4 @@
-package com.iambadatplaying.lcuHandler;
+package com.iambadatplaying.structs;
 
 import javafx.scene.image.Image;
 import org.json.JSONObject;

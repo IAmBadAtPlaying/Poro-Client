@@ -1,4 +1,4 @@
-package com.iambadatplaying.httpProxy;
+package com.iambadatplaying.ressourceServer;
 
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
@@ -16,9 +16,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ProxyHandler extends AbstractHandler {
-
-    public static String PROXY_PREFIX = "/proxy";
-
     public static String STATIC_PROXY_PREFIX = "/static";
 
     private MainInitiator mainInitiator;
@@ -32,16 +29,15 @@ public class ProxyHandler extends AbstractHandler {
 
     @Override
     public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
-        if (s.startsWith(PROXY_PREFIX)) {
             httpServletResponse.setHeader("Access-Control-Allow-Origin", "*");
             httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
             httpServletResponse.setHeader("Access-Control-Allow-Headers", "Content-Type");
-            String requestedCURResource = s.substring(PROXY_PREFIX.length()).trim();
+            if (s == null) return;
+            String requestedCURResource = s.trim();
             if (requestedCURResource.startsWith(STATIC_PROXY_PREFIX)) {
                 requestedCURResource = requestedCURResource.substring(STATIC_PROXY_PREFIX.length()).trim();
                 handleStatic(requestedCURResource, request, httpServletRequest, httpServletResponse);
             } else handleNormal(requestedCURResource, request, httpServletRequest, httpServletResponse, false);
-        }
     }
 
     public void handleStatic(String resource, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException {
@@ -62,6 +58,9 @@ public class ProxyHandler extends AbstractHandler {
         try {
             con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, resource, null);
             httpServletResponse.setContentType(con.getContentType());
+            if (!mainInitiator.getConnectionManager().isLeagueAuthDataAvailable()) {
+                return;
+            }
             is = (InputStream) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.INPUT_STREAM, con);
 
             byte[] resourceBytes = readBytesFromStream(is);

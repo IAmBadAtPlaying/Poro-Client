@@ -1,8 +1,6 @@
-package com.iambadatplaying.lcuHandler;
+package com.iambadatplaying.tasks;
 
 import com.iambadatplaying.MainInitiator;
-import com.iambadatplaying.tasks.AutoAcceptQueue;
-import com.iambadatplaying.tasks.AutoPickChamp;
 import org.json.JSONArray;
 
 import java.util.HashMap;

@@ -73,16 +73,15 @@ public class BackendMessageHandler {
 
     private void handle_lol_chat_v1_friends(JSONObject jsonData) {
         JSONObject actualData = jsonData.getJSONObject("data");
-        log("Friend update invoked");
         JSONObject data = mainInitiator.getDataManager().updateFEFriend(actualData);
         if (data == null || data.isEmpty()) return;
-        log("Friend update send");
         mainInitiator.getServer().sendToAllSessions(mainInitiator.getDataManager().getEventDataString("FriendListUpdate", data));
     }
 
     private void handle_lol_gameflow_v1_gameflow_phase(JSONObject jsonData) {
         String actualData = jsonData.getString("data");
-        JSONObject data = mainInitiator.getDataManager().beToFeGameflowInfo(actualData);
+        JSONObject data = mainInitiator.getDataManager().updateFEGameflowStatus(actualData);
+        if (data == null || data.isEmpty()) return;
         mainInitiator.getServer().sendToAllSessions(mainInitiator.getDataManager().getEventDataString("GameflowPhaseUpdate",data));
     }
 

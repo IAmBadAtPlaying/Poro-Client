@@ -14,19 +14,37 @@ public class DataManager {
     private MainInitiator mainInitiator;
 
     private Map<String, JSONObject> synchronizedFriendListMap;
-
     private Map<BigInteger, JSONObject> regaliaMap;
 
     private static Integer MAX_LOBBY_SIZE = 5;
     private static Integer MAX_LOBBY_HALFS_INDEX = 2;
 
     private JSONObject currentLobbyState;
+    private JSONObject currentGameflowState;
 
     public DataManager(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
     }
 
     public static String REGALIA_REGEX = "/lol-regalia/v2/summoners/(.*?)/regalia/async";
+
+    public JSONObject getFEGameflowStatus() {
+        JSONObject feGameflowObject = new JSONObject();
+        if (currentLobbyState == null) {
+            String currentGameflowString = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-gameflow/v1/gameflow-phase"));
+            feGameflowObject = beToFeGameflowInfo(currentGameflowString);
+            currentGameflowState = feGameflowObject;
+        }
+        return currentGameflowState;
+    }
+
+    public JSONObject updateFEGameflowStatus(String beGameflow) {
+        JSONObject updatedFEGameflowObject = beToFeGameflowInfo(beGameflow);
+        if (updatedFEGameflowObject == null) return null;
+        if (updatedFEGameflowObject.similar(currentGameflowState)) return null;
+        currentGameflowState = updatedFEGameflowObject;
+        return updatedFEGameflowObject;
+    }
 
     public JSONObject getFEFriendObject() {
         JSONObject feFriendObject = new JSONObject();
@@ -270,6 +288,7 @@ public class DataManager {
     }
 
     public JSONObject beToFeGameflowInfo(String currentGameflowPhase) {
+        currentGameflowPhase = currentGameflowPhase.trim();
         currentGameflowPhase = currentGameflowPhase.replace("\"", "");
         JSONObject gameflowContainer = new JSONObject();
         gameflowContainer.put("GameflowPhase", currentGameflowPhase.trim());

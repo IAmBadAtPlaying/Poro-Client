@@ -1,6 +1,8 @@
 package com.iambadatplaying.lcuHandler;
 
 import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.structs.LootElement;
+import com.iambadatplaying.structs.Summoner;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.json.JSONArray;
 import org.json.JSONObject;

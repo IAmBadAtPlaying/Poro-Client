@@ -1,18 +1,15 @@
 package com.iambadatplaying;
 
-import com.iambadatplaying.browser.FrontendMessageHandler;
-import com.iambadatplaying.browser.SocketServer;
-import com.iambadatplaying.httpProxy.HttpProxy;
+import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
+import com.iambadatplaying.frontendHanlder.SocketServer;
+import com.iambadatplaying.ressourceServer.ResourceServer;
 import com.iambadatplaying.lcuHandler.*;
-import io.javalin.Javalin;
-import io.javalin.http.staticfiles.Location;
+import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
 
-import javax.net.ssl.HttpsURLConnection;
 import java.awt.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.util.Timer;
 
 public class MainInitiator {
 
@@ -38,7 +35,7 @@ public class MainInitiator {
     private FrontendMessageHandler frontendMessageHandler;
 
     private BackendMessageHandler backendMessageHandler;
-    private HttpProxy httpProxy;
+    private ResourceServer resourceServer;
     private TaskManager taskManager;
 
     private DataManager dataManager;
@@ -53,14 +50,6 @@ public class MainInitiator {
 
     public static void main(String[] args) {
         MainInitiator mainInit = new MainInitiator();
-        Javalin.create(configuration -> {
-                    configuration.enableCorsForAllOrigins();
-                    configuration.addStaticFiles("/html", Location.CLASSPATH);
-                })
-                .before("/v1/*", context -> {
-                    context.header("Access-Control-Allow-Origin", "*");
-                })
-                .start(35199);
         mainInit.init();
         mainInit.setRunning(true);
     }
@@ -69,12 +58,15 @@ public class MainInitiator {
         if (isRunning()) {
             return;
         }
+        log("Initializing");
         try {
+            //TODO: Change this ugly shit holy fucking god
+            resourceServer = new ResourceServer(this);
+            resourceServer.init();
             connectionManager = new ConnectionManager(this);
             dataManager = new DataManager(this);
             client = new SocketClient(this);
             server = new SocketServer(this);
-            httpProxy = new HttpProxy(this);
             backendMessageHandler = new BackendMessageHandler(this);
             frontendMessageHandler = new FrontendMessageHandler(this);
             taskManager = new TaskManager(this);
@@ -96,7 +88,6 @@ public class MainInitiator {
                 }
             }
             if (connectionManager.authString != null) {
-                httpProxy.init();
                 taskManager.init();
                 client.init();
                 server.init();
@@ -148,19 +139,24 @@ public class MainInitiator {
     public void handleGracefulReset() {
         System.out.println("Handling graceful exit");
         if (isRunning()) {
-            httpProxy.shutdown();
+            resourceServer.shutdown();
             taskManager.shutdown();
             server.shutdown();
             client.shutdown();
             dataManager.shutdown();
             connectionManager.shutdown();
-            httpProxy = null;
+            resourceServer = null;
             taskManager = null;
             server = null;
             client = null;
             dataManager = null;
             connectionManager = null;
             setRunning(false);
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
+
+            }
             init();
         }
     }

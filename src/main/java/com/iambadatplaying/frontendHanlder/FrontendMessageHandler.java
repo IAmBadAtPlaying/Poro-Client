@@ -1,9 +1,9 @@
-package com.iambadatplaying.browser;
+package com.iambadatplaying.frontendHanlder;
 
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.Task;
-import com.iambadatplaying.lcuHandler.TaskManager;
+import com.iambadatplaying.tasks.Task;
+import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -151,7 +151,7 @@ public class FrontendMessageHandler {
     private void sendGameflowStatus(Session session) {
         try {
             String gameflowStatus = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-gameflow/v1/gameflow-phase"));
-            JSONObject gameflowObject = mainInitiator.getDataManager().beToFeGameflowInfo(gameflowStatus);
+            JSONObject gameflowObject = mainInitiator.getDataManager().getFEGameflowStatus();
             session.getRemote().sendString(mainInitiator.getDataManager().getEventDataString("InitialGameflowUpdate", gameflowObject));
         } catch (Exception e) {
             e.printStackTrace();

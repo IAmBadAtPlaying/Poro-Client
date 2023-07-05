@@ -2,7 +2,6 @@ package com.iambadatplaying.tasks;
 
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.Task;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
