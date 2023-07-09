@@ -1,6 +1,5 @@
 package com.iambadatplaying.structs;
 
-import javafx.scene.image.Image;
 import org.json.JSONObject;
 
 import java.awt.image.BufferedImage;
@@ -19,7 +18,6 @@ public class Summoner {
     private Integer xpUntilLastLevel = null;
     private String firstPositionPreference = null;
     private String secondPositionPreference = null;
-    private Image lobbyProfileIcon = null;
     private BufferedImage lobbyProfileRegalia = null;
     private String regaliaType = null;
     private String regaliaSelected = null;
@@ -151,14 +149,6 @@ public class Summoner {
 
     public void setSecondPositionPreference(String secondPositionPreference) {
         this.secondPositionPreference = secondPositionPreference;
-    }
-
-    public Image getLobbyProfileIcon() {
-        return lobbyProfileIcon;
-    }
-
-    public void setLobbyProfileIcon(Image lobbyProfileIcon) {
-        this.lobbyProfileIcon = lobbyProfileIcon;
     }
 
     public BufferedImage getLobbyProfileRegalia() {

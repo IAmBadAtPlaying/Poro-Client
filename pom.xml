@@ -34,11 +34,6 @@
             <version>20220924</version>
         </dependency>
         <dependency>
-            <groupId>me.friwi</groupId>
-            <artifactId>jcefmaven</artifactId>
-            <version>105.3.36.2</version>
-        </dependency>
-        <dependency>
             <groupId>org.eclipse.jetty.websocket</groupId>
             <artifactId>websocket-api</artifactId>
             <version>9.4.51.v20230217</version>
@@ -50,13 +45,8 @@
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty.websocket</groupId>
-            <artifactId>websocket-jakarta-server</artifactId>
-            <version>11.0.15</version>
-        </dependency>
-        <dependency>
-            <groupId>io.javalin</groupId>
-            <artifactId>javalin</artifactId>
-            <version>4.6.7</version>
+            <artifactId>websocket-server</artifactId>
+            <version>9.4.51.v20230217</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty.websocket</groupId>
