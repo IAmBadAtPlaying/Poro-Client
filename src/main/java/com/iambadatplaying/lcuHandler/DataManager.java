@@ -21,6 +21,7 @@ public class DataManager {
 
     private JSONObject currentLobbyState;
     private JSONObject currentGameflowState;
+    private JSONObject currentChampSelectState;
 
     public DataManager(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
@@ -190,8 +191,6 @@ public class DataManager {
         int diff = indexDiff(preParsedIndex);
 
         actualIndex = MAX_LOBBY_HALFS_INDEX + diff;
-
-        log("Index original: " + preParsedIndex + "; Index now:" + actualIndex);
         return actualIndex;
     }
 
@@ -202,25 +201,11 @@ public class DataManager {
         } else return -indexDiff(index + 1);
     }
 
-    private void modifyMemberArrayForFE(JSONArray array) {
-//        JSONObject fePos2 = array.getJSONObject(0);
-//        JSONObject fePos1 = array.getJSONObject(1);
-//        JSONObject fePos3 = array.getJSONObject(2);
-//        JSONObject fePos0 = array.getJSONObject(3);
-//        JSONObject fePos4 = array.getJSONObject(4);
-//
-//        array.put(0, fePos0);
-//        array.put(1, fePos1);
-//        array.put(2, fePos2);
-//        array.put(3, fePos3);
-//        array.put(4, fePos4);
-    }
-
     public JSONObject updateFELobby(JSONObject data) {
         JSONObject updatedFEData = beToFeLobbyInfo(data);
         if (updatedFEData == null) {
             currentLobbyState = null;
-            return new JSONObject();
+            return null;
         }
         if (updatedFEData.similar(currentLobbyState)) {
             log("No FE relevant Lobby update");
@@ -228,6 +213,53 @@ public class DataManager {
         }
         currentLobbyState = updatedFEData;
         return updatedFEData;
+    }
+
+    public JSONObject updateFEChampSelectSession (JSONObject data) {
+        JSONObject updatedFEData = beToFEChampSelectSession(data);
+        if (updatedFEData == null) {
+            return null;
+        }
+        if (updatedFEData.similar(currentChampSelectState)) {
+            return null;
+        }
+        currentChampSelectState = updatedFEData;
+        return updatedFEData;
+    }
+
+    public JSONObject beToFEChampSelectSession(JSONObject data) {
+        JSONObject feChampSelect = new JSONObject();
+
+        copyJsonAttrib("isCustomGame", data, feChampSelect); //This might need to trigger further changes
+        copyJsonAttrib("localPlayerCellId", data, feChampSelect);
+        copyJsonAttrib("gameId", data, feChampSelect);
+        copyJsonAttrib("hasSimultaneousBans", data, feChampSelect);
+        copyJsonAttrib("skipChampionSelect", data, feChampSelect);
+        copyJsonAttrib("benchEnabled", data, feChampSelect);
+        copyJsonAttrib("rerollsRemaining", data, feChampSelect);
+        copyJsonAttrib("myTeam", data, feChampSelect);
+        copyJsonAttrib("theirTeam", data, feChampSelect);
+        copyJsonAttrib("actions", data, feChampSelect);
+
+        JSONObject feTimer = new JSONObject();
+        JSONObject timer = data.getJSONObject("timer");
+
+        copyJsonAttrib("phase", timer, feTimer);
+        copyJsonAttrib("isInfinite", timer, feTimer);
+        copyJsonAttrib("isInfinite", timer, feTimer);
+
+        feChampSelect.put("timer",feTimer);
+
+        JSONObject bans = data.getJSONObject("bans");
+        JSONObject feBans = new JSONObject();
+
+        copyJsonAttrib("theirTeamBans", bans, feBans);
+        copyJsonAttrib("myTeamBans", bans, feBans);
+        copyJsonAttrib("numBans", bans, feBans);
+
+        feChampSelect.put("bans", feBans);
+
+        return feChampSelect;
     }
 
     public JSONObject updateFERegaliaInfo(BigInteger summonerId) {
@@ -295,14 +327,14 @@ public class DataManager {
         return gameflowContainer;
     }
 
-    public String getEventDataString(String event, JSONObject data) {
+    public static String getEventDataString(String event, JSONObject data) {
         JSONObject dataToSend = new JSONObject();
         dataToSend.put("event", event);
         dataToSend.put("data", data);
         return dataToSend.toString();
     }
 
-    public String getEventDataString(String event, JSONArray data) {
+    public static String getEventDataString(String event, JSONArray data) {
         JSONObject dataToSend = new JSONObject();
         dataToSend.put("event", event);
         dataToSend.put("data", data);

@@ -14,7 +14,7 @@ function replaceProfileIcons() {
     let profileIcon = document.getElementById("preProfileIcon");
     if (profileIcon) {
         let value = profileIcon.className;
-        profileIcon.src = "http://127.0.0.1:2023/proxy/static/lol-game-data/assets/v1/profile-icons/"+value+".jpg"
+        profileIcon.src = "/proxy/static/lol-game-data/assets/v1/profile-icons/"+value+".jpg"
         console.log(profileIcon.src);
         profileIcon.addEventListener('load', () => {
             console.log("Should have replaced");
