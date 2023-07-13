@@ -33,23 +33,12 @@ public class BackendMessageHandler {
                         break;
                     case "OnJsonApiEvent_lol-lobby_v2_lobby":
                         handle_lol_lobby_v2_lobby(jsonData);
-                        //TODO: RIGHT NOW IT LOOKS LIKE SHIT; HANDLE REGALIA AS WELL!
-                        /*
-                        For Backend implementation:
-                        Save all lobby members, on update find out which
-                         OnLeave => Remove Member from BE => Send to FE
-                         OnJoin => Create new Member in BE => Send to FE
-                         OnChange => Update only changed Member => Send to FE
-                        */
                         break;
                     case "OnJsonApiEvent_lol-champ-select_v1_session":
+                        handle_lol_champ_select_v1_session(jsonData);
                         break;
                     case "OnJsonApiEvent_lol-regalia_v2_summoners":
                         handle_lol_regalia_v2_summoners(jsonData);
-                        /*
-                            Fetch lobby members again bc new Regalia was selected;
-                            Filter Uri to get summonerID that has changed their regalia => update only that member
-                        */
                         break;
                     default:
                         break;
@@ -57,6 +46,26 @@ public class BackendMessageHandler {
             }
         } catch (Exception e) {
             return;
+        }
+    }
+
+    private void handle_lol_champ_select_v1_session(JSONObject jsonData) {
+        String uri = jsonData.getString("eventType");
+        JSONObject actualData = jsonData.getJSONObject("data");
+        switch (uri) {
+            case "Create":
+            case "Update":
+                log(actualData);
+                JSONObject data = mainInitiator.getDataManager().updateFEChampSelectSession(actualData);
+                if (data == null) return;
+                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ChampSelectUpdate", data));
+                break;
+            case "Delete":
+                mainInitiator.getDataManager().resetChampSelectSession();
+                break;
+            default:
+                log("OnJsonApiEvent_lol-champ-select_v1_session - Unkown URI: " +uri);
+            break;
         }
     }
 
@@ -68,14 +77,14 @@ public class BackendMessageHandler {
         BigInteger summonerId = new BigInteger(summonerIdStr);
 
         mainInitiator.getDataManager().updateFERegaliaInfo(summonerId);
-        mainInitiator.getServer().sendToAllSessions(mainInitiator.getDataManager().getEventDataString("LobbyUpdate", mainInitiator.getDataManager().getCurrentLobbyState()));
+        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LobbyUpdate", mainInitiator.getDataManager().getCurrentLobbyState()));
     }
 
     private void handle_lol_chat_v1_friends(JSONObject jsonData) {
         JSONObject actualData = jsonData.getJSONObject("data");
         JSONObject data = mainInitiator.getDataManager().updateFEFriend(actualData);
         if (data == null || data.isEmpty()) return;
-        mainInitiator.getServer().sendToAllSessions(mainInitiator.getDataManager().getEventDataString("FriendListUpdate", data));
+        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("FriendListUpdate", data));
     }
 
     private void handle_lol_gameflow_v1_gameflow_phase(JSONObject jsonData) {
@@ -105,11 +114,11 @@ public class BackendMessageHandler {
         }
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        MainInitiator.log(this.getClass().getName() +": " + s, level);
+    private void log(Object o, MainInitiator.LOG_LEVEL level) {
+        MainInitiator.log(this.getClass().getName() +": " + o, level);
     }
 
-    private void log(String s) {
-        MainInitiator.log(this.getClass().getName() +": " +s);
+    private void log(Object o) {
+        MainInitiator.log(this.getClass().getName() +": " +o);
     }
 }

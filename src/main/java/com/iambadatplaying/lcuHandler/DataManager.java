@@ -15,12 +15,17 @@ public class DataManager {
 
     private Map<String, JSONObject> synchronizedFriendListMap;
     private Map<BigInteger, JSONObject> regaliaMap;
+    private Map<BigInteger, String> nameMap;
+    private Map<Integer, JSONObject> cellIdMemberMap;
+    private Map<Integer, JSONObject> cellIdActionMap;
+    private Boolean banPhaseOver;
 
     private static Integer MAX_LOBBY_SIZE = 5;
     private static Integer MAX_LOBBY_HALFS_INDEX = 2;
 
     private JSONObject currentLobbyState;
     private JSONObject currentGameflowState;
+    private JSONObject currentChampSelectState;
 
     public DataManager(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
@@ -44,6 +49,13 @@ public class DataManager {
         if (updatedFEGameflowObject.similar(currentGameflowState)) return null;
         currentGameflowState = updatedFEGameflowObject;
         return updatedFEGameflowObject;
+    }
+
+    public void resetChampSelectSession() {
+        //Maybe change this to null ?!
+        currentChampSelectState = new JSONObject();
+        cellIdMemberMap.clear();
+        cellIdActionMap.clear();
     }
 
     public JSONObject getFEFriendObject() {
@@ -91,6 +103,7 @@ public class DataManager {
             data.put("iconId", iconId);
             data.put("summonerId", summonerId);
             data.put("availability", availability);
+            copyJsonAttrib("lol", backendFriendObject, data);
 
             return data;
         } catch (Exception e) {
@@ -190,8 +203,6 @@ public class DataManager {
         int diff = indexDiff(preParsedIndex);
 
         actualIndex = MAX_LOBBY_HALFS_INDEX + diff;
-
-        log("Index original: " + preParsedIndex + "; Index now:" + actualIndex);
         return actualIndex;
     }
 
@@ -202,25 +213,11 @@ public class DataManager {
         } else return -indexDiff(index + 1);
     }
 
-    private void modifyMemberArrayForFE(JSONArray array) {
-//        JSONObject fePos2 = array.getJSONObject(0);
-//        JSONObject fePos1 = array.getJSONObject(1);
-//        JSONObject fePos3 = array.getJSONObject(2);
-//        JSONObject fePos0 = array.getJSONObject(3);
-//        JSONObject fePos4 = array.getJSONObject(4);
-//
-//        array.put(0, fePos0);
-//        array.put(1, fePos1);
-//        array.put(2, fePos2);
-//        array.put(3, fePos3);
-//        array.put(4, fePos4);
-    }
-
     public JSONObject updateFELobby(JSONObject data) {
         JSONObject updatedFEData = beToFeLobbyInfo(data);
         if (updatedFEData == null) {
             currentLobbyState = null;
-            return new JSONObject();
+            return null;
         }
         if (updatedFEData.similar(currentLobbyState)) {
             log("No FE relevant Lobby update");
@@ -228,6 +225,133 @@ public class DataManager {
         }
         currentLobbyState = updatedFEData;
         return updatedFEData;
+    }
+
+    public JSONObject updateFEChampSelectSession (JSONObject data) {
+        JSONObject updatedFEData = beToFEChampSelectSession(data);
+        if (updatedFEData == null) {
+            return null;
+        }
+        if (updatedFEData.similar(currentChampSelectState)) {
+            return null;
+        }
+        currentChampSelectState = updatedFEData;
+        return updatedFEData;
+    }
+
+    public JSONObject beToFEChampSelectSession(JSONObject data) {
+        //Idea: Store every member of "myTeam" and "theirTeam" in a HashMap, lookup via actorCellId
+        //This would allow modifying each entry in myTeam and their team via the action tab => Hovering / Pick Intent / Ban Hover
+        JSONObject feChampSelect = new JSONObject();
+
+        copyJsonAttrib("isCustomGame", data, feChampSelect); //This might need to trigger further changes
+        copyJsonAttrib("localPlayerCellId", data, feChampSelect);
+        copyJsonAttrib("gameId", data, feChampSelect);
+        copyJsonAttrib("hasSimultaneousBans", data, feChampSelect);
+        copyJsonAttrib("skipChampionSelect", data, feChampSelect);
+        copyJsonAttrib("benchEnabled", data, feChampSelect);
+        copyJsonAttrib("rerollsRemaining", data, feChampSelect);
+
+        //Handle Actions
+        //We only need to update via the last action / NO doest work
+        copyJsonAttrib("actions", data, feChampSelect);
+        JSONArray actions = data.getJSONArray("actions");
+        beActionToFEAction(actions);
+
+        //MyTeam
+        JSONArray feMyTeam = data.getJSONArray("myTeam");
+        for (int i = 0; i < feMyTeam.length(); i++) {
+            feMyTeam.put(i, teamMemberToSessionMap(feMyTeam.getJSONObject(i)));
+        }
+        feChampSelect.put("myTeam", feMyTeam);
+
+        //TheirTeam
+        copyJsonAttrib("theirTeam", data, feChampSelect);
+        JSONArray feTheirTeam = data.getJSONArray("myTeam");
+        for (int i = 0; i < feMyTeam.length(); i++) {
+            feTheirTeam.put(i, teamMemberToSessionMap(feTheirTeam.getJSONObject(i)));
+        }
+
+
+        JSONObject feTimer = new JSONObject();
+        JSONObject timer = data.getJSONObject("timer");
+
+        copyJsonAttrib("phase", timer, feTimer);
+        copyJsonAttrib("isInfinite", timer, feTimer);
+        copyJsonAttrib("isInfinite", timer, feTimer);
+
+        feChampSelect.put("timer",feTimer);
+
+        JSONObject bans = data.getJSONObject("bans");
+        JSONObject feBans = new JSONObject();
+
+        copyJsonAttrib("theirTeamBans", bans, feBans);
+        copyJsonAttrib("myTeamBans", bans, feBans);
+        copyJsonAttrib("numBans", bans, feBans);
+
+        feChampSelect.put("bans", feBans);
+
+        return feChampSelect;
+    }
+
+    private JSONObject teamMemberToSessionMap(JSONObject feMember) {
+        Integer cellId = feMember.getInt("cellId");
+        JSONObject mappedAction = cellIdActionMap.get(cellId);
+        if (mappedAction == null || mappedAction.isEmpty()) {
+            log("No fitting action found for cellId: " + cellId);
+        } else {
+            copyJsonAttrib("pickAction", mappedAction, feMember);
+            copyJsonAttrib("banAction", mappedAction, feMember);
+        }
+        log("Putting: " + cellId + ": " + feMember);
+        cellIdMemberMap.put(cellId, feMember);
+        return feMember;
+    }
+
+    private void updateInternalActionMapping(JSONObject singleAction) {
+        Integer actorCellId = singleAction.getInt("actorCellId");
+        Boolean completed = singleAction.getBoolean("completed");
+        Boolean inProgress = singleAction.getBoolean("isInProgress");
+        Integer championId = singleAction.getInt("championId");
+        String type = singleAction.getString("type");
+        cellIdActionMap.compute(actorCellId, (k, v) -> {
+            if (v == null || v.isEmpty()) {
+                v = new JSONObject();
+            }
+            JSONObject currentAction = new JSONObject();
+
+            currentAction.put("type", type);
+            currentAction.put("completed", completed);
+            currentAction.put("isInProgress", inProgress);
+            currentAction.put("championId", championId);
+            log("[" + type +"]: " + championId +", Hovering/InProgress: " + inProgress + ", completed: " +completed);
+            switch (type) {
+                case "pick":
+                    v.put("pickAction", currentAction);
+                break;
+                case "ban":
+                    v.put("banAction",currentAction);
+                break;
+                default:
+                    log("Unkown Type: " + type, MainInitiator.LOG_LEVEL.ERROR);
+                break;
+            }
+            return v;
+        });
+
+    }
+
+    private void beActionToFEAction(JSONArray action) {
+        //This works okay-ish, the ban phase is the issue, maybe use a gobal boolean to see if ban-phase is over
+        if (action == null || action.isEmpty()) return;
+        outer: for (int i = 0; i < action.length(); i++) {
+            JSONArray subAction = action.getJSONArray(i);
+            if (subAction == null || subAction.isEmpty()) continue;
+            for (int j = 0; j < subAction.length(); j++) {
+                JSONObject singleAction = subAction.getJSONObject(j);
+                updateInternalActionMapping(singleAction);
+            }
+        }
     }
 
     public JSONObject updateFERegaliaInfo(BigInteger summonerId) {
@@ -281,9 +405,15 @@ public class DataManager {
     }
 
     private void copyJsonAttrib(String key, JSONObject src, JSONObject dst) {
-        Object object = src.get(key);
-        if (object != null) {
-            dst.put(key, object);
+        try {
+            if (src.has(key)) {
+                Object object = src.get(key);
+                if (object != null) {
+                    dst.put(key, object);
+                }
+            }
+            } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -295,14 +425,14 @@ public class DataManager {
         return gameflowContainer;
     }
 
-    public String getEventDataString(String event, JSONObject data) {
+    public static String getEventDataString(String event, JSONObject data) {
         JSONObject dataToSend = new JSONObject();
         dataToSend.put("event", event);
         dataToSend.put("data", data);
         return dataToSend.toString();
     }
 
-    public String getEventDataString(String event, JSONArray data) {
+    public static String getEventDataString(String event, JSONArray data) {
         JSONObject dataToSend = new JSONObject();
         dataToSend.put("event", event);
         dataToSend.put("data", data);
@@ -316,11 +446,17 @@ public class DataManager {
         currentLobbyState = null;
         if (regaliaMap != null) regaliaMap.clear();
         regaliaMap = null;
-
+        if (cellIdMemberMap != null) cellIdMemberMap.clear();
+        cellIdMemberMap = null;
+        if (cellIdActionMap != null) cellIdActionMap.clear();
+        cellIdActionMap = null;
     }
 
     public void init() {
         this.regaliaMap = Collections.synchronizedMap(new HashMap<BigInteger, JSONObject>());
+        this.cellIdMemberMap = Collections.synchronizedMap(new HashMap<>());
+        this.cellIdActionMap = Collections.synchronizedMap(new HashMap<>());
+        this.banPhaseOver = false;
     }
 
 
