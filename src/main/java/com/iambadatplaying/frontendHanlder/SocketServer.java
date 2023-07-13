@@ -34,7 +34,6 @@ public class SocketServer {
         }
     }
 
-
     public synchronized void addSession(Session session) {
         sessions.add(session);
     }

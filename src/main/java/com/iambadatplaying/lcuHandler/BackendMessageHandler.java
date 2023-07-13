@@ -55,13 +55,14 @@ public class BackendMessageHandler {
         switch (uri) {
             case "Create":
             case "Update":
+                log(actualData);
                 JSONObject data = mainInitiator.getDataManager().updateFEChampSelectSession(actualData);
-
                 if (data == null) return;
                 mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ChampSelectUpdate", data));
                 break;
             case "Delete":
-            break;
+                mainInitiator.getDataManager().resetChampSelectSession();
+                break;
             default:
                 log("OnJsonApiEvent_lol-champ-select_v1_session - Unkown URI: " +uri);
             break;

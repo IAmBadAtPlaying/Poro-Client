@@ -15,6 +15,10 @@ public class DataManager {
 
     private Map<String, JSONObject> synchronizedFriendListMap;
     private Map<BigInteger, JSONObject> regaliaMap;
+    private Map<BigInteger, String> nameMap;
+    private Map<Integer, JSONObject> cellIdMemberMap;
+    private Map<Integer, JSONObject> cellIdActionMap;
+    private Boolean banPhaseOver;
 
     private static Integer MAX_LOBBY_SIZE = 5;
     private static Integer MAX_LOBBY_HALFS_INDEX = 2;
@@ -45,6 +49,13 @@ public class DataManager {
         if (updatedFEGameflowObject.similar(currentGameflowState)) return null;
         currentGameflowState = updatedFEGameflowObject;
         return updatedFEGameflowObject;
+    }
+
+    public void resetChampSelectSession() {
+        //Maybe change this to null ?!
+        currentChampSelectState = new JSONObject();
+        cellIdMemberMap.clear();
+        cellIdActionMap.clear();
     }
 
     public JSONObject getFEFriendObject() {
@@ -92,6 +103,7 @@ public class DataManager {
             data.put("iconId", iconId);
             data.put("summonerId", summonerId);
             data.put("availability", availability);
+            copyJsonAttrib("lol", backendFriendObject, data);
 
             return data;
         } catch (Exception e) {
@@ -228,6 +240,8 @@ public class DataManager {
     }
 
     public JSONObject beToFEChampSelectSession(JSONObject data) {
+        //Idea: Store every member of "myTeam" and "theirTeam" in a HashMap, lookup via actorCellId
+        //This would allow modifying each entry in myTeam and their team via the action tab => Hovering / Pick Intent / Ban Hover
         JSONObject feChampSelect = new JSONObject();
 
         copyJsonAttrib("isCustomGame", data, feChampSelect); //This might need to trigger further changes
@@ -237,9 +251,27 @@ public class DataManager {
         copyJsonAttrib("skipChampionSelect", data, feChampSelect);
         copyJsonAttrib("benchEnabled", data, feChampSelect);
         copyJsonAttrib("rerollsRemaining", data, feChampSelect);
-        copyJsonAttrib("myTeam", data, feChampSelect);
-        copyJsonAttrib("theirTeam", data, feChampSelect);
+
+        //Handle Actions
+        //We only need to update via the last action / NO doest work
         copyJsonAttrib("actions", data, feChampSelect);
+        JSONArray actions = data.getJSONArray("actions");
+        beActionToFEAction(actions);
+
+        //MyTeam
+        JSONArray feMyTeam = data.getJSONArray("myTeam");
+        for (int i = 0; i < feMyTeam.length(); i++) {
+            feMyTeam.put(i, teamMemberToSessionMap(feMyTeam.getJSONObject(i)));
+        }
+        feChampSelect.put("myTeam", feMyTeam);
+
+        //TheirTeam
+        copyJsonAttrib("theirTeam", data, feChampSelect);
+        JSONArray feTheirTeam = data.getJSONArray("myTeam");
+        for (int i = 0; i < feMyTeam.length(); i++) {
+            feTheirTeam.put(i, teamMemberToSessionMap(feTheirTeam.getJSONObject(i)));
+        }
+
 
         JSONObject feTimer = new JSONObject();
         JSONObject timer = data.getJSONObject("timer");
@@ -260,6 +292,66 @@ public class DataManager {
         feChampSelect.put("bans", feBans);
 
         return feChampSelect;
+    }
+
+    private JSONObject teamMemberToSessionMap(JSONObject feMember) {
+        Integer cellId = feMember.getInt("cellId");
+        JSONObject mappedAction = cellIdActionMap.get(cellId);
+        if (mappedAction == null || mappedAction.isEmpty()) {
+            log("No fitting action found for cellId: " + cellId);
+        } else {
+            copyJsonAttrib("pickAction", mappedAction, feMember);
+            copyJsonAttrib("banAction", mappedAction, feMember);
+        }
+        log("Putting: " + cellId + ": " + feMember);
+        cellIdMemberMap.put(cellId, feMember);
+        return feMember;
+    }
+
+    private void updateInternalActionMapping(JSONObject singleAction) {
+        Integer actorCellId = singleAction.getInt("actorCellId");
+        Boolean completed = singleAction.getBoolean("completed");
+        Boolean inProgress = singleAction.getBoolean("isInProgress");
+        Integer championId = singleAction.getInt("championId");
+        String type = singleAction.getString("type");
+        cellIdActionMap.compute(actorCellId, (k, v) -> {
+            if (v == null || v.isEmpty()) {
+                v = new JSONObject();
+            }
+            JSONObject currentAction = new JSONObject();
+
+            currentAction.put("type", type);
+            currentAction.put("completed", completed);
+            currentAction.put("isInProgress", inProgress);
+            currentAction.put("championId", championId);
+            log("[" + type +"]: " + championId +", Hovering/InProgress: " + inProgress + ", completed: " +completed);
+            switch (type) {
+                case "pick":
+                    v.put("pickAction", currentAction);
+                break;
+                case "ban":
+                    v.put("banAction",currentAction);
+                break;
+                default:
+                    log("Unkown Type: " + type, MainInitiator.LOG_LEVEL.ERROR);
+                break;
+            }
+            return v;
+        });
+
+    }
+
+    private void beActionToFEAction(JSONArray action) {
+        //This works okay-ish, the ban phase is the issue, maybe use a gobal boolean to see if ban-phase is over
+        if (action == null || action.isEmpty()) return;
+        outer: for (int i = 0; i < action.length(); i++) {
+            JSONArray subAction = action.getJSONArray(i);
+            if (subAction == null || subAction.isEmpty()) continue;
+            for (int j = 0; j < subAction.length(); j++) {
+                JSONObject singleAction = subAction.getJSONObject(j);
+                updateInternalActionMapping(singleAction);
+            }
+        }
     }
 
     public JSONObject updateFERegaliaInfo(BigInteger summonerId) {
@@ -313,9 +405,15 @@ public class DataManager {
     }
 
     private void copyJsonAttrib(String key, JSONObject src, JSONObject dst) {
-        Object object = src.get(key);
-        if (object != null) {
-            dst.put(key, object);
+        try {
+            if (src.has(key)) {
+                Object object = src.get(key);
+                if (object != null) {
+                    dst.put(key, object);
+                }
+            }
+            } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -348,11 +446,17 @@ public class DataManager {
         currentLobbyState = null;
         if (regaliaMap != null) regaliaMap.clear();
         regaliaMap = null;
-
+        if (cellIdMemberMap != null) cellIdMemberMap.clear();
+        cellIdMemberMap = null;
+        if (cellIdActionMap != null) cellIdActionMap.clear();
+        cellIdActionMap = null;
     }
 
     public void init() {
         this.regaliaMap = Collections.synchronizedMap(new HashMap<BigInteger, JSONObject>());
+        this.cellIdMemberMap = Collections.synchronizedMap(new HashMap<>());
+        this.cellIdActionMap = Collections.synchronizedMap(new HashMap<>());
+        this.banPhaseOver = false;
     }
 
 
