@@ -66,12 +66,31 @@ function makeLCURequest(requestType, endpoint, body) {
     send(request);
 }
 
+function makeRiotRequest(requestType, endpoint, body) {
+    let request = new Array();
+    request.push(5);
+    request.push(requestType);
+    request.push(endpoint);
+    request.push(body);
+    console.log(request);
+    send(request);
+}
+
 function manualLCURequest() {
     const methodFilter = document.getElementById('requestType');
     const endpoint = document.getElementById('requestEndpoint');
     const body = document.getElementById('requestBody');
     makeLCURequest(methodFilter.value, endpoint.value, body.value);
 }
+
+function manualRiotRequest() {
+    console.log("Riot Request");
+    const methodFilter = document.getElementById('riotRequestType');
+    const endpoint = document.getElementById('riotRequestEndpoint');
+    const body = document.getElementById('riotRequestBody');
+    makeRiotRequest(methodFilter.value, endpoint.value, body.value);
+}
+
 
 function send(jsonArray) {
     let request = jsonArray;

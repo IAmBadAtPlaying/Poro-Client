@@ -38,6 +38,18 @@
                 <button onclick="manualLCURequest()">Make Request!</button>
             </div>
             <br>
+            <div class="riotRequest">
+                <select id="riotRequestType">
+                    <option value="GET" title="GET">GET</option>
+                    <option value="POST" title="POST">POST</option>
+                    <option value="PUT" title="PUT">PUT</option>
+                    <option value="DELETE" title="DELETE">DELETE</option>
+                    <option value="PATCH" title="PATCH">PATCH</option>
+                </select>
+                <input type="text" placeholder="LCU Endpoint" id="riotRequestEndpoint">
+                <textarea  placeholder="Request Body" id="riotRequestBody"></textarea>
+                <button onclick="manualRiotRequest()">Make Riot Request!</button>
+            </div>
             <div class="socket-operations">
                 <input type="text" placeholder="Websocket Array" id="websocketArray">
                 <button onclick="backendWebsocketConfig()">Change Websocket Config</button>

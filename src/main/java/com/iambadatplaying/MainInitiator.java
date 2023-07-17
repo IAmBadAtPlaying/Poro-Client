@@ -111,7 +111,7 @@ public class MainInitiator {
                 System.out.println("Error, League is not running");
                 System.exit(1);
             }
-            while (client.getSocket() == null || client.getSocket().isConnected() == false) {
+            while (client.getSocket() == null || !client.getSocket().isConnected()) {
             }
             try {
                 Thread.sleep(1000);
@@ -202,17 +202,6 @@ public class MainInitiator {
                 frontendMessageHandler.handleMessage(message, session);
             }
         }).start();
-    }
-
-    public void newMessageReceived(String s) {
-        try {
-            if (s != null && !s.isEmpty() && !"{\"error\":\"Expected identifier near: []\"}".equals(s)) {
-                taskManager.updateAllTasks(s);
-            }
-        } catch (Exception e) {
-
-        }
-        log(s, LOG_LEVEL.INFO);
     }
 
     public TaskManager getTaskManager() {
