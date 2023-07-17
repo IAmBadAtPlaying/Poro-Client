@@ -46,7 +46,7 @@ public class FrontendMessageHandler {
                     String endpoint = messageArray.getString(2);
                     String body = messageArray.getString(3);
                     Integer requestId = messageArray.getInt(4);
-                    handleForwardRequest(requestType, endpoint,body, requestId ,session);
+                    handleForwardRequest(requestType, endpoint,body, requestId ,session, false);
                 break;
                 case 1: //Subscribe / Unsubscribe from LCU endpoints
                     if (len < 2) {
@@ -125,9 +125,31 @@ public class FrontendMessageHandler {
                      sendFriendList(session);
                      sendGameflowStatus(session);
                      sendLobby(session);
+                break;
+                case 5:
+                    if (len <= 4) {
+                        return;
+                    }
+                    String requestTypeRiot = messageArray.getString(1);
+                    String endpointRiot = messageArray.getString(2);
+                    String bodyRiot = messageArray.getString(3);
+                    Integer requestIdRiot = messageArray.getInt(4);
+                    handleForwardRequest(requestTypeRiot, endpointRiot,bodyRiot, requestIdRiot ,session, true);
+                break;
                 default:
                 break;
             }
+        }
+    }
+
+    private void sendRiotData(Session session) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("Riot Basic Auth Header", mainInitiator.getConnectionManager().getRiotAuth());
+            obj.put("Riot Port", mainInitiator.getConnectionManager().getRiotPort());
+            session.getRemote().sendString(obj.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -167,9 +189,13 @@ public class FrontendMessageHandler {
         }
     }
 
-    private void handleForwardRequest(String requestType, String endpoint, String body, Integer requestNum, Session session) {
+    private void handleForwardRequest(String requestType, String endpoint, String body, Integer requestNum, Session session, boolean isRiotConnection) {
         ConnectionManager.conOptions type = ConnectionManager.conOptions.getByString(requestType);
-        HttpsURLConnection con = (HttpsURLConnection)mainInitiator.getConnectionManager().buildConnection(type, endpoint, body);
+        HttpsURLConnection con;
+        if (isRiotConnection) {
+            con = mainInitiator.getConnectionManager().buildRiotConnection(type,endpoint,body);
+        } else con = mainInitiator.getConnectionManager().buildConnection(type, endpoint, body);
+
         String resp = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, con);
         if (resp!= null && !resp.isEmpty()) {
             resp = resp.trim();
@@ -193,6 +219,7 @@ public class FrontendMessageHandler {
         } else respArray.put(resp);
         sendMessage(respArray.toString(), session);
     }
+
 
 
     public void sendMessage(String message, Session session) {

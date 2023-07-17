@@ -14,8 +14,10 @@ import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.cert.CertificateException;
 import java.util.*;
 
 public class ConnectionManager {
@@ -72,6 +74,8 @@ public class ConnectionManager {
     public String authString = null;
     public String preUrl = null;
     public String port = null;
+    private String riotAuthString = null;
+    private String riotPort = null;
     public WebSocketClient client = null;
     public MainInitiator mainInitiator = null;
 
@@ -144,18 +148,28 @@ public class ConnectionManager {
                 if (args.length <= 1) return false;
                 String portString = "--app-port=";
                 String authString = "--remoting-auth-token=";
+                String riotPortString = "--riotclient-app-port=";
+                String riotAuthString = "--riotclient-auth-token=";
                 for (int i = 0; i < args.length; i++) {
                     if (args[i].startsWith(portString)) {
                         String port = args[i].substring(portString.length());
                         log("Port: " +port, MainInitiator.LOG_LEVEL.INFO);
                         this.preUrl = "https://127.0.0.1:" + port;
                         this.port = port;
-                    }
-                    if (args[i].startsWith(authString)) {
+                    } else if (args[i].startsWith(authString)) {
                         String auth = args[i].substring(authString.length());
                         log("Auth: " + auth, MainInitiator.LOG_LEVEL.INFO);
                         this.authString = "Basic " + Base64.getEncoder().encodeToString(("riot:" + auth).trim().getBytes());
                         log("Auth Header: " +this.authString, MainInitiator.LOG_LEVEL.INFO);
+                    } else if (args[i].startsWith(riotAuthString)) {
+                        String riotAuth = args[i].substring(riotAuthString.length());
+                        log("Riot Auth: " + riotAuth, MainInitiator.LOG_LEVEL.INFO);
+                        this.riotAuthString = "Basic " + Base64.getEncoder().encodeToString(("riot:"+riotAuth).trim().getBytes());
+                        log("Auth Header: " + this.riotAuthString, MainInitiator.LOG_LEVEL.INFO);
+                    } else if (args[i].startsWith(riotPortString)) {
+                        String riotPort = args[i].substring(riotPortString.length());
+                        log("Riot Port: " + riotPort, MainInitiator.LOG_LEVEL.INFO);
+                        this.riotPort = riotPort;
                     }
                 }
                 return true;
@@ -212,16 +226,40 @@ public class ConnectionManager {
         return true;
     }
 
+    private boolean isLoopbackAddress(String host) {
+        try {
+            InetAddress address = InetAddress.getByName(host);
+            return address.isLoopbackAddress();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public boolean allowUnsecureConnections() {
         try {
             TrustManager[] trustAllCerts = new TrustManager[]{
                     new X509TrustManager() {
                         @Override
-                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
+                            if (chain != null && chain.length > 0) {
+                                String clientHost = chain[0].getSubjectX500Principal().getName();
+                                if (isLoopbackAddress(clientHost) || "CN=rclient".equals(clientHost)) {
+                                    return;
+                                }
+                            }
+                            throw new CertificateException("Untrusted client certificate");
                         }
 
                         @Override
-                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
+                            if (chain != null && chain.length > 0) {
+                                String serverHost = chain[0].getSubjectX500Principal().getName();
+                                if (isLoopbackAddress(serverHost) || "CN=rclient".equals(serverHost)) {
+                                    return;
+                                }
+                            }
+                            throw new CertificateException("Untrusted server certificate");
+
                         }
 
                         @Override
@@ -300,22 +338,35 @@ public class ConnectionManager {
         return null;
     }
 
-    public HttpURLConnection buildConnection(conOptions options, String path) {
+    public HttpsURLConnection buildRiotConnection(conOptions options, String path, String post_body) {
         try {
-            URL clientLockfileUrl = new URL(preUrl + path);
-            HttpURLConnection con = (HttpURLConnection) clientLockfileUrl.openConnection();
-            if (con == null || !(con instanceof HttpURLConnection)) {
+            URL clientLockfileUrl = new URL("https://127.0.0.1:" + riotPort + path);
+            HttpsURLConnection con = (HttpsURLConnection) clientLockfileUrl.openConnection();
+            if (con == null || !(con instanceof HttpsURLConnection)) {
                 log(clientLockfileUrl.toString(), MainInitiator.LOG_LEVEL.ERROR);
-                return null;
             }
             con.setRequestMethod(options.name);
             con.setRequestProperty("Content-Type", "application/json");
-            con.setRequestProperty("Authorization", authString);
+            con.setRequestProperty("Authorization", riotAuthString);
+            switch (options) {
+                case POST:
+                case PUT:
+                case PATCH:
+                    if (post_body == null) {post_body = "";}
+                    con.setDoOutput(true);
+                    con.getOutputStream().write(post_body.getBytes(StandardCharsets.UTF_8));
+                    break;
+                default:
+            }
             return con;
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public HttpsURLConnection buildConnection(conOptions options, String path) {
+        return buildConnection(options, path, null);
     }
 
     public Object getResponse(responseFormat respFormat, HttpURLConnection con) {
@@ -523,8 +574,18 @@ public class ConnectionManager {
         leagueAuthDataAvailable = false;
         port = null;
         authString = null;
+        riotPort = null;
+        riotAuthString = null;
         sslContextGlobal = null;
         client = null;
+    }
+
+    public String getRiotAuth() {
+        return riotAuthString;
+    }
+
+    public String getRiotPort() {
+        return riotPort;
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
