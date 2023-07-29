@@ -5,9 +5,11 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.math.BigInteger;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.net.HttpURLConnection;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class DataManager {
 
@@ -20,8 +22,19 @@ public class DataManager {
     private Map<Integer, JSONObject> cellIdActionMap;
     private Boolean banPhaseOver;
 
+    ExecutorService disenchantExecutor;
+
     private static Integer MAX_LOBBY_SIZE = 5;
     private static Integer MAX_LOBBY_HALFS_INDEX = 2;
+
+    private volatile boolean disenchantingInProgress = false;
+    private volatile boolean shutdownInProgress = false;
+
+    private HashMap<Integer, JSONObject> availableQueueMap;
+
+    private JSONObject lootJsonObject;
+
+    private JSONObject platformConfigQueues;
 
     private JSONObject currentLobbyState;
     private JSONObject currentGameflowState;
@@ -32,6 +45,121 @@ public class DataManager {
     }
 
     public static String REGALIA_REGEX = "/lol-regalia/v2/summoners/(.*?)/regalia/async";
+
+    public void updateQueueMap() {
+        availableQueueMap.clear();
+        initQueueMap();
+    }
+
+    public void initQueueMap() {
+        JSONArray queueArray = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-game-queues/v1/queues"));
+        for (int i = 0; i < queueArray.length(); i++) {
+            JSONObject currentQueue = queueArray.getJSONObject(i);
+            if ("Available".equals(currentQueue.getString("queueAvailability"))) {
+                log("Adding Queue \"" + currentQueue.getString("name")+ "\" with id " + currentQueue.getInt("id") + " to available queues");
+                Integer queueId = currentQueue.getInt("id");
+                availableQueueMap.put(queueId, currentQueue);
+            }
+        }
+    }
+
+    public JSONObject getLoot() {
+        return lootJsonObject;
+    }
+
+    public synchronized boolean disenchantElements(JSONArray lootArray) {
+        if (lootArray == null || lootArray.isEmpty()) return false;
+        if (disenchantingInProgress) return false;
+        disenchantingInProgress = true;
+
+        for (int i = 0; i < lootArray.length(); i++) {
+            final JSONObject currentLoot = lootArray.getJSONObject(i);
+            disenchantExecutor.execute(() -> {
+                String type = currentLoot.getString("type");
+                Integer count = currentLoot.getInt("count");
+                String lootName = currentLoot.getString("lootName");
+
+                mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-loot/v1/recipes/"+type+"_disenchant/craft?repeat="+count, "[\""+lootName+"\"]"));
+
+                return;
+            });
+        }
+        TimerTask refetchLoot = new TimerTask() {
+            @Override
+            public void run() {
+                updateLootMap();
+                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LootUpdate", lootJsonObject));
+            }
+        };
+        Timer timer = new Timer();
+        timer.schedule(refetchLoot, 2000);
+        try {
+            if(disenchantExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+                log("Successfully disenchanted all elements in given time");
+            } else log("Some elements could not be disenchanted in time");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        disenchantingInProgress = false;
+        return true;
+    }
+
+    private void updateLootMap() {
+        JSONObject preFormattedLoot = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-loot/v2/player-loot-map"));
+//        JSONObject unmodifiedLoot = preFormattedLoot.getJSONObject("playerLoot");
+//        final JSONObject updatedLoot = new JSONObject();
+//        unmodifiedLoot.keySet().forEach((k) -> {
+//            JSONObject lootObject = unmodifiedLoot.getJSONObject(k);
+//        });
+        lootJsonObject = preFormattedLoot.getJSONObject("playerLoot");
+    }
+
+    private void createLootObject() {
+        if (lootJsonObject == null) {
+            lootJsonObject = new JSONObject();
+
+            updateLootMap();
+
+            log(lootJsonObject);
+        }
+    }
+
+    public JSONObject getAvailableQueues() {
+        return platformConfigQueues;
+    }
+
+    public void updateClientSystemStates() {
+        JSONObject clientSystemStates = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-platform-config/v1/namespaces/ClientSystemStates"));
+        JSONArray enabledQueueIds = clientSystemStates.getJSONArray("enabledQueueIdsList");
+        if (platformConfigQueues == null) {
+            platformConfigQueues = new JSONObject();
+            platformConfigQueues.put("PvP", new JSONObject());
+            platformConfigQueues.put("VersusAi", new JSONObject());
+        }
+        for (int i = 0; i < enabledQueueIds.length(); i++) {
+            Integer queueId = enabledQueueIds.getInt(i);
+            if (availableQueueMap.containsKey(queueId)) {
+                JSONObject queue = availableQueueMap.get(queueId);
+                String category = queue.getString("category");
+                String gameMode = queue.getString("gameMode");
+                switch (category) {
+                    case "PvP":
+                        if (platformConfigQueues.getJSONObject("PvP").has(gameMode)) {
+                            ((JSONArray) platformConfigQueues.getJSONObject("PvP").get(gameMode)).put(queue);
+                        } else platformConfigQueues.getJSONObject("PvP").put(gameMode, new JSONArray().put(queue));
+                        break;
+                    case "VersusAi":
+                        if (platformConfigQueues.getJSONObject("VersusAi").has(gameMode)) {
+                            ((JSONArray) platformConfigQueues.getJSONObject("VersusAi").get(gameMode)).put(queue);
+                        } else platformConfigQueues.getJSONObject("VersusAi").put(gameMode, new JSONArray().put(queue));
+                        break;
+                    default:
+                        log("Unknown category: " + category);
+                        break;
+                }
+            }
+        }
+    }
 
     public JSONObject getFEGameflowStatus() {
         JSONObject feGameflowObject = new JSONObject();
@@ -440,6 +568,18 @@ public class DataManager {
     }
 
     public void shutdown() {
+        shutdownInProgress = true;
+        try {
+            if (!disenchantExecutor.isTerminated()) {
+                disenchantExecutor.shutdownNow();
+                if(disenchantExecutor.awaitTermination(3,  TimeUnit.SECONDS)) {
+                    log("Executor shutdown successful");
+                }else log("Executor shutdown failed");
+            }
+        } catch (Exception e) {
+            log("Executor termination failed: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+        }
+        disenchantExecutor = null;
         if (synchronizedFriendListMap != null) synchronizedFriendListMap.clear();
         synchronizedFriendListMap = null;
         if (currentLobbyState != null) currentLobbyState.clear();
@@ -450,13 +590,22 @@ public class DataManager {
         cellIdMemberMap = null;
         if (cellIdActionMap != null) cellIdActionMap.clear();
         cellIdActionMap = null;
+        if(availableQueueMap != null) availableQueueMap.clear();
+        availableQueueMap = null;
     }
 
     public void init() {
         this.regaliaMap = Collections.synchronizedMap(new HashMap<BigInteger, JSONObject>());
         this.cellIdMemberMap = Collections.synchronizedMap(new HashMap<>());
         this.cellIdActionMap = Collections.synchronizedMap(new HashMap<>());
+        this.availableQueueMap = new HashMap<>();
         this.banPhaseOver = false;
+
+        this.disenchantExecutor = Executors.newCachedThreadPool();
+
+        initQueueMap();
+        updateClientSystemStates();
+        createLootObject();
     }
 
 

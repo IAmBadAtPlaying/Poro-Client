@@ -41,6 +41,7 @@ public class BackendMessageHandler {
                         handle_lol_regalia_v2_summoners(jsonData);
                         break;
                     default:
+                        log("OnJsonApiEvent - Unkown endpoint: " + endpoint + ": " + jsonData.toString());
                         break;
                 }
             }
@@ -48,6 +49,9 @@ public class BackendMessageHandler {
             return;
         }
     }
+
+
+    //For OnJsonApiEvent_lol-loot_v2_player-loot-map; the updated / event Value is the new map;
 
     private void handle_lol_champ_select_v1_session(JSONObject jsonData) {
         String uri = jsonData.getString("eventType");

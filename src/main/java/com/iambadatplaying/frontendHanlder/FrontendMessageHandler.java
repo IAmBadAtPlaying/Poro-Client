@@ -2,6 +2,7 @@ package com.iambadatplaying.frontendHanlder;
 
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
+import com.iambadatplaying.lcuHandler.DataManager;
 import com.iambadatplaying.tasks.Task;
 import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
@@ -9,6 +10,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
+import java.util.stream.Stream;
+
+import static com.iambadatplaying.MainInitiator.log;
 
 public class FrontendMessageHandler {
 
@@ -125,8 +129,10 @@ public class FrontendMessageHandler {
                      sendFriendList(session);
                      sendGameflowStatus(session);
                      sendLobby(session);
+                     sendAvailableQueues(session);
+                     sendLoot(session);
                 break;
-                case 5:
+                case 5: // Proxy the request to Riot-Client (NOT league client)
                     if (len <= 4) {
                         return;
                     }
@@ -136,9 +142,58 @@ public class FrontendMessageHandler {
                     Integer requestIdRiot = messageArray.getInt(4);
                     handleForwardRequest(requestTypeRiot, endpointRiot,bodyRiot, requestIdRiot ,session, true);
                 break;
+                case 6: //Disenchant Elements
+                    if (len < 3) {
+                        return;
+                    }
+                    JSONArray disenchantArray = messageArray.getJSONArray(1);
+                    mainInitiator.getDataManager().disenchantElements(disenchantArray);
+                    log("[ENDPOINT] Disenchanted Elements");
+                break;
+                case 10: //End the application
+                    if (len < 3) {
+                        return;
+                    }
+                    String shutdownOption = messageArray.getString(1);
+                    switch (shutdownOption) {
+                        case "shutdown-all":
+                            log("[Shutdown] Invoking League Client Shutdown", MainInitiator.LOG_LEVEL.INFO);
+                            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/process-control/v1/process/quit", ""));
+                            log("[Shutdown] Invoking Self-shutdown", MainInitiator.LOG_LEVEL.INFO);
+                            mainInitiator.shutdown();
+                        break;
+                        case "shutdown":
+                        default:
+                            String discBody = "{\"data\": {\"title\": \"Poro Client disconnected!\", \"details\": \"Poro-Client shutdown successful\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-settings/global/default/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
+                            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications" , discBody));
+                            //Show Riot UX again so the user doesn't end up with league still running and them not noticing
+                            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
+                            log("[Shutdown] Invoking Self-shutdown", MainInitiator.LOG_LEVEL.INFO);
+                            mainInitiator.shutdown();
+                        break;
+                    }
                 default:
+                    log("Unknown Opcode: " + opcode + "; Context: " + messageArray, MainInitiator.LOG_LEVEL.ERROR);
                 break;
             }
+        }
+    }
+
+    private void sendLoot(Session session) {
+        try {
+            JSONObject loot = mainInitiator.getDataManager().getLoot();
+            session.getRemote().sendString(DataManager.getEventDataString("InitialLoot", loot));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendAvailableQueues(Session session) {
+        try {
+            JSONObject queues = mainInitiator.getDataManager().getAvailableQueues();
+            session.getRemote().sendString(DataManager.getEventDataString("InitialQueues", queues));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -164,7 +219,7 @@ public class FrontendMessageHandler {
     private void sendFriendList(Session session) {
         try {
             JSONObject feFriendArray = mainInitiator.getDataManager().getFEFriendObject();
-            session.getRemote().sendString(mainInitiator.getDataManager().getEventDataString("InitialFriendListUpdate", feFriendArray));
+            session.getRemote().sendString(DataManager.getEventDataString("InitialFriendListUpdate", feFriendArray));
         } catch (Exception e) {
             e.printStackTrace();
         }

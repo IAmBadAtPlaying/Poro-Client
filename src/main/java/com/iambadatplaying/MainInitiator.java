@@ -46,7 +46,7 @@ public class MainInitiator {
 
     private volatile boolean running = false;
 
-    public static String[] requiredEndpoints = {"OnJsonApiEvent_lol-gameflow_v1_gameflow-phase", "OnJsonApiEvent_lol-lobby_v2_lobby", "OnJsonApiEvent_lol-champ-select_v1_session", "OnJsonApiEvent_lol-chat_v1_friends", "OnJsonApiEvent_lol-regalia_v2_summoners"};
+    public static String[] requiredEndpoints = {"OnJsonApiEvent_lol-gameflow_v1_gameflow-phase", "OnJsonApiEvent_lol-lobby_v2_lobby", "OnJsonApiEvent_lol-champ-select_v1_session", "OnJsonApiEvent_lol-chat_v1_friends", "OnJsonApiEvent_lol-regalia_v2_summoners","OnJsonApiEvent_lol-loot_v2_player-loot-map"};
 
     public static void main(String[] args) {
         MainInitiator mainInit = new MainInitiator();
@@ -71,7 +71,6 @@ public class MainInitiator {
             frontendMessageHandler = new FrontendMessageHandler(this);
             taskManager = new TaskManager(this);
             connectionManager.init();
-            dataManager.init();
             if (!connectionManager.isLeagueAuthDataAvailable()) {
             }
             while (!connectionManager.isLeagueAuthDataAvailable()) {
@@ -80,7 +79,7 @@ public class MainInitiator {
                 } catch (Exception e) {
                 }
             }
-            while (!frontendProcessReady()) {
+            while (!lootReady()) {
                 try {
                     Thread.sleep(500); //League Backend Socket needs time to be able to serve the resources TODO: This is fucking horrible
                 } catch (Exception e) {
@@ -88,6 +87,7 @@ public class MainInitiator {
                 }
             }
             if (connectionManager.authString != null) {
+                dataManager.init();
                 taskManager.init();
                 client.init();
                 server.init();
@@ -116,7 +116,7 @@ public class MainInitiator {
             try {
                 Thread.sleep(1000);
                 showRunningNotification();
-                Desktop.getDesktop().browse(new URI("http://127.0.0.1:3000"));
+                Desktop.getDesktop().browse(new URI("http://127.0.0.1:3000/"));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -126,9 +126,9 @@ public class MainInitiator {
         }
     }
 
-    private boolean frontendProcessReady() {
+    private boolean lootReady() {
         try {
-            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/memory/v1/fe-processes-ready"));
+            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-loot/v1/ready"));
             return "true".equals(resp.trim());
         } catch (Exception e) {
 
@@ -136,8 +136,13 @@ public class MainInitiator {
         return false;
     }
 
-    public void handleGracefulReset() {
-        System.out.println("Handling graceful exit");
+    public void shutdown() {
+        setRunning(false);
+        resetAllInternal();
+        System.exit(0);
+    }
+
+    public void resetAllInternal() {
         if (isRunning()) {
             resourceServer.shutdown();
             taskManager.shutdown();
@@ -152,6 +157,12 @@ public class MainInitiator {
             dataManager = null;
             connectionManager = null;
             setRunning(false);
+        }
+    }
+
+    public void handleGracefulReset() {
+        if (isRunning()) {
+            resetAllInternal();
             try {
                 Thread.sleep(1000);
             } catch (Exception e) {
@@ -159,11 +170,12 @@ public class MainInitiator {
             }
             init();
         }
+
     }
 
     private void showRunningNotification() {
         try {
-            String body = "{\"data\": {\"title\": \"Poro Client connected!\", \"details\": \"'http://127.0.0.1:35199'\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-settings/global/default/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
+            String body = "{\"data\": {\"title\": \"Poro Client connected!\", \"details\": \"http://127.0.0.1:35199/static/index.html\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-settings/global/default/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
             HttpURLConnection con = getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", body);
             con.getResponseCode();
             con.disconnect();

@@ -12,8 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class ProxyHandler extends AbstractHandler {
     public static String STATIC_PROXY_PREFIX = "/static";
@@ -30,7 +29,7 @@ public class ProxyHandler extends AbstractHandler {
     @Override
     public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
             httpServletResponse.setHeader("Access-Control-Allow-Origin", "*");
-            httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+            httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET");
             httpServletResponse.setHeader("Access-Control-Allow-Headers", "Content-Type");
             if (s == null) return;
             String requestedCURResource = s.trim();
@@ -42,19 +41,18 @@ public class ProxyHandler extends AbstractHandler {
 
     public void handleStatic(String resource, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException {
         byte[] cachedResource = resourceCache.get(resource);
-
         if (cachedResource != null) {
             serveResource(httpServletResponse, cachedResource);
             request.setHandled(true);
             return;
         }
-
         handleNormal(resource, request, httpServletRequest, httpServletResponse, true);
     }
 
     public void handleNormal(String resource, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, boolean putToMap) throws IOException {
         InputStream is = null;
         HttpURLConnection con = null;
+
         try {
             con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, resource, null);
             httpServletResponse.setContentType(con.getContentType());
@@ -62,6 +60,18 @@ public class ProxyHandler extends AbstractHandler {
                 return;
             }
             is = (InputStream) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.INPUT_STREAM, con);
+            Map<String, List<String>> headers = con.getHeaderFields();
+            if (headers != null) {
+                for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+                    String key = entry.getKey();
+                    List<String> value = entry.getValue();
+                    if (key != null && value != null) {
+                        for (String s : value) {
+                            httpServletResponse.setHeader(key, s);
+                        }
+                    }
+                }
+            }
 
             byte[] resourceBytes = readBytesFromStream(is);
 
