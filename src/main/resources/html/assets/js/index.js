@@ -26,8 +26,6 @@ function replaceProfileIcons() {
     }
 }
 
-
-
 function connect(host) {
     socket = new WebSocket(host);
     socket.onopen = function (msg) {
@@ -49,7 +47,7 @@ function connect(host) {
 }
 
 function createKeepAlive() {
-    setTimeout(createKeepAlive, 290000)
+    setTimeout(createKeepAlive, 250000)
     socket.send("[]");
 }
 

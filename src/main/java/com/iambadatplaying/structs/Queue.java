@@ -23,19 +23,20 @@ public class Queue implements Comparable<Queue> {
         queue.setGameMode(jsonQueue.getString("gameMode"));
         queue.setDescription(jsonQueue.getString("description"));
         queue.setQueueAvailability(jsonQueue.getString("queueAvailability"));
-        JSONArray jsonPremadeSizes = jsonQueue.getJSONArray("allowablePremadeSizes");
-        if(queue.getName() == null) {return null;}
-        for(int i = 0; i < jsonPremadeSizes.length(); i++) {
-            Integer index = jsonPremadeSizes.getInt(i) -1 ;
-            if(index < premadeSizes.length) {
-                premadeSizes[index] = true;
-            }
-        }
-        for (int i = 0; i < premadeSizes.length; i++) {
-            if(premadeSizes[i] == null ) {
-                premadeSizes[i] = false;
-            }
-        }
+        //TODO: Fix this, it's not working
+//        JSONArray jsonPremadeSizes = jsonQueue.getJSONArray("allowablePremadeSizes");
+//        if(queue.getName() == null) {return null;}
+//        for(int i = 0; i < jsonPremadeSizes.length(); i++) {
+//            Integer index = jsonPremadeSizes.getInt(i) -1 ;
+//            if(index < premadeSizes.length) {
+//                premadeSizes[index] = true;
+//            }
+//        }
+//        for (int i = 0; i < premadeSizes.length; i++) {
+//            if(premadeSizes[i] == null ) {
+//                premadeSizes[i] = false;
+//            }
+//        }
         queue.setAllowablePremadeSizes(premadeSizes);
         return queue;
     }

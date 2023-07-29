@@ -2,6 +2,7 @@ package com.iambadatplaying.frontendHanlder;
 
 import com.iambadatplaying.MainInitiator;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.server.WebSocketHandler;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
@@ -39,8 +40,16 @@ public class SocketServer {
     }
 
     public void init() {
-        server = new Server(8887);
-        System.out.println("Setting up server!");
+        log("[Frontend] Setting up socket server");
+        server = new Server();
+        ServerConnector connector = new ServerConnector(server);
+
+        connector.setReuseAddress(true);
+        connector.setHost("0.0.0.0");
+        connector.setPort(8887);
+
+        server.addConnector(connector);
+
         WebSocketHandler wsHandler = new WebSocketHandler() {
             @Override
             public void configure(WebSocketServletFactory factory) {
@@ -50,6 +59,7 @@ public class SocketServer {
         server.setHandler(wsHandler);
         try {
             server.start();
+            log("[Frontend] Socket server started");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -62,5 +72,14 @@ public class SocketServer {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+
+    private void log(String s, MainInitiator.LOG_LEVEL level) {
+        MainInitiator.log(this.getClass().getName() +": " + s, level);
+    }
+
+    private void log(String s) {
+        MainInitiator.log(this.getClass().getName() +": " +s);
     }
 }
