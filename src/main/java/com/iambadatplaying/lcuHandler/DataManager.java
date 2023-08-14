@@ -4,14 +4,119 @@ import com.iambadatplaying.MainInitiator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import javax.net.ssl.HttpsURLConnection;
+import java.io.IOException;
 import java.math.BigInteger;
-import java.net.HttpURLConnection;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class DataManager {
+
+    private enum ChampSelectState {
+        PREPERATION(10),
+        BANNING(11),
+        AWAITING_BAN_RESULTS(21),
+        AWAITING_PICK(22),
+        PICKING_WITHOUT_BAN(12),
+        PICKING_WITH_BAN(13),
+        AWAITING_FINALIZATION(25),
+        FINALIZATION(15);
+
+        private int value;
+
+        private ChampSelectState(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        public static ChampSelectState fromValue(int value) {
+            for (ChampSelectState state : ChampSelectState.values()) {
+                if (state.getValue() == value) {
+                    return state;
+                }
+            }
+            return null;
+        }
+
+        // Logic breaks in tournament draft
+        public static ChampSelectState fromParameters(JSONObject parameters) {
+            if (parameters == null) return null;
+            String timerPhase = parameters.getString("phase");
+            if (timerPhase == null) {
+                timerPhase = "UNKNOWN";
+            }
+            boolean banExists = parameters.has("banAction");
+            boolean pickExists = parameters.has("pickAction");
+
+            boolean isPickInProgress = false;
+            boolean isPickCompleted = false;
+
+            boolean isBanInProgress = false;
+            boolean isBanCompleted = false;
+
+            if (pickExists) {
+                JSONObject pickAction = parameters.getJSONObject("pickAction");
+                isPickInProgress = pickAction.getBoolean("isInProgress");
+                isPickCompleted = pickAction.getBoolean("completed");
+            }
+            if (banExists) {
+                JSONObject banAction = parameters.getJSONObject("banAction");
+                isBanInProgress = banAction.getBoolean("isInProgress");
+                isBanCompleted = banAction.getBoolean("completed");
+            }
+            switch (timerPhase) {
+                case "PLANNING":
+                    return PREPERATION;
+                case "BAN_PICK":
+                    if (banExists) {
+                        if (isBanInProgress) {
+                            return BANNING;
+                        } else {
+                            if (isBanCompleted) {
+                                if (pickExists) {
+                                    if (isPickInProgress) {
+                                        return PICKING_WITH_BAN;
+                                    } else {
+                                        if (isPickCompleted) {
+                                            return AWAITING_FINALIZATION;
+                                        } else {
+                                            return AWAITING_PICK;
+                                        }
+                                    }
+                                } else {
+                                    return AWAITING_FINALIZATION;
+                                }
+                            } else {
+                                return AWAITING_BAN_RESULTS;
+                            }
+                        }
+                    } else {
+                        if (pickExists) {
+                            if (isPickInProgress) {
+                                return PICKING_WITHOUT_BAN;
+                            } else {
+                                if (isPickCompleted) {
+                                    return AWAITING_FINALIZATION;
+                                } else {
+                                    return AWAITING_PICK;
+                                }
+                            }
+                        } else {
+                            return AWAITING_FINALIZATION;
+                        }
+                    }
+                case "FINALIZATION":
+                    return FINALIZATION;
+                default:
+                    return null;
+            }
+        }
+    }
 
     private MainInitiator mainInitiator;
 
@@ -20,7 +125,6 @@ public class DataManager {
     private Map<BigInteger, String> nameMap;
     private Map<Integer, JSONObject> cellIdMemberMap;
     private Map<Integer, JSONObject> cellIdActionMap;
-    private Boolean banPhaseOver;
 
     ExecutorService disenchantExecutor;
 
@@ -40,11 +144,65 @@ public class DataManager {
     private JSONObject currentGameflowState;
     private JSONObject currentChampSelectState;
 
+    private JSONObject chromaSkinId;
+    private JSONObject championJson;
+    private JSONObject summonerSpellJson;
+
     public DataManager(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
     }
 
     public static String REGALIA_REGEX = "/lol-regalia/v2/summoners/(.*?)/regalia/async";
+
+    public void init() {
+        this.regaliaMap = Collections.synchronizedMap(new HashMap<BigInteger, JSONObject>());
+        this.cellIdMemberMap = Collections.synchronizedMap(new HashMap<>());
+        this.cellIdActionMap = Collections.synchronizedMap(new HashMap<>());
+        this.availableQueueMap = new HashMap<>();
+        this.chromaSkinId = new JSONObject();
+        this.championJson = new JSONObject();
+        this.summonerSpellJson = new JSONObject();
+
+        this.disenchantExecutor = Executors.newCachedThreadPool();
+
+        initQueueMap();
+        updateClientSystemStates();
+        createLootObject();
+        fetchChromaSkinId();
+        fetchChampionJson();
+        fetchSummonerSpells();
+    }
+
+    public void shutdown() {
+        shutdownInProgress = true;
+        try {
+            if (!disenchantExecutor.isTerminated()) {
+                disenchantExecutor.shutdownNow();
+                if(disenchantExecutor.awaitTermination(3,  TimeUnit.SECONDS)) {
+                    log("Executor shutdown successful");
+                }else log("Executor shutdown failed");
+            }
+        } catch (Exception e) {
+            log("Executor termination failed: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+        }
+        disenchantExecutor = null;
+        if (synchronizedFriendListMap != null) synchronizedFriendListMap.clear();
+        synchronizedFriendListMap = null;
+        if (currentLobbyState != null) currentLobbyState.clear();
+        currentLobbyState = null;
+        if (regaliaMap != null) regaliaMap.clear();
+        regaliaMap = null;
+        if (cellIdMemberMap != null) cellIdMemberMap.clear();
+        cellIdMemberMap = null;
+        if (cellIdActionMap != null) cellIdActionMap.clear();
+        cellIdActionMap = null;
+        if(availableQueueMap != null) availableQueueMap.clear();
+        availableQueueMap = null;
+
+        this.championJson = null;
+        this.chromaSkinId = null;
+        this.summonerSpellJson = null;
+    }
 
     public void updateQueueMap() {
         availableQueueMap.clear();
@@ -56,15 +214,10 @@ public class DataManager {
         for (int i = 0; i < queueArray.length(); i++) {
             JSONObject currentQueue = queueArray.getJSONObject(i);
             if ("Available".equals(currentQueue.getString("queueAvailability"))) {
-                log("Adding Queue \"" + currentQueue.getString("name")+ "\" with id " + currentQueue.getInt("id") + " to available queues");
                 Integer queueId = currentQueue.getInt("id");
                 availableQueueMap.put(queueId, currentQueue);
             }
         }
-    }
-
-    public JSONObject getLoot() {
-        return lootJsonObject;
     }
 
     public synchronized boolean disenchantElements(JSONArray lootArray) {
@@ -119,8 +272,6 @@ public class DataManager {
             lootJsonObject = new JSONObject();
 
             updateLootMap();
-
-            log(lootJsonObject);
         }
     }
 
@@ -386,10 +537,19 @@ public class DataManager {
         JSONArray actions = data.getJSONArray("actions");
         beActionToFEAction(actions);
 
+        JSONObject feTimer = new JSONObject();
+        JSONObject timer = data.getJSONObject("timer");
+
         //MyTeam
+        int localPlayerCellId = data.getInt("localPlayerCellId");
         JSONArray feMyTeam = data.getJSONArray("myTeam");
         for (int i = 0; i < feMyTeam.length(); i++) {
-            feMyTeam.put(i, teamMemberToSessionMap(feMyTeam.getJSONObject(i)));
+            int playerCellId = feMyTeam.getJSONObject(i).getInt("cellId");
+            JSONObject playerObject = teamMemberToSessionMap(feMyTeam.getJSONObject(i), timer);
+            if (playerCellId == localPlayerCellId) {
+                feChampSelect.put("localPlayerPhase", playerObject.getString("stateDebug"));
+            }
+            feMyTeam.put(i, playerObject);
         }
         feChampSelect.put("myTeam", feMyTeam);
 
@@ -397,12 +557,8 @@ public class DataManager {
         copyJsonAttrib("theirTeam", data, feChampSelect);
         JSONArray feTheirTeam = data.getJSONArray("myTeam");
         for (int i = 0; i < feMyTeam.length(); i++) {
-            feTheirTeam.put(i, teamMemberToSessionMap(feTheirTeam.getJSONObject(i)));
+            feTheirTeam.put(i, teamMemberToSessionMap(feTheirTeam.getJSONObject(i),timer));
         }
-
-
-        JSONObject feTimer = new JSONObject();
-        JSONObject timer = data.getJSONObject("timer");
 
         copyJsonAttrib("phase", timer, feTimer);
         copyJsonAttrib("isInfinite", timer, feTimer);
@@ -417,21 +573,42 @@ public class DataManager {
         copyJsonAttrib("myTeamBans", bans, feBans);
         copyJsonAttrib("numBans", bans, feBans);
 
+
         feChampSelect.put("bans", feBans);
 
         return feChampSelect;
     }
 
-    private JSONObject teamMemberToSessionMap(JSONObject feMember) {
+    private JSONObject teamMemberToSessionMap(JSONObject feMember, JSONObject timer) {
         Integer cellId = feMember.getInt("cellId");
         JSONObject mappedAction = cellIdActionMap.get(cellId);
         if (mappedAction == null || mappedAction.isEmpty()) {
             log("No fitting action found for cellId: " + cellId);
         } else {
+
             copyJsonAttrib("pickAction", mappedAction, feMember);
             copyJsonAttrib("banAction", mappedAction, feMember);
         }
-        log("Putting: " + cellId + ": " + feMember);
+
+        JSONObject phaseObject = new JSONObject();
+        copyJsonAttrib("phase", timer, phaseObject);
+        copyJsonAttrib("pickAction", mappedAction, phaseObject);
+        copyJsonAttrib("banAction", mappedAction, phaseObject);
+
+        ChampSelectState state = ChampSelectState.fromParameters(phaseObject);
+        if (state == null) {
+            log(feMember);
+            log(timer);
+            log("No fitting state found for cellId: " + cellId);
+        } else {
+            System.out.println("CellId: " + cellId + "; State: " + state + "; Value: " + state.getValue());
+
+            feMember.put("state", state.getValue());
+
+            //TODO: DEBUG, remove this
+            feMember.put("stateDebug", state.name());
+        }
+//        log("Putting: " + cellId + ": " + feMember);
         cellIdMemberMap.put(cellId, feMember);
         return feMember;
     }
@@ -441,6 +618,7 @@ public class DataManager {
         Boolean completed = singleAction.getBoolean("completed");
         Boolean inProgress = singleAction.getBoolean("isInProgress");
         Integer championId = singleAction.getInt("championId");
+        Integer id = singleAction.getInt("id");
         String type = singleAction.getString("type");
         cellIdActionMap.compute(actorCellId, (k, v) -> {
             if (v == null || v.isEmpty()) {
@@ -452,7 +630,9 @@ public class DataManager {
             currentAction.put("completed", completed);
             currentAction.put("isInProgress", inProgress);
             currentAction.put("championId", championId);
-            log("[" + type +"]: " + championId +", Hovering/InProgress: " + inProgress + ", completed: " +completed);
+            currentAction.put("id", id);
+//            log("[" + type +"]: " + championId +", Hovering/InProgress: " + inProgress + ", completed: " +completed);
+            ChampSelectState state;
             switch (type) {
                 case "pick":
                     v.put("pickAction", currentAction);
@@ -469,8 +649,54 @@ public class DataManager {
 
     }
 
+    private int performChampionAction(String actionType, Integer championId, boolean lockIn) throws IOException {
+        if (currentChampSelectState == null || currentChampSelectState.isEmpty()) {
+            return -1;
+        }
+
+        if (!currentChampSelectState.has("localPlayerCellId")) {
+            return -1;
+        }
+
+        Integer localPlayerCellId = currentChampSelectState.getInt("localPlayerCellId");
+        JSONObject actionBundle = cellIdActionMap.get(localPlayerCellId);
+
+        if (actionBundle == null || actionBundle.isEmpty()) {
+            return -1;
+        }
+
+        JSONObject actionObject;
+
+        if (actionType.equals("pick")) {
+            actionObject = actionBundle.getJSONObject("pickAction");
+        } else if (actionType.equals("ban")) {
+            actionObject = actionBundle.getJSONObject("banAction");
+        } else {
+            return -1;
+        }
+
+        int actionId = actionObject.getInt("id");
+        JSONObject hoverAction = new JSONObject();
+        hoverAction.put("championId", championId);
+
+        if (lockIn) {
+            hoverAction.put("completed", true);
+        }
+
+        String request = "/lol-champ-select/v1/session/actions/" + actionId;
+        HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PATCH, request, hoverAction.toString());
+        return con.getResponseCode();
+    }
+
+    public int pickChampion(Integer championId, boolean lockIn) throws IOException {
+        return performChampionAction("pick", championId, lockIn);
+    }
+
+    public int banChampion(Integer championId, boolean lockIn) throws IOException {
+        return performChampionAction("ban", championId, lockIn);
+    }
+
     private void beActionToFEAction(JSONArray action) {
-        //This works okay-ish, the ban phase is the issue, maybe use a gobal boolean to see if ban-phase is over
         if (action == null || action.isEmpty()) return;
         outer: for (int i = 0; i < action.length(); i++) {
             JSONArray subAction = action.getJSONArray(i);
@@ -533,16 +759,13 @@ public class DataManager {
     }
 
     private void copyJsonAttrib(String key, JSONObject src, JSONObject dst) {
-        try {
+            if (src == null || dst == null) return;
             if (src.has(key)) {
                 Object object = src.get(key);
                 if (object != null) {
                     dst.put(key, object);
                 }
             }
-            } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     public JSONObject beToFeGameflowInfo(String currentGameflowPhase) {
@@ -551,6 +774,62 @@ public class DataManager {
         JSONObject gameflowContainer = new JSONObject();
         gameflowContainer.put("GameflowPhase", currentGameflowPhase.trim());
         return gameflowContainer;
+    }
+
+    private void fetchChampionJson() {
+            JSONArray championJson = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-data/assets/v1/champion-summary.json"));
+            JSONObject parsedChampionJson = new JSONObject();
+            if (championJson != null && !championJson.isEmpty()) {
+                for (int i = 0; i < championJson.length(); i++) {
+                    JSONObject champion = championJson.getJSONObject(i);
+                    int id = champion.getInt("id");
+                    parsedChampionJson.put(Integer.toString(id), champion);
+                }
+            }
+            this.championJson = parsedChampionJson;
+    }
+
+    private void fetchSummonerSpells() {
+
+            JSONArray summonerSpells = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-data/assets/v1/summoner-spells.json"));
+            JSONObject parsedSummonerSpells = new JSONObject();
+            if (summonerSpells != null && !summonerSpells.isEmpty()) {
+                for (int i = 0; i < summonerSpells.length(); i++) {
+                    JSONObject summonerSpell = summonerSpells.getJSONObject(i);
+                    int id = summonerSpell.getInt("id");
+                    parsedSummonerSpells.put(Integer.toString(id), summonerSpell);
+                }
+            }
+            this.summonerSpellJson = parsedSummonerSpells;
+
+
+    }
+
+    private void fetchChromaSkinId() {
+            JSONObject chromaSkinId = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-data/assets/v1/skins.json"));
+            JSONObject parsedChromaSkinId = new JSONObject();
+            if (chromaSkinId != null && !chromaSkinId.isEmpty()) {
+                for (String s : chromaSkinId.keySet()) {
+                    JSONObject skin = chromaSkinId.getJSONObject(s);
+                    int id = skin.getInt("id");
+                    boolean hasChromas = skin.has("chromas");
+                    if (hasChromas) {
+                        JSONArray chromas = skin.getJSONArray("chromas");
+                        if (chromas != null && chromas.length() > 0) {
+                            for(int i = 0; i < chromas.length(); i++) {
+                                JSONObject chroma = chromas.getJSONObject(i);
+                                if (chroma != null && chroma.has("id")) {
+                                    int chromaId = chroma.getInt("id");
+                                    parsedChromaSkinId.put(""+chromaId, id);
+                                }
+                            }
+                        }
+                    }
+                    parsedChromaSkinId.put(""+id, id);
+                }
+            }
+            this.chromaSkinId = parsedChromaSkinId;
+
     }
 
     public static String getEventDataString(String event, JSONObject data) {
@@ -567,47 +846,43 @@ public class DataManager {
         return dataToSend.toString();
     }
 
-    public void shutdown() {
-        shutdownInProgress = true;
-        try {
-            if (!disenchantExecutor.isTerminated()) {
-                disenchantExecutor.shutdownNow();
-                if(disenchantExecutor.awaitTermination(3,  TimeUnit.SECONDS)) {
-                    log("Executor shutdown successful");
-                }else log("Executor shutdown failed");
-            }
-        } catch (Exception e) {
-            log("Executor termination failed: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
-        }
-        disenchantExecutor = null;
-        if (synchronizedFriendListMap != null) synchronizedFriendListMap.clear();
-        synchronizedFriendListMap = null;
-        if (currentLobbyState != null) currentLobbyState.clear();
-        currentLobbyState = null;
-        if (regaliaMap != null) regaliaMap.clear();
-        regaliaMap = null;
-        if (cellIdMemberMap != null) cellIdMemberMap.clear();
-        cellIdMemberMap = null;
-        if (cellIdActionMap != null) cellIdActionMap.clear();
-        cellIdActionMap = null;
-        if(availableQueueMap != null) availableQueueMap.clear();
-        availableQueueMap = null;
+    public static String getDataTransferString(String dataType, JSONObject data) {
+        JSONObject dataToSend = new JSONObject();
+        dataToSend.put("event", "DataTransfer");
+
+        JSONObject dataTransfer = new JSONObject();
+        dataTransfer.put("dataType", dataType);
+        dataTransfer.put("data", data);
+
+        dataToSend.put("data", dataTransfer);
+        return dataToSend.toString();
     }
 
-    public void init() {
-        this.regaliaMap = Collections.synchronizedMap(new HashMap<BigInteger, JSONObject>());
-        this.cellIdMemberMap = Collections.synchronizedMap(new HashMap<>());
-        this.cellIdActionMap = Collections.synchronizedMap(new HashMap<>());
-        this.availableQueueMap = new HashMap<>();
-        this.banPhaseOver = false;
+    public static String getDataTransferString(String dataType, JSONArray data) {
+        JSONObject dataToSend = new JSONObject();
+        dataToSend.put("event", "DataTransfer");
 
-        this.disenchantExecutor = Executors.newCachedThreadPool();
-
-        initQueueMap();
-        updateClientSystemStates();
-        createLootObject();
+        JSONObject dataTransfer = new JSONObject();
+        dataTransfer.put("dataType", dataType);
+        dataToSend.put("data", data);
+        return dataToSend.toString();
     }
 
+    public JSONObject getLoot() {
+        return lootJsonObject;
+    }
+
+    public JSONObject getChromaSkinId() {
+        return chromaSkinId;
+    }
+
+    public JSONObject getChampionJson() {
+        return championJson;
+    }
+
+    public JSONObject getSummonerSpellJson() {
+        return summonerSpellJson;
+    }
 
     private void log(Object o) {
         log(o, MainInitiator.LOG_LEVEL.DEBUG);

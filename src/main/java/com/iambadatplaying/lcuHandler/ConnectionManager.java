@@ -313,6 +313,10 @@ public class ConnectionManager {
 
     public HttpsURLConnection buildConnection(conOptions options,String path , String post_body) {
         try {
+            if (preUrl == null) {
+                log("No preUrl", MainInitiator.LOG_LEVEL.ERROR);
+                return null;
+            }
             URL clientLockfileUrl = new URL(preUrl + path);
             HttpsURLConnection con = (HttpsURLConnection) clientLockfileUrl.openConnection();
             if (con == null || !(con instanceof HttpsURLConnection)) {

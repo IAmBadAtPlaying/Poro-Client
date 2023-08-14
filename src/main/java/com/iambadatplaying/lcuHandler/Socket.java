@@ -4,6 +4,8 @@ import com.iambadatplaying.MainInitiator;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
 
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.TimerTask;
 
 @WebSocket
@@ -13,9 +15,12 @@ public class Socket {
 
     public Socket(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
+        this.subscribeQueue = new PriorityQueue<>();
     }
 
     public volatile TimerTask timerTask;
+
+    private Queue<String> subscribeQueue;
 
     private volatile boolean connected = false;
 
@@ -23,6 +28,21 @@ public class Socket {
 
     public boolean isConnected() {
         return connected;
+    }
+
+    private void emptySubscribeQueue() {
+        System.out.println("Emptying subscribe queue");
+        while (connected) {
+            try {
+                String subscribeMessage = subscribeQueue.poll();
+                if (subscribeMessage != null) {
+                    sendSubscribeMessage(subscribeMessage);
+                    Thread.sleep(10);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @OnWebSocketClose
@@ -52,6 +72,7 @@ public class Socket {
         this.currentSession = session;
         this.connected = true;
         createNewKeepAlive(session);
+        new Thread(this::emptySubscribeQueue).start();
     }
 
     @OnWebSocketMessage
@@ -95,7 +116,7 @@ public class Socket {
         return currentSession;
     }
 
-    public void subscribeToEndpoint(String endpoint) {
+    private void sendSubscribeMessage(String endpoint) {
         try {
             log( "Subscribing to: " +endpoint);
             currentSession.getRemote().sendString("[5, \""+endpoint+"\"]");
@@ -103,6 +124,10 @@ public class Socket {
             log("Cannot subscribe to endpoint " +endpoint, MainInitiator.LOG_LEVEL.ERROR);
             e.printStackTrace();
         }
+    }
+
+    public void subscribeToEndpoint(String endpoint) {
+        subscribeQueue.add(endpoint);
     }
 
     public void unsubscribeFromEndpoint(String endpoint) {

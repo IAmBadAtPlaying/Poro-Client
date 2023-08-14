@@ -4,6 +4,7 @@ import com.iambadatplaying.MainInitiator;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
 
@@ -24,13 +25,21 @@ public class ResourceServer {
     }
 
     public void init() {
+        server = new Server(35199);
+
         ProxyHandler proxyHandler = new ProxyHandler(mainInitiator);
 
         ResourceHandler resourceHandler = new ResourceHandler();
         resourceHandler.setDirectoriesListed(true);
         resourceHandler.setResourceBase(MainInitiator.class.getResource("/html").toExternalForm());
 
-        server = new Server(35199);
+
+        RESTContextHandler restContext = new RESTContextHandler(mainInitiator);
+        restContext.setContextPath("/rest");
+
+        ContextHandler configContext = new ContextHandler();
+        configContext.setContextPath("/config");
+        configContext.setHandler(new ConfigHandler(mainInitiator));
 
         // Proxy-prefix to handle Proxy requests
         ContextHandler proxyContext = new ContextHandler();
@@ -49,7 +58,7 @@ public class ResourceServer {
                         this.requestInitialized(baseRequest, request);
                     }
                     response.setHeader("Access-Control-Allow-Origin", "*");
-                    response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+                    response.setHeader("Access-Control-Allow-Methods", "GET");
                     response.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
                     if (dispatch == DispatcherType.REQUEST && this.isProtectedTarget(target)) {
@@ -73,7 +82,9 @@ public class ResourceServer {
 
         HandlerList handlerList = new HandlerList();
         handlerList.addHandler(proxyContext);
+        handlerList.addHandler(configContext);
         handlerList.addHandler(staticContext);
+        handlerList.addHandler(restContext);
 
         server.setHandler(handlerList);
 

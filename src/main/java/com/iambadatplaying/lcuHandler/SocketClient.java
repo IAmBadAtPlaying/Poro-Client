@@ -33,7 +33,6 @@ public class SocketClient {
         this.client = new WebSocketClient(http);
         client.getPolicy().setMaxTextMessageSize(MAXIMUM_TEXT_SIZE);
         client.setMaxTextMessageBufferSize(MAXIMUM_TEXT_SIZE);
-        client.setMaxBinaryMessageBufferSize(MAXIMUM_TEXT_SIZE);
         socket = new Socket(mainInitiator);
 
         ssl.setSslContext(mainInitiator.getConnectionManager().sslContextGlobal);

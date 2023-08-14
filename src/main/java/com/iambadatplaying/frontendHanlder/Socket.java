@@ -13,7 +13,6 @@ public class Socket {
 
     public Socket(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
-        System.out.println("Created Socket!");
     }
 
     @OnWebSocketConnect

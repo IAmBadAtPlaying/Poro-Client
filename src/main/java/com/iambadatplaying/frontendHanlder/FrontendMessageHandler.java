@@ -130,7 +130,9 @@ public class FrontendMessageHandler {
                      sendGameflowStatus(session);
                      sendLobby(session);
                      sendAvailableQueues(session);
+                     sendTasks(session);
                      sendLoot(session);
+                     sendModifiedData(session);
                 break;
                 case 5: // Proxy the request to Riot-Client (NOT league client)
                     if (len <= 4) {
@@ -176,6 +178,28 @@ public class FrontendMessageHandler {
                     log("Unknown Opcode: " + opcode + "; Context: " + messageArray, MainInitiator.LOG_LEVEL.ERROR);
                 break;
             }
+        }
+    }
+
+    private void sendTasks(Session session) {
+        try {
+            JSONArray tasks = mainInitiator.getTaskManager().getTaskAndArgs();
+            session.getRemote().sendString(DataManager.getEventDataString("InitialTaskUpdate", tasks));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendModifiedData(Session session) {
+        try {
+            JSONObject summonerSpells = mainInitiator.getDataManager().getSummonerSpellJson();
+            session.getRemote().sendString(DataManager.getDataTransferString("SummonerSpells", summonerSpells));
+            JSONObject skins = mainInitiator.getDataManager().getChromaSkinId();
+            session.getRemote().sendString(DataManager.getDataTransferString("ChromaSkins", skins));
+            JSONObject champions = mainInitiator.getDataManager().getChampionJson();
+            session.getRemote().sendString(DataManager.getDataTransferString("Champions", champions));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

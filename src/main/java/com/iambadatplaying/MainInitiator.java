@@ -7,9 +7,14 @@ import com.iambadatplaying.lcuHandler.*;
 import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.awt.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class MainInitiator {
 
@@ -29,6 +34,27 @@ public class MainInitiator {
         }
     }
 
+    public enum STATE {
+        UNINITIALIZED,
+        STARTING,
+        RESTARTING,
+        AWAITING_LCU,
+        RUNNING,
+        STOPPING,
+        STOPPED;
+
+        public STATE getStateFromString(String s) {
+            for (STATE state : STATE.values()) {
+                if (state.name().equalsIgnoreCase(s)) {
+                    return state;
+                }
+            }
+            return null;
+        }
+    }
+
+    private STATE state = STATE.UNINITIALIZED;
+
     private SocketClient client;
     private SocketServer server;
     private ConnectionManager connectionManager;
@@ -40,13 +66,14 @@ public class MainInitiator {
 
     private DataManager dataManager;
 
-    public final static Integer MAX_LOBBY_SIZE = 5;
+    private Path taskDirPath;
+
 
     private String basePath = null;
 
     private volatile boolean running = false;
 
-    public static String[] requiredEndpoints = {"OnJsonApiEvent_lol-gameflow_v1_gameflow-phase", "OnJsonApiEvent_lol-lobby_v2_lobby", "OnJsonApiEvent_lol-champ-select_v1_session", "OnJsonApiEvent_lol-chat_v1_friends", "OnJsonApiEvent_lol-regalia_v2_summoners","OnJsonApiEvent_lol-loot_v2_player-loot-map"};
+    public static String[] requiredEndpoints = {"OnJsonApiEvent_lol-gameflow_v1_gameflow-phase", "OnJsonApiEvent_lol-lobby_v2_lobby", "OnJsonApiEvent_lol-champ-select_v1_session", "OnJsonApiEvent_lol-chat_v1_friends", "OnJsonApiEvent_lol-regalia_v2_summoners","OnJsonApiEvent_lol-loot_v2_player-loot-map","OnJsonApiEvent_lol-loot_v1_ready","OnJsonApiEvent_lol-player-preferences_v1_player-preferences-ready","OnJsonApiEvent_lol-loot_v1_player-loot"};
 
     public static void main(String[] args) {
         MainInitiator mainInit = new MainInitiator();
@@ -54,7 +81,29 @@ public class MainInitiator {
         mainInit.setRunning(true);
     }
 
+    public Path getTaskPath() {
+        if (taskDirPath == null) {
+            try {
+                URL location = this.getClass().getProtectionDomain().getCodeSource().getLocation();
+                Path currentDirPath = Paths.get(location.toURI()).getParent();
+                log("Location: " + currentDirPath, MainInitiator.LOG_LEVEL.INFO);
+                Path taskDir = Paths.get(currentDirPath.toString() + "/tasks");
+                if (!Files.exists(taskDir)) {
+                    taskDir.toFile().mkdir();
+                    log("Created tasks directory " + taskDir);
+                }
+                taskDirPath = taskDir;
+                return taskDir;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+        return taskDirPath;
+    }
+
     public void init() {
+        state = STATE.STARTING;
         if (isRunning()) {
             return;
         }
@@ -71,15 +120,14 @@ public class MainInitiator {
             frontendMessageHandler = new FrontendMessageHandler(this);
             taskManager = new TaskManager(this);
             connectionManager.init();
-            if (!connectionManager.isLeagueAuthDataAvailable()) {
-            }
+            state = STATE.AWAITING_LCU;
             while (!connectionManager.isLeagueAuthDataAvailable()) {
                 try {
                     Thread.sleep(500);
                 } catch (Exception e) {
                 }
             }
-            while (!lootReady()) {
+            while (!feProcessesReady()) {
                 try {
                     Thread.sleep(500); //League Backend Socket needs time to be able to serve the resources TODO: This is fucking horrible
                 } catch (Exception e) {
@@ -87,10 +135,10 @@ public class MainInitiator {
                 }
             }
             if (connectionManager.authString != null) {
-                dataManager.init();
-                taskManager.init();
                 client.init();
                 server.init();
+                dataManager.init();
+                taskManager.init();
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -107,16 +155,22 @@ public class MainInitiator {
                     }
                 }).start();
                 setRunning(true);
+                state = STATE.RUNNING;
             } else {
                 System.out.println("Error, League is not running");
                 System.exit(1);
             }
             while (client.getSocket() == null || !client.getSocket().isConnected()) {
+                try {
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             try {
                 Thread.sleep(1000);
                 showRunningNotification();
-                Desktop.getDesktop().browse(new URI("http://127.0.0.1:3000/"));
+                Desktop.getDesktop().browse(new URI("http://localhost:3000"));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -126,10 +180,12 @@ public class MainInitiator {
         }
     }
 
-    private boolean lootReady() {
+    private boolean feProcessesReady() {
         try {
-            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-loot/v1/ready"));
-            return "true".equals(resp.trim());
+            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-player-preferences/v1/player-preferences-ready"));
+            boolean isReady = "true".equals(resp.trim());
+            log("Loot is ready: " + isReady);
+            return isReady;
         } catch (Exception e) {
 
         }
@@ -137,8 +193,10 @@ public class MainInitiator {
     }
 
     public void shutdown() {
+        state = STATE.STOPPING;
         setRunning(false);
         resetAllInternal();
+        state = STATE.STOPPED;
         System.exit(0);
     }
 
@@ -162,6 +220,7 @@ public class MainInitiator {
 
     public void handleGracefulReset() {
         if (isRunning()) {
+            state = STATE.RESTARTING;
             resetAllInternal();
             try {
                 Thread.sleep(1000);
@@ -254,6 +313,10 @@ public class MainInitiator {
 
     public void setRunning(boolean newStatus) {
         running = newStatus;
+    }
+
+    public STATE getState() {
+        return state;
     }
 
 }

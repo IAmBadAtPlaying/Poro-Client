@@ -41,7 +41,13 @@ public class BackendMessageHandler {
                         handle_lol_regalia_v2_summoners(jsonData);
                         break;
                     default:
-                        log("OnJsonApiEvent - Unkown endpoint: " + endpoint + ": " + jsonData.toString());
+                        if (endpoint.endsWith("ready")) {
+                            //Somehow store the ready state of the endpoint; on fe connect send the ready state to the frontend;
+                            //Else just notify them like this;
+                            mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(endpoint, jsonData));
+                        } else {
+                            log("Unknown endpoint: " + endpoint, MainInitiator.LOG_LEVEL.DEBUG);
+                        }
                         break;
                 }
             }
@@ -54,9 +60,10 @@ public class BackendMessageHandler {
     //For OnJsonApiEvent_lol-loot_v2_player-loot-map; the updated / event Value is the new map;
 
     private void handle_lol_champ_select_v1_session(JSONObject jsonData) {
-        String uri = jsonData.getString("eventType");
+        String uri = jsonData.getString("uri");
+        String type = jsonData.getString("eventType");
         JSONObject actualData = jsonData.getJSONObject("data");
-        switch (uri) {
+        switch (type) {
             case "Create":
             case "Update":
                 log(actualData);
@@ -68,7 +75,7 @@ public class BackendMessageHandler {
                 mainInitiator.getDataManager().resetChampSelectSession();
                 break;
             default:
-                log("OnJsonApiEvent_lol-champ-select_v1_session - Unkown URI: " +uri);
+                log("OnJsonApiEvent_lol-champ-select_v1_session - Unkown type: " +type);
             break;
         }
     }

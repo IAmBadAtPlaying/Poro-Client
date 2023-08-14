@@ -73,7 +73,7 @@ public class AutoAcceptQueue implements Task {
 
     @Override
     public void init() {
-        if (mainInitiator == null || !mainInitiator.isRunning()) {
+        if (mainInitiator == null) {
             log("No running Main-Initiator present, Task will not start", MainInitiator.LOG_LEVEL.ERROR);
             return;
         }
@@ -93,12 +93,45 @@ public class AutoAcceptQueue implements Task {
     }
 
     @Override
-    public void setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JSONObject arguments) {
         try {
+            log(arguments.toString(), MainInitiator.LOG_LEVEL.DEBUG);
             delay = arguments.getInt("delay");
+            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            mainInitiator.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase().toLowerCase());
         }
+        return false;
+    }
+
+    @Override
+    public JSONObject getTaskArgs() {
+        JSONObject taskArgs = new JSONObject();
+        taskArgs.put("delay", delay);
+        return taskArgs;
+    }
+
+    @Override
+    public JSONArray getRequiredArgs() {
+        JSONArray requiredArgs = new JSONArray();
+
+        JSONObject delay = new JSONObject();
+        delay.put("displayName", "Delay");
+        delay.put("description", "Time till Ready-Check gets accepted in ms");
+        delay.put("type", "Integer");
+        delay.put("required", true);
+        delay.put("currentValue", this.delay);
+        delay.put("backendKey", "delay");
+
+        requiredArgs.put(delay);
+
+        return requiredArgs;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {

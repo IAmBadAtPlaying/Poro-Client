@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.util.*;
 
+
 public class ProxyHandler extends AbstractHandler {
     public static String STATIC_PROXY_PREFIX = "/static";
 
@@ -55,6 +56,10 @@ public class ProxyHandler extends AbstractHandler {
 
         try {
             con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, resource, null);
+            if (con == null) {
+                log("Cannot establish connection to " + resource + ", League might not be running", MainInitiator.LOG_LEVEL.ERROR);
+                return;
+            }
             httpServletResponse.setContentType(con.getContentType());
             if (!mainInitiator.getConnectionManager().isLeagueAuthDataAvailable()) {
                 return;
@@ -66,6 +71,7 @@ public class ProxyHandler extends AbstractHandler {
                     String key = entry.getKey();
                     List<String> value = entry.getValue();
                     if (key != null && value != null) {
+                        if (key.equals("Access-Control-Allow-Origin")) continue;
                         for (String s : value) {
                             httpServletResponse.setHeader(key, s);
                         }
@@ -80,8 +86,9 @@ public class ProxyHandler extends AbstractHandler {
             }
 
             serveResource(httpServletResponse, resourceBytes);
+            request.setHandled(true);
         } catch (Exception e) {
-            e.printStackTrace();
+            log("Error while handling request for " + resource + ": " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
         } finally {
             if (is != null) {
                 is.close();
@@ -90,7 +97,6 @@ public class ProxyHandler extends AbstractHandler {
                 con.disconnect();
             }
         }
-        request.setHandled(true);
     }
 
     private byte[] readBytesFromStream(InputStream inputStream) throws IOException {
@@ -107,5 +113,13 @@ public class ProxyHandler extends AbstractHandler {
     private void serveResource(HttpServletResponse response, byte[] resourceBytes) throws IOException {
         response.getOutputStream().write(resourceBytes);
         response.getOutputStream().flush();
+    }
+
+    private void log(String s, MainInitiator.LOG_LEVEL level) {
+        mainInitiator.log(this.getClass().getName() +": " + s, level);
+    }
+
+    private void log(String s) {
+        mainInitiator.log(this.getClass().getName() +": " +s);
     }
 }

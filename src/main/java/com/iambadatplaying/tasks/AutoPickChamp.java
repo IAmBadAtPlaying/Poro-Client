@@ -116,7 +116,7 @@ public class AutoPickChamp implements Task {
 
     @Override
     public void init() {
-        if (mainInitiator == null || !mainInitiator.isRunning()) {
+        if (mainInitiator == null) {
             log("No running Main-Initiator present, Task will not start", MainInitiator.LOG_LEVEL.ERROR);
             return;
         }
@@ -134,15 +134,54 @@ public class AutoPickChamp implements Task {
     }
 
     @Override
-    public void setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JSONObject arguments) {
         try {
             delay = arguments.getInt("delay");
             championId = arguments.getInt("championId");
-            log("Set delay to: " + delay);
-            log("Set Champion id to: " + championId);
+            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
+            return true;
         } catch (Exception e) {
-
+            mainInitiator.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase());
         }
+        return false;
+    }
+
+    @Override
+    public JSONObject getTaskArgs() {
+        JSONObject taskArgs = new JSONObject();
+        taskArgs.put("delay", delay);
+        taskArgs.put("championId", championId);
+        return taskArgs;
+    }
+
+    @Override
+    public JSONArray getRequiredArgs() {
+        JSONArray requiredArgs = new JSONArray();
+        JSONObject delay = new JSONObject();
+        delay.put("displayName", "Delay");
+        delay.put("backendKey", "delay");
+        delay.put("type", "Integer");
+        delay.put("required", true);
+        delay.put("currentValue", this.delay);
+        delay.put("description", "Time until the champion gets picked in milliseconds");
+
+        JSONObject championId = new JSONObject();
+        championId.put("displayName", "Champion ID");
+        championId.put("backendKey", "championId");
+        championId.put("type", "Integer");
+        championId.put("required", true);
+        championId.put("currentValue", this.championId);
+        championId.put("description", "The ID of the champion you want to pick");
+
+        requiredArgs.put(delay);
+        requiredArgs.put(championId);
+
+        return requiredArgs;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {

@@ -6,6 +6,8 @@ import org.json.JSONObject;
 
 public interface Task {
 
+    //TODO: Get current Task Parameter Values
+
     /**
      *
      * @param webSocketEvent The websocket Event JsonArray emitted by one of the TriggerApiEvents
@@ -46,5 +48,20 @@ public interface Task {
      *
      * @param arguments The arguments in json format to be passed and parsed
      */
-    public void setTaskArgs(JSONObject arguments);
+    public boolean setTaskArgs(JSONObject arguments);
+
+
+    /**
+     *
+     * @return The current configured arguments
+     */
+    public JSONObject getTaskArgs();
+
+    /**
+     *
+     * @return The arguments required and their format
+     */
+    public JSONArray getRequiredArgs();
+
+    public boolean isRunning();
 }
