@@ -12,7 +12,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 public class ProxyHandler extends AbstractHandler {
@@ -20,11 +22,13 @@ public class ProxyHandler extends AbstractHandler {
 
     private MainInitiator mainInitiator;
     private Map<String, byte[]> resourceCache;
+    private Map<String, Map<String, List<String>>> headerCache;
 
     public ProxyHandler(MainInitiator mainInitiator) {
         super();
         this.mainInitiator = mainInitiator;
         this.resourceCache = new HashMap<>();
+        this.headerCache = new HashMap<>();
     }
 
     @Override
@@ -43,7 +47,8 @@ public class ProxyHandler extends AbstractHandler {
     public void handleStatic(String resource, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException {
         byte[] cachedResource = resourceCache.get(resource);
         if (cachedResource != null) {
-            serveResource(httpServletResponse, cachedResource);
+            Map<String, List<String>> cachedHeaders = headerCache.get(resource);
+            serveResource(httpServletResponse, cachedResource, cachedHeaders);
             request.setHandled(true);
             return;
         }
@@ -66,26 +71,16 @@ public class ProxyHandler extends AbstractHandler {
             }
             is = (InputStream) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.INPUT_STREAM, con);
             Map<String, List<String>> headers = con.getHeaderFields();
-            if (headers != null) {
-                for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
-                    String key = entry.getKey();
-                    List<String> value = entry.getValue();
-                    if (key != null && value != null) {
-                        if (key.equals("Access-Control-Allow-Origin")) continue;
-                        for (String s : value) {
-                            httpServletResponse.setHeader(key, s);
-                        }
-                    }
-                }
-            }
+
 
             byte[] resourceBytes = readBytesFromStream(is);
 
             if (putToMap) {
+                headerCache.put(resource, con.getHeaderFields());
                 resourceCache.put(resource, resourceBytes);
             }
 
-            serveResource(httpServletResponse, resourceBytes);
+            serveResource(httpServletResponse, resourceBytes, headers);
             request.setHandled(true);
         } catch (Exception e) {
             log("Error while handling request for " + resource + ": " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
@@ -110,7 +105,20 @@ public class ProxyHandler extends AbstractHandler {
         return buffer.toByteArray();
     }
 
-    private void serveResource(HttpServletResponse response, byte[] resourceBytes) throws IOException {
+    private void serveResource(HttpServletResponse response, byte[] resourceBytes, Map<String, List<String>> headers) throws IOException {
+        if (headers != null) {
+            for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+                String key = entry.getKey();
+                List<String> value = entry.getValue();
+                if (key != null && value != null) {
+                    if ("Access-Control-Allow-Origin".equalsIgnoreCase(key)) continue;
+                    for (String s : value) {
+                        response.setHeader(key, s);
+                    }
+                }
+            }
+        }
+
         response.getOutputStream().write(resourceBytes);
         response.getOutputStream().flush();
     }

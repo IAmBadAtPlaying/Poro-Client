@@ -1,6 +1,5 @@
 package com.iambadatplaying.restServlets;
 
-import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.tasks.TaskManager;
 import org.json.JSONObject;
 

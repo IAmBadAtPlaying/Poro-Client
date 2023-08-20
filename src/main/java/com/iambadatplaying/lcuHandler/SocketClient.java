@@ -7,7 +7,6 @@ import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 
 import java.net.URI;
-import java.util.ArrayList;
 
 public class SocketClient {
 
@@ -15,7 +14,7 @@ public class SocketClient {
     private WebSocketClient client = null;
     private volatile Socket socket = null;
 
-    private int MAXIMUM_TEXT_SIZE = 3000000; //Sometimes really huge messages get send IDK why
+    private int MAXIMUM_TEXT_SIZE = 4000000; //Sometimes really huge messages get send IDK why
 
     public SocketClient(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
@@ -40,7 +39,6 @@ public class SocketClient {
             client.start();
             URI uri = new URI(sUri);
             ClientUpgradeRequest request = new ClientUpgradeRequest();
-            ClientUpgradeRequest f = new ClientUpgradeRequest();
             request.setHeader("Authorization",cm.authString);
             client.connect(socket, uri, request);
         } catch (Exception e) {

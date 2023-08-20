@@ -4,8 +4,6 @@ import com.iambadatplaying.MainInitiator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -99,14 +97,6 @@ public class TaskManager {
                 if (task == null) return null;
                 task.setMainInitiator(mainInitiator);
                 task.init();
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (String trigger :task.getTriggerApiEvents()) {
-                            mainInitiator.getClient().getSocket().subscribeToEndpoint(trigger);
-                        }
-                    }
-                }).start();
                 log("Added task: " + task.getClass().getSimpleName());
                 return task;
             });

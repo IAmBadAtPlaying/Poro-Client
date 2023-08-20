@@ -1,17 +1,9 @@
 package com.iambadatplaying.ressourceServer;
 
 import com.iambadatplaying.MainInitiator;
-import com.iambadatplaying.restServlets.ChampSelectServlet;
-import com.iambadatplaying.restServlets.StatusServlet;
-import com.iambadatplaying.restServlets.TaskHandlerServlet;
-import com.iambadatplaying.restServlets.TaskManagerStatusServlet;
-import org.eclipse.jetty.servlet.FilterHolder;
+import com.iambadatplaying.restServlets.*;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-
-import javax.servlet.*;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 
 public class RESTContextHandler extends ServletContextHandler {
 
@@ -38,5 +30,11 @@ public class RESTContextHandler extends ServletContextHandler {
 
         ServletHolder champSelectServletHolder = new ServletHolder(ChampSelectServlet.class);
         addServlet(champSelectServletHolder, "/champSelect/*");
+
+        ServletHolder runesSaveServletHolder = new ServletHolder(RunesSaveServlet.class);
+        addServlet(runesSaveServletHolder, "/runes/save");
+
+        ServletHolder shutdownServletHolder = new ServletHolder(ShutdownServlet.class);
+        addServlet(shutdownServletHolder, "/shutdown");
     }
 }

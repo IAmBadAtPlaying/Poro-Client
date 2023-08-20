@@ -1,6 +1,7 @@
 package com.iambadatplaying.restServlets;
 
 import com.iambadatplaying.MainInitiator;
+import org.json.JSONObject;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -18,6 +19,22 @@ public class BaseRESTServlet extends HttpServlet {
         resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
     }
+
+    protected JSONObject getJsonFromRequestBody(HttpServletRequest req) {
+        StringBuilder sb = new StringBuilder();
+        String line;
+        JSONObject json = new JSONObject();
+        try {
+            while ((line = req.getReader().readLine() )!= null) {
+                sb.append(line);
+            }
+            json = new JSONObject(sb.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return json;
+    }
+
 
     @Override
     public void init() throws ServletException {

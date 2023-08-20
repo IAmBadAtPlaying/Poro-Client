@@ -316,13 +316,15 @@ public class DataManager {
         JSONObject feGameflowObject = new JSONObject();
         if (currentLobbyState == null) {
             String currentGameflowString = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-gameflow/v1/gameflow-phase"));
-            feGameflowObject = beToFeGameflowInfo(currentGameflowString);
+            currentGameflowString = currentGameflowString.replace("\"", "");
+            JSONObject currentGameflowObject = new JSONObject().put("phase", currentGameflowString.trim());
+            feGameflowObject = beToFeGameflowInfo(currentGameflowObject);
             currentGameflowState = feGameflowObject;
         }
         return currentGameflowState;
     }
 
-    public JSONObject updateFEGameflowStatus(String beGameflow) {
+    public JSONObject updateFEGameflowStatus(JSONObject beGameflow) {
         JSONObject updatedFEGameflowObject = beToFeGameflowInfo(beGameflow);
         if (updatedFEGameflowObject == null) return null;
         if (updatedFEGameflowObject.similar(currentGameflowState)) return null;
@@ -768,11 +770,10 @@ public class DataManager {
             }
     }
 
-    public JSONObject beToFeGameflowInfo(String currentGameflowPhase) {
-        currentGameflowPhase = currentGameflowPhase.trim();
-        currentGameflowPhase = currentGameflowPhase.replace("\"", "");
+    public JSONObject beToFeGameflowInfo(JSONObject currentGameflowPhase) {
+        String phase = currentGameflowPhase.getString("phase");
         JSONObject gameflowContainer = new JSONObject();
-        gameflowContainer.put("GameflowPhase", currentGameflowPhase.trim());
+        gameflowContainer.put("GameflowPhase", phase);
         return gameflowContainer;
     }
 

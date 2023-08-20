@@ -11,6 +11,7 @@ import java.nio.file.Path;
 
 import static com.iambadatplaying.MainInitiator.log;
 
+//TODO: JRE cant compile java files, therefore allow users to upload .class files, no longer .java files
 public class TaskLoader {
 
     private MainInitiator mainInitiator;

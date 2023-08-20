@@ -8,7 +8,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.imageio.ImageIO;
-import javax.net.ssl.*;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.reflect.Field;
@@ -60,7 +63,8 @@ public class ConnectionManager {
         IMAGE (5),
         INPUT_STREAM(6),
         JSON_OBJECT (7),
-        JSON_ARRAY (8);
+        JSON_ARRAY (8),
+        RESPONSE_CODE(9);
 
         final Integer id;
         responseFormat(Integer id) {
@@ -374,11 +378,11 @@ public class ConnectionManager {
     }
 
     public Object getResponse(responseFormat respFormat, HttpURLConnection con) {
+        if (con == null) return null;
         switch (respFormat) {
             case STRING:
                 return handleStringResponse(con);
             case LOOT:
-
                 break;
             case JSON_ARRAY:
                 return handleJSONArrayResponse(con);
@@ -394,10 +398,22 @@ public class ConnectionManager {
                 return handleImageResponse(con);
             case INPUT_STREAM:
                 return handleInputStreamResponse(con);
+            case RESPONSE_CODE:
+                return handleResponseCode(con);
             default:
                 return handleStringResponse(con);
         }
+        con.disconnect();
         return null;
+    }
+
+    private Integer handleResponseCode (HttpURLConnection con) {
+        Integer responseCode = null;
+        try {
+            responseCode = con.getResponseCode();
+        } catch (Exception e) {
+        }
+        return responseCode;
     }
 
     private InputStream handleInputStreamResponse (HttpURLConnection con) {

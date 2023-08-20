@@ -4,45 +4,20 @@ import com.iambadatplaying.MainInitiator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class TestTask implements Task{
-    private boolean running = false;
-    private MainInitiator mainInitiator;
-
+public class TestTask extends Task {
     private String arg1 = "Unknown";
 
-    @Override
     public void notify(JSONArray webSocketEvent) {
         log(webSocketEvent.toString());
     }
 
-    @Override
-    public String[] getTriggerApiEvents() {
-        return new String[0];
+    protected void doInitialize() {
     }
 
-    @Override
-    public void setMainInitiator(MainInitiator mainInitiator) {
-        log("TestTask setMainInitiator");
-        this.mainInitiator = mainInitiator;
+    public void doShutdown() {
+
     }
 
-    @Override
-    public void init() {
-        if (mainInitiator == null) {
-            log("TestTask cant initialize, MainInitiator is null or not running");
-            return;
-        }
-        this.running = true;
-        log("TestTask initialized");
-    }
-
-    @Override
-    public void shutdown() {
-        this.running = false;
-        this.mainInitiator = null;
-    }
-
-    @Override
     public boolean setTaskArgs(JSONObject arguments) {
         try {
             arg1 = arguments.getString("arg1");
@@ -54,14 +29,12 @@ public class TestTask implements Task{
         return false;
     }
 
-    @Override
     public JSONObject getTaskArgs() {
         JSONObject taskArgs = new JSONObject();
         taskArgs.put("arg1", arg1);
         return taskArgs;
     }
 
-    @Override
     public JSONArray getRequiredArgs() {
         JSONArray requiredArgs = new JSONArray();
 
@@ -75,11 +48,6 @@ public class TestTask implements Task{
         requiredArgs.put(arg1);
 
         return requiredArgs;
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running;
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {

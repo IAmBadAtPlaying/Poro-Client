@@ -13,6 +13,7 @@ public class StatusServlet extends BaseRESTServlet {
         response.getWriter().println("MainInitiator running: " + mainInitiator.isRunning());
         response.getWriter().println("MainInitiator State: " + mainInitiator.getState().name());
         response.getWriter().println("MainInitiator auth available: " + mainInitiator.getConnectionManager().isLeagueAuthDataAvailable());
+        response.getWriter().flush();
     }
 
 

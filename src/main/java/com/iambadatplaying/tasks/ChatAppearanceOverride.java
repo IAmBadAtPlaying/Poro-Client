@@ -1,18 +1,14 @@
 package com.iambadatplaying.tasks;
 
-import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 
-public class ChatAppearanceOverride implements Task{
+public class ChatAppearanceOverride extends Task {
 
-    private volatile boolean running = false;
-
-    private final String lol_gameflow_v1_gameflow_phase = "OnJsonApiEvent_lol-gameflow_v1_gameflow-phase";
-    private final String[] apiTriggerEvents = {lol_gameflow_v1_gameflow_phase};
+    private final String lol_gameflow_v1_gameflow_phase = "/lol-gameflow/v1/session";
 
     private Integer iconId;
     private Integer challengePoints;
@@ -23,18 +19,17 @@ public class ChatAppearanceOverride implements Task{
 
     private String availability;
 
-    private MainInitiator mainInitiator;
+    private JSONArray requiredArgs;
 
-    @Override
     public void notify(JSONArray webSocketEvent) {
         if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.length() < 3) {
             return;
         }
-        String apiTrigger = webSocketEvent.getString(1);
-        switch (apiTrigger) {
+        JSONObject data = webSocketEvent.getJSONObject(2);
+        String uriTrigger = data.getString("uri");
+        switch (uriTrigger) {
             case lol_gameflow_v1_gameflow_phase:
-                JSONObject updateObject = webSocketEvent.getJSONObject(2);
-                handleUpdateData(updateObject);
+                handleUpdateData(data);
             break;
             default:
             break;
@@ -45,14 +40,22 @@ public class ChatAppearanceOverride implements Task{
         JSONObject chatAppearanceOverride = new JSONObject();
         try {
             JSONObject lol = new JSONObject();
-            lol.put("challengePoints", challengePoints.toString());
+            if (challengePoints != null) {
+                lol.put("challengePoints", challengePoints.toString());
+            }
+            if (masteryScore != null) {
+                lol.put("masteryScore", masteryScore.toString());
+            }
             lol.put("rankedLeagueQueue", rankedLeagueQueue);
             lol.put("challengeCrystalLevel", challengeCrystalLevel);
-            lol.put("masteryScore", masteryScore.toString());
             lol.put("rankedLeagueTier", rankedLeagueTier);
 
             chatAppearanceOverride.put("lol", lol);
-            chatAppearanceOverride.put("icon", iconId.intValue());
+
+            if (iconId != null) {
+                chatAppearanceOverride.put("icon", iconId.intValue());
+            }
+
             chatAppearanceOverride.put("availability", availability);
         } catch (Exception e) {
             e.printStackTrace();
@@ -81,36 +84,43 @@ public class ChatAppearanceOverride implements Task{
         }
     }
 
-    @Override
-    public String[] getTriggerApiEvents() {
-        return apiTriggerEvents;
+    protected void doInitialize() {
+
     }
 
-    @Override
-    public void setMainInitiator(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    protected void doShutdown() {
+
     }
 
-    @Override
-    public void init() {
-        this.running = true;
-    }
-
-    @Override
-    public void shutdown() {
-        this.running = false;
-    }
-
-    @Override
     public boolean setTaskArgs(JSONObject arguments) {
         try {
-            iconId = arguments.getInt("iconId");
-            challengePoints = arguments.getInt("challengePoints");
-            rankedLeagueQueue = arguments.getString("rankedLeagueQueue");
-            challengeCrystalLevel = arguments.getString("challengeCrystalLevel");
-            masteryScore = arguments.getInt("masteryScore");
-            availability = arguments.getString("availability");
-            rankedLeagueTier = arguments.getString("rankedLeagueTier");
+            if (arguments.has("iconId")) {
+                iconId = arguments.getInt("iconId");
+            }
+
+            if (arguments.has("challengePoints")) {
+                challengePoints = arguments.getInt("challengePoints");
+            }
+
+            if (arguments.has("rankedLeagueQueue")) {
+                rankedLeagueQueue = arguments.getString("rankedLeagueQueue");
+            }
+
+            if (arguments.has("challengeCrystalLevel")) {
+                challengeCrystalLevel = arguments.getString("challengeCrystalLevel");
+            }
+
+            if (arguments.has("masteryScore")) {
+                masteryScore = arguments.getInt("masteryScore");
+            }
+
+            if (arguments.has("availability")) {
+                availability = arguments.getString("availability");
+            }
+
+            if (arguments.has("rankedLeagueTier")) {
+                rankedLeagueTier = arguments.getString("rankedLeagueTier");
+            }
 
             JSONObject body = buildChatAppearanceOverride();
             sendChatAppearanceOverride(body);
@@ -121,7 +131,6 @@ public class ChatAppearanceOverride implements Task{
         return false;
     }
 
-    @Override
     public JSONObject getTaskArgs() {
         JSONObject taskArgs = new JSONObject();
         taskArgs.put("iconId", iconId);
@@ -135,13 +144,117 @@ public class ChatAppearanceOverride implements Task{
         return taskArgs;
     }
 
-    @Override
-    public JSONArray getRequiredArgs() {
+    private JSONArray getRankedLeagueQueueOptions() {
+        JSONObject rankedSoloDuo = new JSONObject();
+        rankedSoloDuo.put("name", "Ranked Solo/Duo");
+        rankedSoloDuo.put("value", "RANKED_SOLO_5x5");
+
+        JSONObject rankedFlex = new JSONObject();
+        rankedFlex.put("name", "Ranked Flex");
+        rankedFlex.put("value", "RANKED_FLEX_SR");
+
+        JSONObject rankedTFT = new JSONObject();
+        rankedTFT.put("name", "Ranked TFT");
+        rankedTFT.put("value", "RANKED_TFT");
+
+        JSONArray rankedLeagueQueueOptions = new JSONArray();
+        rankedLeagueQueueOptions.put(rankedSoloDuo);
+        rankedLeagueQueueOptions.put(rankedFlex);
+        rankedLeagueQueueOptions.put(rankedTFT);
+        return rankedLeagueQueueOptions;
+    }
+
+    private JSONArray getRankedLeagueTierOptions() {
+        JSONObject rankedIron = new JSONObject();
+        rankedIron.put("name", "Iron");
+        rankedIron.put("value", "IRON");
+
+        JSONObject rankedBronze = new JSONObject();
+        rankedBronze.put("name", "Bronze");
+        rankedBronze.put("value", "BRONZE");
+
+        JSONObject rankedSilver = new JSONObject();
+        rankedSilver.put("name", "Silver");
+        rankedSilver.put("value", "SILVER");
+
+        JSONObject rankedGold = new JSONObject();
+        rankedGold.put("name", "Gold");
+        rankedGold.put("value", "GOLD");
+
+        JSONObject rankedPlatinum = new JSONObject();
+        rankedPlatinum.put("name", "Platinum");
+        rankedPlatinum.put("value", "PLATINUM");
+
+        JSONObject rankedEmerald = new JSONObject();
+        rankedEmerald.put("name", "Emerald");
+        rankedEmerald.put("value", "EMERALD");
+
+        JSONObject rankedDiamond = new JSONObject();
+        rankedDiamond.put("name", "Diamond");
+        rankedDiamond.put("value", "DIAMOND");
+
+        JSONObject rankedMaster = new JSONObject();
+        rankedMaster.put("name", "Master");
+        rankedMaster.put("value", "MASTER");
+
+        JSONObject rankedGrandmaster = new JSONObject();
+        rankedGrandmaster.put("name", "Grandmaster");
+        rankedGrandmaster.put("value", "GRANDMASTER");
+
+        JSONObject rankedChallenger = new JSONObject();
+        rankedChallenger.put("name", "Challenger");
+        rankedChallenger.put("value", "CHALLENGER");
+
+        JSONArray rankedLeagueQueueOptions = new JSONArray();
+        rankedLeagueQueueOptions.put(rankedIron);
+        rankedLeagueQueueOptions.put(rankedBronze);
+        rankedLeagueQueueOptions.put(rankedSilver);
+        rankedLeagueQueueOptions.put(rankedGold);
+        rankedLeagueQueueOptions.put(rankedPlatinum);
+        rankedLeagueQueueOptions.put(rankedEmerald);
+        rankedLeagueQueueOptions.put(rankedDiamond);
+        rankedLeagueQueueOptions.put(rankedMaster);
+        rankedLeagueQueueOptions.put(rankedGrandmaster);
+        rankedLeagueQueueOptions.put(rankedChallenger);
+        return rankedLeagueQueueOptions;
+    }
+
+    private JSONArray getAvailabilityOptions() {
+        JSONObject available = new JSONObject();
+        available.put("name", "Available");
+        available.put("value", "chat");
+
+        JSONObject busy = new JSONObject();
+        busy.put("name", "Busy");
+        busy.put("value", "dnd");
+
+        JSONObject away = new JSONObject();
+        away.put("name", "Away");
+        away.put("value", "away");
+
+        JSONObject offline = new JSONObject();
+        offline.put("name", "Offline");
+        offline.put("value", "offline");
+
+        JSONObject mobile = new JSONObject();
+        mobile.put("name", "Mobile");
+        mobile.put("value", "mobile");
+
+        JSONArray availabilityOptions = new JSONArray();
+        availabilityOptions.put(available);
+        availabilityOptions.put(busy);
+        availabilityOptions.put(away);
+        availabilityOptions.put(offline);
+        availabilityOptions.put(mobile);
+        return availabilityOptions;
+    }
+
+    private JSONArray buildRequiredArgs() {
         JSONArray requiredArgs = new JSONArray();
         JSONObject iconId = new JSONObject();
         iconId.put("displayName", "Icon ID");
         iconId.put("backendKey", "iconId");
-        iconId.put("type", "Integer");
+        iconId.put("type", INPUT_TYPE.NUMBER.toString());
         iconId.put("required", false);
         iconId.put("currentValue", this.iconId);
         iconId.put("description", "The icon ID to display for other players");
@@ -150,7 +263,7 @@ public class ChatAppearanceOverride implements Task{
         JSONObject challengePoints = new JSONObject();
         challengePoints.put("displayName", "Challenge Points");
         challengePoints.put("backendKey", "challengePoints");
-        challengePoints.put("type", "Integer");
+        challengePoints.put("type", INPUT_TYPE.NUMBER.toString());
         challengePoints.put("required", false);
         challengePoints.put("currentValue", this.challengePoints);
         challengePoints.put("description", "The challenge points to display in your Hovercard");
@@ -159,7 +272,8 @@ public class ChatAppearanceOverride implements Task{
         JSONObject rankedLeagueQueue = new JSONObject();
         rankedLeagueQueue.put("displayName", "Ranked League Queue");
         rankedLeagueQueue.put("backendKey", "rankedLeagueQueue");
-        rankedLeagueQueue.put("type", "String");
+        rankedLeagueQueue.put("type", INPUT_TYPE.SELECT.toString());
+        rankedLeagueQueue.put("options", getRankedLeagueQueueOptions());
         rankedLeagueQueue.put("required", false);
         rankedLeagueQueue.put("currentValue", this.rankedLeagueQueue);
         rankedLeagueQueue.put("description", "The rank queue Type to display in your Hovercard");
@@ -168,7 +282,8 @@ public class ChatAppearanceOverride implements Task{
         JSONObject rankedLeagueTier = new JSONObject();
         rankedLeagueTier.put("displayName", "Ranked League Tier");
         rankedLeagueTier.put("backendKey", "rankedLeagueTier");
-        rankedLeagueTier.put("type", "String");
+        rankedLeagueTier.put("type", INPUT_TYPE.SELECT.toString());
+        rankedLeagueTier.put("options", getRankedLeagueTierOptions());
         rankedLeagueTier.put("required", false);
         rankedLeagueTier.put("currentValue", this.rankedLeagueTier);
         rankedLeagueTier.put("description", "The ranked league tier to display in your Hovercard");
@@ -177,7 +292,7 @@ public class ChatAppearanceOverride implements Task{
         JSONObject challengeCrystalLevel = new JSONObject();
         challengeCrystalLevel.put("displayName", "Challenge Crystal Level");
         challengeCrystalLevel.put("backendKey", "challengeCrystalLevel");
-        challengeCrystalLevel.put("type", "String");
+        challengeCrystalLevel.put("type", INPUT_TYPE.TEXT.toString());
         challengeCrystalLevel.put("required", false);
         challengeCrystalLevel.put("currentValue", this.challengeCrystalLevel);
         challengeCrystalLevel.put("description", "The challenge crystal level to display in your Hovercard");
@@ -186,7 +301,7 @@ public class ChatAppearanceOverride implements Task{
         JSONObject masteryScore = new JSONObject();
         masteryScore.put("displayName", "Mastery Score");
         masteryScore.put("backendKey", "masteryScore");
-        masteryScore.put("type", "Integer");
+        masteryScore.put("type", INPUT_TYPE.NUMBER.toString());
         masteryScore.put("required", false);
         masteryScore.put("currentValue", this.masteryScore);
         masteryScore.put("description", "The mastery score to display in your Hovercard");
@@ -195,7 +310,8 @@ public class ChatAppearanceOverride implements Task{
         JSONObject availability = new JSONObject();
         availability.put("displayName", "Availability");
         availability.put("backendKey", "availability");
-        availability.put("type", "String");
+        availability.put("type", INPUT_TYPE.SELECT.toString());
+        availability.put("options", getAvailabilityOptions());
         availability.put("required", false);
         availability.put("currentValue", this.availability);
         availability.put("description", "The availability to display in your Hovercard");
@@ -204,8 +320,12 @@ public class ChatAppearanceOverride implements Task{
         return requiredArgs;
     }
 
-    @Override
-    public boolean isRunning() {
-        return running;
+    public JSONArray getRequiredArgs() {
+        //This approach breaks the current value of the requiredArgs
+        if (requiredArgs == null) {
+          requiredArgs = buildRequiredArgs();
+        }
+
+        return requiredArgs;
     }
 }

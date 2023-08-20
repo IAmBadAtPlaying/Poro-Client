@@ -10,7 +10,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
-import java.util.stream.Stream;
 
 import static com.iambadatplaying.MainInitiator.log;
 

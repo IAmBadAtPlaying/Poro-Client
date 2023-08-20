@@ -2,12 +2,14 @@ package com.iambadatplaying;
 
 import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
 import com.iambadatplaying.frontendHanlder.SocketServer;
+import com.iambadatplaying.lcuHandler.BackendMessageHandler;
+import com.iambadatplaying.lcuHandler.ConnectionManager;
+import com.iambadatplaying.lcuHandler.DataManager;
+import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
-import com.iambadatplaying.lcuHandler.*;
 import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
 
-import javax.net.ssl.HttpsURLConnection;
 import java.awt.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -17,6 +19,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class MainInitiator {
+
+    //FIXME: Change before Production
+    public static final boolean isDev = true;
 
     public enum LOG_LEVEL {
         DEBUG(0),
@@ -73,7 +78,7 @@ public class MainInitiator {
 
     private volatile boolean running = false;
 
-    public static String[] requiredEndpoints = {"OnJsonApiEvent_lol-gameflow_v1_gameflow-phase", "OnJsonApiEvent_lol-lobby_v2_lobby", "OnJsonApiEvent_lol-champ-select_v1_session", "OnJsonApiEvent_lol-chat_v1_friends", "OnJsonApiEvent_lol-regalia_v2_summoners","OnJsonApiEvent_lol-loot_v2_player-loot-map","OnJsonApiEvent_lol-loot_v1_ready","OnJsonApiEvent_lol-player-preferences_v1_player-preferences-ready","OnJsonApiEvent_lol-loot_v1_player-loot"};
+    public static String[] requiredEndpoints = {"OnJsonApiEvent"};
 
     public static void main(String[] args) {
         MainInitiator mainInit = new MainInitiator();
@@ -89,10 +94,16 @@ public class MainInitiator {
                 log("Location: " + currentDirPath, MainInitiator.LOG_LEVEL.INFO);
                 Path taskDir = Paths.get(currentDirPath.toString() + "/tasks");
                 if (!Files.exists(taskDir)) {
-                    taskDir.toFile().mkdir();
-                    log("Created tasks directory " + taskDir);
+                    if (taskDir.toFile().mkdir()) {
+                        log("Created tasks directory " + taskDir);
+                        taskDirPath = taskDir;
+                    } else {
+                        log("Failed to create tasks directory " + taskDir, MainInitiator.LOG_LEVEL.ERROR);
+                        taskDirPath = null;
+                    }
+                } else {
+                    taskDirPath = taskDir;
                 }
-                taskDirPath = taskDir;
                 return taskDir;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -157,7 +168,7 @@ public class MainInitiator {
                 setRunning(true);
                 state = STATE.RUNNING;
             } else {
-                System.out.println("Error, League is not running");
+                log("League is not running, will not start", LOG_LEVEL.ERROR);
                 System.exit(1);
             }
             while (client.getSocket() == null || !client.getSocket().isConnected()) {
@@ -170,7 +181,12 @@ public class MainInitiator {
             try {
                 Thread.sleep(1000);
                 showRunningNotification();
-                Desktop.getDesktop().browse(new URI("http://localhost:3000"));
+                if (isDev) {
+                    Desktop.getDesktop().browse(new URI("http://localhost:3000"));
+                } else {
+                    Desktop.getDesktop().browse(new URI("http://localhost:35199/static/index.html"));
+                }
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -184,7 +200,7 @@ public class MainInitiator {
         try {
             String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-player-preferences/v1/player-preferences-ready"));
             boolean isReady = "true".equals(resp.trim());
-            log("Loot is ready: " + isReady);
+            log("FE-Process ready: " + isReady);
             return isReady;
         } catch (Exception e) {
 
@@ -234,7 +250,7 @@ public class MainInitiator {
 
     private void showRunningNotification() {
         try {
-            String body = "{\"data\": {\"title\": \"Poro Client connected!\", \"details\": \"http://127.0.0.1:35199/static/index.html\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-settings/global/default/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
+            String body = "{\"data\": {\"title\": \"Poro Client connected!\", \"details\": \"http://127.0.0.1:35199/static/index.html\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"../fe/lol-settings/assets/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
             HttpURLConnection con = getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", body);
             con.getResponseCode();
             con.disconnect();
@@ -244,7 +260,10 @@ public class MainInitiator {
     }
 
     public static void log(String s, LOG_LEVEL level) {
-        if (level.ordinal() < 0) {
+        if (isDev && level.ordinal() < 0) {
+            return;
+        }
+        if (!isDev && level.ordinal() < 1) {
             return;
         }
         String prefix = "[" + level.name() + "]";

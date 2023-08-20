@@ -30,21 +30,6 @@ public class Socket {
         return connected;
     }
 
-    private void emptySubscribeQueue() {
-        System.out.println("Emptying subscribe queue");
-        while (connected) {
-            try {
-                String subscribeMessage = subscribeQueue.poll();
-                if (subscribeMessage != null) {
-                    sendSubscribeMessage(subscribeMessage);
-                    Thread.sleep(10);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     @OnWebSocketClose
     public void onClose(int statusCode, String reason) {
         this.connected = false;
@@ -71,8 +56,8 @@ public class Socket {
         log("Connect: " + session.getRemoteAddress().getAddress(), MainInitiator.LOG_LEVEL.INFO);
         this.currentSession = session;
         this.connected = true;
+        subscribeToEndpoint("OnJsonApiEvent");
         createNewKeepAlive(session);
-        new Thread(this::emptySubscribeQueue).start();
     }
 
     @OnWebSocketMessage
@@ -93,7 +78,7 @@ public class Socket {
         }
     }
 
-    public void createNewKeepAlive(Session s) {
+    private void createNewKeepAlive(Session s) {
         log("Created new Keep alive!", MainInitiator.LOG_LEVEL.DEBUG);
         new java.util.Timer().schedule(
                 this.timerTask = new TimerTask() {
@@ -127,7 +112,13 @@ public class Socket {
     }
 
     public void subscribeToEndpoint(String endpoint) {
-        subscribeQueue.add(endpoint);
+        try {
+            log( "Subscribing from: " +endpoint);
+            currentSession.getRemote().sendString("[5, \""+endpoint+"\"]");
+        } catch (Exception e) {
+            log( "Cannot subscribe to endpoint " +endpoint, MainInitiator.LOG_LEVEL.ERROR);
+            e.printStackTrace();
+        }
     }
 
     public void unsubscribeFromEndpoint(String endpoint) {

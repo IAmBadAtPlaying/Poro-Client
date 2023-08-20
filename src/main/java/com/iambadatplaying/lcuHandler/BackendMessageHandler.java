@@ -5,13 +5,30 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.math.BigInteger;
+import java.util.regex.Pattern;
 
 public class BackendMessageHandler {
 
     private MainInitiator mainInitiator;
 
+    private final String lolGameflowV1GameflowPhase = "/lol-gameflow/v1/session";
+    private final String lolLobbyV2Lobby = "/lol-lobby/v2/lobby";
+    private final String lolChampSelectV1Session = "/lol-champ-select/v1/session";
+
+    private final String lolChatV1FriendsPattern = "/lol-chat/v1/friends/(.*)"; //Matching Group will return the puuid
+    private final String lolRegaliaV2SummonerPattern = "/lol-regalia/v2/summoners/(.*)/regalia/async"; //Matching Group will return the summonerId
+
+    private Pattern lolChatV1FriendsPatternCompiled;
+    private Pattern lolRegaliaV2SummonerPatternCompiled;
+
     public BackendMessageHandler(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
+        initAllPatterns();
+    }
+
+    private void initAllPatterns() {
+        lolChatV1FriendsPatternCompiled = Pattern.compile(lolChatV1FriendsPattern);
+        lolRegaliaV2SummonerPatternCompiled = Pattern.compile(lolRegaliaV2SummonerPattern);
     }
 
     public void handleMessage(String message) {
@@ -22,35 +39,30 @@ public class BackendMessageHandler {
         try {
             messageArray = new JSONArray(message);
             if (messageArray != null && !messageArray.isEmpty()) { //[8,"endpoint",{}]
-                String endpoint = messageArray.getString(1);
                 JSONObject jsonData = messageArray.getJSONObject(2);
-                switch (endpoint) {
-                    case "OnJsonApiEvent_lol-chat_v1_friends":
-                        handle_lol_chat_v1_friends(jsonData);
-                        break;
-                    case "OnJsonApiEvent_lol-gameflow_v1_gameflow-phase":
-                        handle_lol_gameflow_v1_gameflow_phase(jsonData);
-                        break;
-                    case "OnJsonApiEvent_lol-lobby_v2_lobby":
-                        handle_lol_lobby_v2_lobby(jsonData);
-                        break;
-                    case "OnJsonApiEvent_lol-champ-select_v1_session":
-                        handle_lol_champ_select_v1_session(jsonData);
-                        break;
-                    case "OnJsonApiEvent_lol-regalia_v2_summoners":
-                        handle_lol_regalia_v2_summoners(jsonData);
-                        break;
-                    default:
-                        if (endpoint.endsWith("ready")) {
-                            //Somehow store the ready state of the endpoint; on fe connect send the ready state to the frontend;
-                            //Else just notify them like this;
-                            mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(endpoint, jsonData));
-                        } else {
-                            log("Unknown endpoint: " + endpoint, MainInitiator.LOG_LEVEL.DEBUG);
+                String uri = jsonData.getString("uri");
+                log(uri +"; " +jsonData.getJSONObject("data").toString());
+                        switch (uri) {
+                            case lolGameflowV1GameflowPhase:
+                                handle_lol_gameflow_v1_gameflow_phase(jsonData); //TODO: Doesnt work, replace with Gameflow session instead
+                                break;
+                            case lolLobbyV2Lobby: //Works as intended
+                                handle_lol_lobby_v2_lobby(jsonData);
+                                break;
+                            case lolChampSelectV1Session: //Works as intended
+                                handle_lol_champ_select_v1_session(jsonData);
+                                break;
+                            default:
+                                if (uri.matches(lolChatV1FriendsPattern)) { //Works as intended
+                                    handle_lol_chat_v1_friends(jsonData);
+                                } else if (uri.matches(lolRegaliaV2SummonerPattern)) { //Works as intended
+                                    handle_lol_regalia_v2_summoners(jsonData);
+                                } else {
+
+                                }
+                                break;
                         }
-                        break;
                 }
-            }
         } catch (Exception e) {
             return;
         }
@@ -99,10 +111,10 @@ public class BackendMessageHandler {
     }
 
     private void handle_lol_gameflow_v1_gameflow_phase(JSONObject jsonData) {
-        String actualData = jsonData.getString("data");
+        JSONObject actualData = jsonData.getJSONObject("data");
         JSONObject data = mainInitiator.getDataManager().updateFEGameflowStatus(actualData);
         if (data == null || data.isEmpty()) return;
-        mainInitiator.getServer().sendToAllSessions(mainInitiator.getDataManager().getEventDataString("GameflowPhaseUpdate",data));
+        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("GameflowPhaseUpdate",data));
     }
 
     private void handle_lol_lobby_v2_lobby(JSONObject jsonData) {

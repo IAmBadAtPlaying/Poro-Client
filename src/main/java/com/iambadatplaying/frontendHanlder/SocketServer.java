@@ -24,12 +24,14 @@ public class SocketServer {
         sessions.remove(session);
     }
 
-    public synchronized void sendToAllSessions(String message) {
+    public void sendToAllSessions(String message) {
         for(Session session: sessions) {
             new Thread(new Runnable() {
                 @Override
-                public void run() {
+                public void run() {try {
                     mainInitiator.getFrontendMessageHandler().sendMessage(message,session);
+                    } catch (Exception e) {
+                    }
                 }
             }).start();
         }
@@ -45,7 +47,7 @@ public class SocketServer {
         ServerConnector connector = new ServerConnector(server);
 
         connector.setReuseAddress(true);
-        connector.setHost("0.0.0.0");
+        connector.setHost("127.0.0.1");
         connector.setPort(8887);
 
         server.addConnector(connector);
@@ -54,6 +56,7 @@ public class SocketServer {
             @Override
             public void configure(WebSocketServletFactory factory) {
                 factory.setCreator((req, resp) -> new Socket(mainInitiator));
+                log("[Frontend] Configured socket server");
             }
         };
         server.setHandler(wsHandler);

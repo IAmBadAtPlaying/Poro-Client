@@ -12,17 +12,7 @@ public class ChampSelectServlet extends BaseRESTServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String actionType = getActionTypeFromPath(req.getPathInfo());
         if (actionType == null || actionType.isEmpty()) return;
-        StringBuilder sb = new StringBuilder();
-        String line;
-        JSONObject json = new JSONObject();
-        try {
-            while ((line = req.getReader().readLine() )!= null) {
-                sb.append(line);
-            }
-            json = new JSONObject(sb.toString());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        JSONObject json = getJsonFromRequestBody(req);
 
         switch (actionType) {
             case "pick":
