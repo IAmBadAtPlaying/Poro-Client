@@ -4,10 +4,6 @@ import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import org.json.JSONObject;
 
-import java.util.TimerTask;
-
-import static com.iambadatplaying.MainInitiator.log;
-
 public class ShutdownServlet extends BaseRESTServlet{
 
     @Override
