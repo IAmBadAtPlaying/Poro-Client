@@ -11,12 +11,12 @@ public class BackendMessageHandler {
 
     private MainInitiator mainInitiator;
 
-    private final String lolGameflowV1GameflowPhase = "/lol-gameflow/v1/session";
-    private final String lolLobbyV2Lobby = "/lol-lobby/v2/lobby";
-    private final String lolChampSelectV1Session = "/lol-champ-select/v1/session";
+    private final static String lolGameflowV1GameflowPhase = "/lol-gameflow/v1/session";
+    private final static String lolLobbyV2Lobby = "/lol-lobby/v2/lobby";
+    private final static String lolChampSelectV1Session = "/lol-champ-select/v1/session";
 
-    private final String lolChatV1FriendsPattern = "/lol-chat/v1/friends/(.*)"; //Matching Group will return the puuid
-    private final String lolRegaliaV2SummonerPattern = "/lol-regalia/v2/summoners/(.*)/regalia/async"; //Matching Group will return the summonerId
+    private final static String lolChatV1FriendsPattern = "/lol-chat/v1/friends/(.*)"; //Matching Group will return the puuid
+    private final static String lolRegaliaV2SummonerPattern = "/lol-regalia/v2/summoners/(.*)/regalia/async"; //Matching Group will return the summonerId
 
     private Pattern lolChatV1FriendsPatternCompiled;
     private Pattern lolRegaliaV2SummonerPatternCompiled;
@@ -31,6 +31,7 @@ public class BackendMessageHandler {
         lolRegaliaV2SummonerPatternCompiled = Pattern.compile(lolRegaliaV2SummonerPattern);
     }
 
+    //TODO: Maybe just export as Observable
     public void handleMessage(String message) {
         JSONArray messageArray = null;
         if (message == null || message.isEmpty()) {
@@ -138,10 +139,10 @@ public class BackendMessageHandler {
     }
 
     private void log(Object o, MainInitiator.LOG_LEVEL level) {
-        MainInitiator.log(this.getClass().getName() +": " + o, level);
+        mainInitiator.log(this.getClass().getName() +": " + o, level);
     }
 
     private void log(Object o) {
-        MainInitiator.log(this.getClass().getName() +": " +o);
+        mainInitiator.log(this.getClass().getName() +": " +o);
     }
 }

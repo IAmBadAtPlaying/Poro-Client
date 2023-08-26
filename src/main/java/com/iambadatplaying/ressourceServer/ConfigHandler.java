@@ -17,9 +17,9 @@ import java.nio.file.Path;
 
 public class ConfigHandler extends AbstractHandler {
 
-    private MainInitiator mainInitiator;
+    private final MainInitiator mainInitiator;
 
-    private Path taskDir;
+    private final Path taskDir;
 
     public ConfigHandler(MainInitiator mainInitiator) {
         super();
@@ -33,19 +33,15 @@ public class ConfigHandler extends AbstractHandler {
         httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         httpServletResponse.setHeader("Access-Control-Allow-Headers", "Content-Type, Content-Disposition");
 
-        System.out.println("Got request: " + s);
-
-        if (s != null) {
-         if (s.startsWith("/upload")) {
-             if ("POST".equalsIgnoreCase(request.getMethod())) {
-                    handleUploadedFile(request);
-                    request.setHandled(true);
-                 httpServletResponse.setStatus(HttpServletResponse.SC_OK);
-             } else {
-                 httpServletResponse.setStatus(HttpServletResponse.SC_NO_CONTENT);
-                 request.setHandled(true);
-             }
-         }
+        if (s != null && s.startsWith("/upload")) {
+            if ("POST".equalsIgnoreCase(request.getMethod())) {
+                handleUploadedFile(request);
+                request.setHandled(true);
+                httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+            } else {
+                httpServletResponse.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                request.setHandled(true);
+            }
 
         }
     }
@@ -73,7 +69,6 @@ public class ConfigHandler extends AbstractHandler {
             String part = contentTypeHeaderPart.trim();
             if (part.startsWith("boundary=")) {
                 boundary = part.substring("boundary=".length());
-                System.out.println("Boundary: " + boundary);
             }
         }
 
@@ -107,15 +102,20 @@ public class ConfigHandler extends AbstractHandler {
 
         }
         log("File name: " + fileName);
-        if (!fileName.endsWith(".java")) {
+        if (fileName == null) {
+            log("File name is null, was deleted", MainInitiator.LOG_LEVEL.INFO);
+            return;
+        } else if (!fileName.endsWith(".java")) {
             Files.deleteIfExists(taskDir.resolve(fileName));
             log("File is not a java file, was deleted", MainInitiator.LOG_LEVEL.INFO);
             return;
         }
 
-        BufferedWriter writer = new BufferedWriter(new FileWriter(taskDir.resolve(fileName).toFile()));
-        writer.write(result.toString());
-        writer.close();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(taskDir.resolve(fileName).toFile()))) {
+            writer.write(result.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         mainInitiator.getTaskManager().loadAtRuntime(fileName);
         String actualName = fileName.substring(0, fileName.length() - ".java".length());
@@ -125,11 +125,11 @@ public class ConfigHandler extends AbstractHandler {
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+        mainInitiator.log(this.getClass().getName() + ": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        mainInitiator.log(this.getClass().getName() + ": " + s);
     }
 
 }

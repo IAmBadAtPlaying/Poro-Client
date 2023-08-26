@@ -14,8 +14,13 @@ import java.util.concurrent.TimeUnit;
 
 public class DataManager {
 
+    private static final String LOOT_COUNT = "count";
+    
+    private static final String SUMMONER_PUUID = "puuid";
+    private static final String SUMMONER_SUMMONER_ID = "summonerId";
+
     private enum ChampSelectState {
-        PREPERATION(10),
+        PREPARATION(10),
         BANNING(11),
         AWAITING_BAN_RESULTS(21),
         AWAITING_PICK(22),
@@ -71,7 +76,7 @@ public class DataManager {
             }
             switch (timerPhase) {
                 case "PLANNING":
-                    return PREPERATION;
+                    return PREPARATION;
                 case "BAN_PICK":
                     if (banExists) {
                         if (isBanInProgress) {
@@ -118,7 +123,7 @@ public class DataManager {
         }
     }
 
-    private MainInitiator mainInitiator;
+    private final MainInitiator mainInitiator;
 
     private Map<String, JSONObject> synchronizedFriendListMap;
     private Map<BigInteger, JSONObject> regaliaMap;
@@ -128,8 +133,8 @@ public class DataManager {
 
     ExecutorService disenchantExecutor;
 
-    private static Integer MAX_LOBBY_SIZE = 5;
-    private static Integer MAX_LOBBY_HALFS_INDEX = 2;
+    private static final Integer MAX_LOBBY_SIZE = 5;
+    private static final Integer MAX_LOBBY_HALFS_INDEX = 2;
 
     private volatile boolean disenchantingInProgress = false;
     private volatile boolean shutdownInProgress = false;
@@ -163,7 +168,7 @@ public class DataManager {
         this.championJson = new JSONObject();
         this.summonerSpellJson = new JSONObject();
 
-        this.disenchantExecutor = Executors.newCachedThreadPool();
+        this.disenchantExecutor = Executors.newFixedThreadPool(4);
 
         initQueueMap();
         updateClientSystemStates();
@@ -182,7 +187,7 @@ public class DataManager {
                     log("Executor shutdown successful");
                 }else log("Executor shutdown failed");
             }
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
             log("Executor termination failed: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
         }
         disenchantExecutor = null;
@@ -220,23 +225,104 @@ public class DataManager {
         }
     }
 
+    public synchronized boolean rerollElements(JSONArray lootArray) {
+        if (lootArray == null || lootArray.isEmpty()) return false;
+        if (disenchantingInProgress) return false;
+        disenchantingInProgress = true;
+
+        //3 Skins shards per reroll
+        ArrayList<JSONArray> disenchantCollection = new ArrayList<>();
+
+        int elementCount = 0;
+        for (int i = 0; i < lootArray.length(); i++) {
+            JSONObject lootObject = lootArray.getJSONObject(i);
+            String type = lootObject.getString("type");
+            if (!"SKIN_RENTAL".equals(type)) {
+                log("Not a skin shard, skipping");
+                continue;
+            }
+            String lootId = lootObject.getString("lootId");
+            Integer count = lootObject.getInt(LOOT_COUNT);
+            for (int j = 0; j < count; j++) {
+                if (elementCount % 3 == 0) {
+                    disenchantCollection.add(new JSONArray());
+                }
+                disenchantCollection.get(elementCount / 3).put(lootId);
+                elementCount++;
+            }
+        }
+        if (elementCount % 3 != 0) {
+            disenchantCollection.remove(disenchantCollection.size() - 1);
+        }
+
+        log("Rerolling " + (elementCount - (elementCount % 3)) + " elements");
+        long startTime = System.currentTimeMillis();
+        for (JSONArray disenchantArray : disenchantCollection) {
+            disenchantExecutor.execute(() -> {
+                //mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-loot/v1/recipes/SKIN_reroll/craft?repeat=1", disenchantArray.toString()));
+                log(disenchantArray.toString());
+                log("Time for reroll: " + (System.currentTimeMillis() - startTime) + "ms");
+            });
+        }
+
+        TimerTask refetchLoot = new TimerTask() {
+            @Override
+            public void run() {
+                updateLootMap();
+                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LootUpdate", lootJsonObject));
+            }
+        };
+        Timer timer = new Timer();
+        timer.schedule(refetchLoot, 2000);
+        try {
+            if(disenchantExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+                log("Successfully rerolled all elements in given time");
+            } else log("Some elements could not be rerolled in time");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        disenchantingInProgress = false;
+
+        return true;
+    }
+
     public synchronized boolean disenchantElements(JSONArray lootArray) {
         if (lootArray == null || lootArray.isEmpty()) return false;
         if (disenchantingInProgress) return false;
         disenchantingInProgress = true;
 
+
+        int MAXIMUM_DISENCHANT_COUNT = 50;
+        //Maximum of 50 disenchants per request TODO: This is 50 elements, not 50 disenchants, each element has a count that needs to be considered
+
+        //Integer division is intentional
+        ArrayList<JSONArray> disenchantCollection = new ArrayList<>();
+
+        int actualCount = 0;
         for (int i = 0; i < lootArray.length(); i++) {
             final JSONObject currentLoot = lootArray.getJSONObject(i);
+            log(currentLoot);
+            if (!currentLoot.has(LOOT_COUNT)) {
+                continue;
+            }
+            int count = currentLoot.getInt(LOOT_COUNT);
+            for (int j = 0; j < count; j++) {
+                if (actualCount % MAXIMUM_DISENCHANT_COUNT == 0) {
+                    disenchantCollection.add(new JSONArray());
+                }
+                disenchantCollection.get(actualCount / MAXIMUM_DISENCHANT_COUNT).put(currentLoot);
+                actualCount++;
+            }
+        }
+
+        log("Disenchanting " + actualCount + " elements");
+        for (JSONArray disenchantArray : disenchantCollection) {
             disenchantExecutor.execute(() -> {
-                String type = currentLoot.getString("type");
-                Integer count = currentLoot.getInt("count");
-                String lootName = currentLoot.getString("lootName");
-
-                mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-loot/v1/recipes/"+type+"_disenchant/craft?repeat="+count, "[\""+lootName+"\"]"));
-
-                return;
+                log(disenchantArray.toString());
             });
         }
+
         TimerTask refetchLoot = new TimerTask() {
             @Override
             public void run() {
@@ -313,7 +399,7 @@ public class DataManager {
     }
 
     public JSONObject getFEGameflowStatus() {
-        JSONObject feGameflowObject = new JSONObject();
+        JSONObject feGameflowObject;
         if (currentLobbyState == null) {
             String currentGameflowString = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-gameflow/v1/gameflow-phase"));
             currentGameflowString = currentGameflowString.replace("\"", "");
@@ -349,8 +435,8 @@ public class DataManager {
                 for (int i = 0; i < friendArray.length(); i++) {
                     JSONObject friendObject = beToFeFriendsInfo(friendArray.getJSONObject(i));
                     if (friendObject == null || friendObject.isEmpty()) continue;
-                    feFriendObject.put(friendObject.getString("puuid"),friendObject);
-                    synchronizedFriendListMap.put(friendObject.getString("puuid"), friendObject);
+                    feFriendObject.put(friendObject.getString(SUMMONER_PUUID),friendObject);
+                    synchronizedFriendListMap.put(friendObject.getString(SUMMONER_PUUID), friendObject);
                 }
             } catch (Exception e) {
 
@@ -358,7 +444,7 @@ public class DataManager {
         } else {
             log ("FE Friend List already initialized, returning saved values");
             for (JSONObject json : synchronizedFriendListMap.values()) {
-                feFriendObject.put(json.getString("puuid"),json);
+                feFriendObject.put(json.getString(SUMMONER_PUUID),json);
             }
         }
         return feFriendObject;
@@ -368,7 +454,7 @@ public class DataManager {
         JSONObject data = new JSONObject();
         try {
             String availability = backendFriendObject.getString("availability");
-            String puuid = backendFriendObject.getString("puuid");
+            String puuid = backendFriendObject.getString(SUMMONER_PUUID);
             if (puuid == null || puuid.isEmpty()) return null;
             String statusMessage = backendFriendObject.getString("statusMessage");
             String name = backendFriendObject.getString("name");
@@ -377,12 +463,12 @@ public class DataManager {
             if (iconId < 1) {
                 iconId = 1;
             }
-            BigInteger summonerId = backendFriendObject.getBigInteger("summonerId");
-            data.put("puuid", puuid);
+            BigInteger summonerId = backendFriendObject.getBigInteger(SUMMONER_SUMMONER_ID);
+            data.put(SUMMONER_PUUID, puuid);
             data.put("statusMessage", statusMessage);
             data.put("name", name);
             data.put("iconId", iconId);
-            data.put("summonerId", summonerId);
+            data.put(SUMMONER_SUMMONER_ID, summonerId);
             data.put("availability", availability);
             copyJsonAttrib("lol", backendFriendObject, data);
 
@@ -418,11 +504,11 @@ public class DataManager {
         if (updatedFEData == null) {
             return null;
         }
-        JSONObject currentFEData = synchronizedFriendListMap.get(updatedFEData.getString("puuid"));
+        JSONObject currentFEData = synchronizedFriendListMap.get(updatedFEData.getString(SUMMONER_PUUID));
         if (updatedFEData.similar(currentFEData)) {
             return null;
         }
-        synchronizedFriendListMap.put(updatedFEData.getString("puuid"), updatedFEData);
+        synchronizedFriendListMap.put(updatedFEData.getString(SUMMONER_PUUID), updatedFEData);
         return updatedFEData;
     }
 
@@ -463,7 +549,7 @@ public class DataManager {
         for (int i = 0; i < members.length(); i++) {
             int actualIndex = indexToFEIndex(j);
             JSONObject currentMember = beLobbyMemberToFeLobbyMember(members.getJSONObject(i));
-            if (currentMember.getString("puuid").equals(feLocalMember.getString("puuid"))) {
+            if (currentMember.getString(SUMMONER_PUUID).equals(feLocalMember.getString(SUMMONER_PUUID))) {
                 continue;
             }
             feMembers.put(actualIndex, currentMember);
@@ -610,7 +696,6 @@ public class DataManager {
             //TODO: DEBUG, remove this
             feMember.put("stateDebug", state.name());
         }
-//        log("Putting: " + cellId + ": " + feMember);
         cellIdMemberMap.put(cellId, feMember);
         return feMember;
     }
@@ -633,8 +718,6 @@ public class DataManager {
             currentAction.put("isInProgress", inProgress);
             currentAction.put("championId", championId);
             currentAction.put("id", id);
-//            log("[" + type +"]: " + championId +", Hovering/InProgress: " + inProgress + ", completed: " +completed);
-            ChampSelectState state;
             switch (type) {
                 case "pick":
                     v.put("pickAction", currentAction);
@@ -700,7 +783,7 @@ public class DataManager {
 
     private void beActionToFEAction(JSONArray action) {
         if (action == null || action.isEmpty()) return;
-        outer: for (int i = 0; i < action.length(); i++) {
+        for (int i = 0; i < action.length(); i++) {
             JSONArray subAction = action.getJSONArray(i);
             if (subAction == null || subAction.isEmpty()) continue;
             for (int j = 0; j < subAction.length(); j++) {
@@ -720,8 +803,8 @@ public class DataManager {
         JSONArray members = currentLobbyState.getJSONArray("members");
         for (int i = 0; i < members.length(); i++) {
             JSONObject member = members.getJSONObject(i);
-            if (member != null && !member.isEmpty() && member.has("summonerId")) {
-                if (!summonerId.equals(member.getBigInteger("summonerId"))) {
+            if (member != null && !member.isEmpty() && member.has(SUMMONER_SUMMONER_ID)) {
+                if (!summonerId.equals(member.getBigInteger(SUMMONER_SUMMONER_ID))) {
                     continue;
                 }
                 member.put("regalia", regalia);
@@ -746,17 +829,17 @@ public class DataManager {
         if (member == null) return feMember;
         copyJsonAttrib("isLeader", member, feMember);
         copyJsonAttrib("isBot", member, feMember);
-        copyJsonAttrib("puuid", member, feMember);
+        copyJsonAttrib(SUMMONER_PUUID, member, feMember);
         copyJsonAttrib("summonerLevel",member,feMember);
         copyJsonAttrib("ready",member,feMember);
-        copyJsonAttrib("summonerId",member,feMember);
+        copyJsonAttrib(SUMMONER_SUMMONER_ID,member,feMember);
         copyJsonAttrib("isLeader",member,feMember);
         copyJsonAttrib("summonerName",member,feMember);
         copyJsonAttrib("secondPositionPreference",member,feMember);
         copyJsonAttrib("firstPositionPreference",member,feMember);
         copyJsonAttrib("summonerIconId", member, feMember);
 
-        feMember.put("regalia", getFERegaliaInfo(feMember.getBigInteger("summonerId")));
+        feMember.put("regalia", getFERegaliaInfo(feMember.getBigInteger(SUMMONER_SUMMONER_ID)));
         return feMember;
     }
 

@@ -11,11 +11,9 @@ import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 
-import static com.iambadatplaying.MainInitiator.log;
-
 public class FrontendMessageHandler {
 
-    private MainInitiator mainInitiator;
+    private final MainInitiator mainInitiator;
 
     public FrontendMessageHandler(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
@@ -36,27 +34,20 @@ public class FrontendMessageHandler {
         } catch (Exception e) {
             return;
         }
-        if (messageArray != null && !messageArray.isEmpty()) { //[(Int) opcode, .., (Int) requestId]
+        if (!messageArray.isEmpty()) { //[(Int) opcode, .., (Int) requestId]
             Integer opcode = messageArray.getInt(0);
-            if (opcode == null) opcode = -1;
             int len = messageArray.length();
             switch (opcode) {
-                case 0: //Proxy the request
-                    if (len <= 4) {
-                        return;
-                    }
-                    String requestType = messageArray.getString(1);
-                    String endpoint = messageArray.getString(2);
-                    String body = messageArray.getString(3);
-                    Integer requestId = messageArray.getInt(4);
-                    handleForwardRequest(requestType, endpoint,body, requestId ,session, false);
+                case 0: //Handled by Proxy
+                    log(messageArray.toString(), MainInitiator.LOG_LEVEL.INFO);
+                    log("Opcode 0 is no longer supported", MainInitiator.LOG_LEVEL.ERROR);
                 break;
                 case 1: //Subscribe / Unsubscribe from LCU endpoints
                     if (len < 2) {
                         return;
                     }
                     JSONArray instructionArray = messageArray.getJSONArray(1);
-                    Integer instruction = instructionArray.getInt(0);
+                    int instruction = instructionArray.getInt(0);
                     switch (instruction) {
                         case 5:
                             mainInitiator.getClient().getSocket().subscribeToEndpoint(instructionArray.getString(1));
@@ -70,7 +61,7 @@ public class FrontendMessageHandler {
                     }
 
                 break;
-                case 2: //We will use this as a kind of echo so we can emulate backend update Calls
+                case 2: //We will use this as a kind of echo, so we can emulate backend update Calls
                     if (len < 3) {
                         return; // We want this form [2, []]; With [] being the command we want to echo
                     }
@@ -102,10 +93,10 @@ public class FrontendMessageHandler {
                     if (len < 5) {
                         return;
                     }
-                    Integer operation =  messageArray.getInt(1);
+                    int operation =  messageArray.getInt(1);
                     String taskName = messageArray.getString(2);
                     JSONObject taskArgs = messageArray.getJSONObject(3);
-                    TaskManager taskManager = mainInitiator.getTaskManager(); //TODO:
+                    TaskManager taskManager = mainInitiator.getTaskManager();
                     switch (operation) {
                         case 0:  //Delete Task
                             taskManager.removeTask(taskName);
@@ -150,6 +141,14 @@ public class FrontendMessageHandler {
                     JSONArray disenchantArray = messageArray.getJSONArray(1);
                     mainInitiator.getDataManager().disenchantElements(disenchantArray);
                     log("[ENDPOINT] Disenchanted Elements");
+                break;
+                case 7: //Reroll Skins
+                    if (len < 3) {
+                        return;
+                    }
+                    JSONArray rerollArray = messageArray.getJSONArray(1);
+                    mainInitiator.getDataManager().rerollElements(rerollArray);
+                    log("[ENDPOINT] Rerolled Elements");
                 break;
                 case 10: //End the application
                     if (len < 3) {
@@ -220,25 +219,6 @@ public class FrontendMessageHandler {
         }
     }
 
-    private void sendRiotData(Session session) {
-        try {
-            JSONObject obj = new JSONObject();
-            obj.put("Riot Basic Auth Header", mainInitiator.getConnectionManager().getRiotAuth());
-            obj.put("Riot Port", mainInitiator.getConnectionManager().getRiotPort());
-            session.getRemote().sendString(obj.toString());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void sendSummonerInfo(Session session) {
-        try {
-            JSONObject summonerInfo = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v1/current-summoner"));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     private void sendFriendList(Session session) {
         try {
             JSONObject feFriendArray = mainInitiator.getDataManager().getFEFriendObject();
@@ -250,9 +230,8 @@ public class FrontendMessageHandler {
 
     private void sendGameflowStatus(Session session) {
         try {
-            String gameflowStatus = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-gameflow/v1/gameflow-phase"));
             JSONObject gameflowObject = mainInitiator.getDataManager().getFEGameflowStatus();
-            session.getRemote().sendString(mainInitiator.getDataManager().getEventDataString("InitialGameflowUpdate", gameflowObject));
+            session.getRemote().sendString(DataManager.getEventDataString("InitialGameflowUpdate", gameflowObject));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -261,7 +240,7 @@ public class FrontendMessageHandler {
     private void sendLobby(Session session) {
         try {
             JSONObject feLobbyObject = mainInitiator.getDataManager().getFELobbyObject();
-            session.getRemote().sendString(mainInitiator.getDataManager().getEventDataString("InitialLobbyUpdate", feLobbyObject));
+            session.getRemote().sendString(DataManager.getEventDataString("InitialLobbyUpdate", feLobbyObject));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -298,7 +277,13 @@ public class FrontendMessageHandler {
         sendMessage(respArray.toString(), session);
     }
 
+    private void log(String s, MainInitiator.LOG_LEVEL level) {
+        mainInitiator.log(this.getClass().getName() +": " + s, level);
+    }
 
+    private void log(String s) {
+        log(s, MainInitiator.LOG_LEVEL.DEBUG);
+    }
 
     public void sendMessage(String message, Session session) {
         try {

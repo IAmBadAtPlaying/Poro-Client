@@ -145,7 +145,7 @@ public class MainInitiator {
 
                 }
             }
-            if (connectionManager.authString != null) {
+            if (connectionManager.getAuthString() != null) {
                 client.init();
                 server.init();
                 dataManager.init();
@@ -259,7 +259,7 @@ public class MainInitiator {
         }
     }
 
-    public static void log(String s, LOG_LEVEL level) {
+    public void log(String s, LOG_LEVEL level) {
         if (isDev && level.ordinal() < 0) {
             return;
         }
@@ -281,7 +281,7 @@ public class MainInitiator {
         System.out.println(prefix + ": " + s);
     }
 
-    public static void log(String s) {
+    public void log(String s) {
         log(s, LOG_LEVEL.DEBUG);
     }
 

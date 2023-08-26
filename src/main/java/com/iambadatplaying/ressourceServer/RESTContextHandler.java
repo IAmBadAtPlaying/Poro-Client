@@ -7,7 +7,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 
 public class RESTContextHandler extends ServletContextHandler {
 
-    private MainInitiator mainInitiator;
+    private final MainInitiator mainInitiator;
 
     public RESTContextHandler(MainInitiator mainInitiator) {
         super(SESSIONS);

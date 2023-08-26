@@ -10,7 +10,7 @@ import java.util.TimerTask;
 @WebSocket
 public class Socket {
 
-    private MainInitiator mainInitiator;
+    private final MainInitiator mainInitiator;
 
     private TimerTask timerTask;
 
@@ -32,21 +32,18 @@ public class Socket {
     }
 
     private void createNewKeepAlive(Session s) {
-        new java.util.Timer().schedule(
-                this.timerTask = new TimerTask() {
-                    @Override
-                    public void run() {
-                        try {
-                            s.getRemote().sendString("[]");
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        createNewKeepAlive(s);
-                    }
+        this.timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    s.getRemote().sendString("[]");
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-                ,
-                290000
-        );
+                createNewKeepAlive(s);
+            }
+        };
+        new java.util.Timer().schedule(timerTask, 290000);
     }
 
     @OnWebSocketMessage

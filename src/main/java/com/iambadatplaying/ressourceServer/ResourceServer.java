@@ -15,7 +15,7 @@ import java.io.IOException;
 
 public class ResourceServer {
 
-    private MainInitiator mainInitiator;
+    private final MainInitiator mainInitiator;
 
     private Server server;
 
@@ -51,9 +51,9 @@ public class ResourceServer {
             @Override
             public void doHandle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
                 DispatcherType dispatch = baseRequest.getDispatcherType();
-                boolean new_context = baseRequest.takeNewContext();
+                boolean newContext = baseRequest.takeNewContext();
                 try {
-                    if (new_context) {
+                    if (newContext) {
                         this.requestInitialized(baseRequest, request);
                     }
                     response.setHeader("Access-Control-Allow-Origin", "*");
@@ -68,7 +68,7 @@ public class ResourceServer {
 
                     this.nextHandle(target, baseRequest, request, response);
                 } finally {
-                    if (new_context) {
+                    if (newContext) {
                         this.requestDestroyed(baseRequest, request);
                     }
 
@@ -90,7 +90,7 @@ public class ResourceServer {
         try {
             server.start();
         } catch (Exception e) {
-
+            mainInitiator.log("Error starting resource server: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
         }
     }
 

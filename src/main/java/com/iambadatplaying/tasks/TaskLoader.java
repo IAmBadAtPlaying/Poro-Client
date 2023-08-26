@@ -9,8 +9,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static com.iambadatplaying.MainInitiator.log;
-
 //TODO: JRE cant compile java files, therefore allow users to upload .class files, no longer .java files
 public class TaskLoader {
 
@@ -113,6 +111,14 @@ public class TaskLoader {
         } catch (IOException e) {
             log("Failed to delete task java file: " + taskJavaPath.toString(), MainInitiator.LOG_LEVEL.ERROR);
         }
+    }
+
+    private void log(String s, MainInitiator.LOG_LEVEL level) {
+        mainInitiator.log(this.getClass().getName() +": " + s, level);
+    }
+
+    private void log(String s) {
+        log(s, MainInitiator.LOG_LEVEL.DEBUG);
     }
 
 

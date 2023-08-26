@@ -9,8 +9,10 @@ public class ShutdownServlet extends BaseRESTServlet{
     @Override
     public void doPost(javax.servlet.http.HttpServletRequest request, javax.servlet.http.HttpServletResponse response) throws javax.servlet.ServletException, java.io.IOException {
         JSONObject json = getJsonFromRequestBody(request);
-        if (json == null || json.isEmpty()) handleNormalShutdown();
-        System.out.println(json.toString());
+        if (json == null || json.isEmpty()) {
+            handleNormalShutdown();
+            return;
+        }
         if (json.has("type")) {
             String shutdownType = json.getString("type");
             switch (shutdownType) {
@@ -33,8 +35,6 @@ public class ShutdownServlet extends BaseRESTServlet{
 
         responseJson.put("message", "Shutting down in one second, bye ^^");
         responseJson.put("httpStatus", javax.servlet.http.HttpServletResponse.SC_OK);
-
-
 
         response.getWriter().println(responseJson.toString());
         response.getWriter().flush();

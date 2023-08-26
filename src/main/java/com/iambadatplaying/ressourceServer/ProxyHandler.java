@@ -8,9 +8,7 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.util.HashMap;
 import java.util.List;
@@ -20,9 +18,9 @@ import java.util.Map;
 public class ProxyHandler extends AbstractHandler {
     public static String STATIC_PROXY_PREFIX = "/static";
 
-    private MainInitiator mainInitiator;
-    private Map<String, byte[]> resourceCache;
-    private Map<String, Map<String, List<String>>> headerCache;
+    private final MainInitiator mainInitiator;
+    private final Map<String, byte[]> resourceCache;
+    private final Map<String, Map<String, List<String>>> headerCache;
 
     public ProxyHandler(MainInitiator mainInitiator) {
         super();
@@ -34,9 +32,10 @@ public class ProxyHandler extends AbstractHandler {
     @Override
     public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
             httpServletResponse.setHeader("Access-Control-Allow-Origin", "*");
-            httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET");
+            httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
             httpServletResponse.setHeader("Access-Control-Allow-Headers", "Content-Type");
             if (s == null) return;
+
             String requestedCURResource = s.trim();
             if (requestedCURResource.startsWith(STATIC_PROXY_PREFIX)) {
                 requestedCURResource = requestedCURResource.substring(STATIC_PROXY_PREFIX.length()).trim();
@@ -59,8 +58,23 @@ public class ProxyHandler extends AbstractHandler {
         InputStream is = null;
         HttpURLConnection con = null;
 
+        String postBody = "";
+
         try {
-            con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, resource, null);
+            StringBuilder requestBodyBuilder = new StringBuilder();
+            BufferedReader reader = httpServletRequest.getReader();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                log(line);
+                requestBodyBuilder.append(line);
+            }
+            postBody = requestBodyBuilder.toString();
+        } catch (Exception e) {
+            log("Error while reading request body: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+        }
+
+        try {
+            con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.getByString(request.getMethod()), resource, postBody);
             if (con == null) {
                 log("Cannot establish connection to " + resource + ", League might not be running", MainInitiator.LOG_LEVEL.ERROR);
                 return;

@@ -8,7 +8,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 public class ChatAppearanceOverride extends Task {
 
-    private final String lol_gameflow_v1_gameflow_phase = "/lol-gameflow/v1/session";
+    private final static String lol_gameflow_v1_gameflow_phase = "/lol-gameflow/v1/session";
 
     private Integer iconId;
     private Integer challengePoints;
@@ -19,20 +19,14 @@ public class ChatAppearanceOverride extends Task {
 
     private String availability;
 
-    private JSONArray requiredArgs;
-
     public void notify(JSONArray webSocketEvent) {
         if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.length() < 3) {
             return;
         }
         JSONObject data = webSocketEvent.getJSONObject(2);
         String uriTrigger = data.getString("uri");
-        switch (uriTrigger) {
-            case lol_gameflow_v1_gameflow_phase:
-                handleUpdateData(data);
-            break;
-            default:
-            break;
+        if (lol_gameflow_v1_gameflow_phase.equals(uriTrigger)) {
+            handleUpdateData(data);
         }
     }
 
@@ -67,7 +61,7 @@ public class ChatAppearanceOverride extends Task {
     private void handleUpdateData(JSONObject updateData) {
         if (updateData == null || updateData.isEmpty()) return;
         String newGameflowPhase = updateData.getString("data");
-        if("EndOfGame".equals(newGameflowPhase)) {
+        if ("EndOfGame".equals(newGameflowPhase)) {
             JSONObject body = buildChatAppearanceOverride();
             sendChatAppearanceOverride(body);
         }
@@ -75,7 +69,7 @@ public class ChatAppearanceOverride extends Task {
 
     private void sendChatAppearanceOverride(JSONObject body) {
         try {
-            HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT,"/lol-chat/v1/me", body.toString());
+            HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/me", body.toString());
             String response = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, con);
             mainInitiator.log(response);
             con.disconnect();
@@ -85,11 +79,18 @@ public class ChatAppearanceOverride extends Task {
     }
 
     protected void doInitialize() {
-
+        //Not needed
     }
 
     protected void doShutdown() {
+        iconId = null;
+        challengePoints = null;
+        rankedLeagueQueue = null;
+        rankedLeagueTier = null;
+        challengeCrystalLevel = null;
+        masteryScore = null;
 
+        availability = null;
     }
 
     public boolean setTaskArgs(JSONObject arguments) {
@@ -321,11 +322,7 @@ public class ChatAppearanceOverride extends Task {
     }
 
     public JSONArray getRequiredArgs() {
-        //This approach breaks the current value of the requiredArgs
-        if (requiredArgs == null) {
-          requiredArgs = buildRequiredArgs();
-        }
-
-        return requiredArgs;
+        //This approach breaks the current value of the requiredArgsbuildRequiredArgs();
+        return buildRequiredArgs();
     }
 }

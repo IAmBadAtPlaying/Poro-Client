@@ -11,7 +11,7 @@ import java.util.ArrayList;
 
 public class SocketServer {
 
-    private MainInitiator mainInitiator;
+    private final MainInitiator mainInitiator;
     private final ArrayList<Session> sessions = new ArrayList<>();
 
     private Server server = null;
@@ -26,12 +26,10 @@ public class SocketServer {
 
     public void sendToAllSessions(String message) {
         for(Session session: sessions) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {try {
-                    mainInitiator.getFrontendMessageHandler().sendMessage(message,session);
-                    } catch (Exception e) {
-                    }
+            new Thread(() -> {try {
+                mainInitiator.getFrontendMessageHandler().sendMessage(message,session);
+                } catch (Exception e) {
+                    log("Error sending message: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
                 }
             }).start();
         }
@@ -79,10 +77,10 @@ public class SocketServer {
 
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
-        MainInitiator.log(this.getClass().getName() +": " + s, level);
+        mainInitiator.log(this.getClass().getName() +": " + s, level);
     }
 
     private void log(String s) {
-        MainInitiator.log(this.getClass().getName() +": " +s);
+        mainInitiator.log(this.getClass().getName() +": " +s);
     }
 }

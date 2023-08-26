@@ -56,15 +56,10 @@ public class ConnectionManager {
     }
     public enum responseFormat {
         STRING (0),
-        SUMMONER (1),
-        SUMMONER_ARRAY (2),
-        LOOT (3),
-        LOOT_ARRAY (4),
-        IMAGE (5),
-        INPUT_STREAM(6),
-        JSON_OBJECT (7),
-        JSON_ARRAY (8),
-        RESPONSE_CODE(9);
+        INPUT_STREAM(1),
+        JSON_OBJECT (2),
+        JSON_ARRAY (3),
+        RESPONSE_CODE(4);
 
         final Integer id;
         responseFormat(Integer id) {
@@ -72,24 +67,22 @@ public class ConnectionManager {
         }
     }
 
-    public String conError = "Error: Connection cant be established";
-    public String conRespError = "Error: Response Code Error";
-    public String[] lockfileContents = null;
-    public String authString = null;
-    public String preUrl = null;
-    public String port = null;
+    private String[] lockfileContents = null;
+    private String authString = null;
+    private String preUrl = null;
+    private String port = null;
     private String riotAuthString = null;
     private String riotPort = null;
-    public WebSocketClient client = null;
-    public MainInitiator mainInitiator = null;
+    private WebSocketClient client = null;
+    private MainInitiator mainInitiator = null;
 
     private boolean leagueAuthDataAvailable = false;
 
     private Timer timer = null;
 
-    public SSLContext sslContextGlobal = null;
+    private SSLContext sslContextGlobal = null;
 
-    public HashMap<String, Integer> ChampHash = new HashMap<>();
+    private HashMap<String, Integer> champHash = new HashMap<>();
 
     public ConnectionManager(MainInitiator mainInitiator) {
         this.preUrl = null;
@@ -184,52 +177,6 @@ public class ConnectionManager {
         return false;
     }
 
-
-    @Deprecated
-    public boolean getAuthFromLocationFile() {
-        InputStream is = null;
-        File lockfile = null;
-        try{
-            File refLockfile = new File(mainInitiator.getBasePath()+"\\assets\\location-file");
-            if(refLockfile.exists() && !refLockfile.isDirectory()) {
-                Scanner reader = new Scanner(refLockfile);
-                if(reader.hasNextLine()) {
-                    lockfile = new File(reader.nextLine());
-                }
-            }
-            if(lockfile == null) {
-                log("League is not running, will not start!", MainInitiator.LOG_LEVEL.ERROR);
-                return false;
-            }
-            is = new FileInputStream(lockfile);
-            if (is == null) {
-                return false;
-            }
-            String result = inputStreamToString(is);
-            if (result != null) {
-                this.lockfileContents = result.split(":");
-            }
-        } catch (IOException e) {
-            log("No lockfile, League is probably not running", MainInitiator.LOG_LEVEL.ERROR);
-            return false;
-        } finally {
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        log("Port: "+ lockfileContents[2], MainInitiator.LOG_LEVEL.INFO);
-        log("Auth: "+ lockfileContents[3], MainInitiator.LOG_LEVEL.INFO);
-        this.port = lockfileContents[2];
-        this.preUrl = "https://127.0.0.1:" + lockfileContents[2];
-        this.authString = "Basic " + Base64.getEncoder().encodeToString(("riot:" + lockfileContents[3]).trim().getBytes());
-        log("Header Auth: " + authString, MainInitiator.LOG_LEVEL.INFO);
-        return true;
-    }
-
     private boolean isLoopbackAddress(String host) {
         try {
             InetAddress address = InetAddress.getByName(host);
@@ -293,7 +240,6 @@ public class ConnectionManager {
             while ((line = br.readLine()) != null) {
                 result.append(line).append("\n");
             }
-            br.close();
         }
         return result.toString();
     }
@@ -321,10 +267,14 @@ public class ConnectionManager {
                 log("No preUrl", MainInitiator.LOG_LEVEL.ERROR);
                 return null;
             }
+            if (options == null) {
+                log("No HTTP-Method provided", MainInitiator.LOG_LEVEL.ERROR);
+            }
             URL clientLockfileUrl = new URL(preUrl + path);
             HttpsURLConnection con = (HttpsURLConnection) clientLockfileUrl.openConnection();
-            if (con == null || !(con instanceof HttpsURLConnection)) {
+            if (con == null) {
                 log(clientLockfileUrl.toString(), MainInitiator.LOG_LEVEL.ERROR);
+                return null;
             }
             con.setRequestMethod(options.name);
             con.setRequestProperty("Content-Type", "application/json");
@@ -350,7 +300,7 @@ public class ConnectionManager {
         try {
             URL clientLockfileUrl = new URL("https://127.0.0.1:" + riotPort + path);
             HttpsURLConnection con = (HttpsURLConnection) clientLockfileUrl.openConnection();
-            if (con == null || !(con instanceof HttpsURLConnection)) {
+            if (con == null) {
                 log(clientLockfileUrl.toString(), MainInitiator.LOG_LEVEL.ERROR);
             }
             con.setRequestMethod(options.name);
@@ -380,38 +330,27 @@ public class ConnectionManager {
     public Object getResponse(responseFormat respFormat, HttpURLConnection con) {
         if (con == null) return null;
         switch (respFormat) {
-            case STRING:
-                return handleStringResponse(con);
-            case LOOT:
-                break;
             case JSON_ARRAY:
                 return handleJSONArrayResponse(con);
             case JSON_OBJECT:
                 return handleJSONObjectResponse(con);
-            case SUMMONER:
-                return handleSummonerResponse(con);
-            case SUMMONER_ARRAY:
-                return handleSummonerArrayResponse(con);
-            case LOOT_ARRAY:
-                return handleLootArrayResponse(con);
-            case IMAGE:
-                return handleImageResponse(con);
             case INPUT_STREAM:
                 return handleInputStreamResponse(con);
             case RESPONSE_CODE:
                 return handleResponseCode(con);
+            case STRING:
             default:
                 return handleStringResponse(con);
         }
-        con.disconnect();
-        return null;
     }
 
     private Integer handleResponseCode (HttpURLConnection con) {
         Integer responseCode = null;
         try {
             responseCode = con.getResponseCode();
-        } catch (Exception e) {
+        } catch (Exception ignored) {
+        } finally {
+            con.disconnect();
         }
         return responseCode;
     }
@@ -423,97 +362,22 @@ public class ConnectionManager {
         } catch (Exception e) {
             try {
                 is = con.getErrorStream();
-            } catch (Exception ex) {
+            } catch (Exception ignored) {
 
             }
+        } finally {
+            con.disconnect();
         }
         return is;
-    }
-
-    private LootElement[] handleLootArrayResponse (HttpURLConnection con) {
-        String resp = null;
-        JSONArray jsonLootArray = null;
-        try {
-            resp = handleStringResponse(con);
-            jsonLootArray = toJsonArray(resp);
-        } catch (Exception e) {
-            log("Failed to handle Loot Array Response for connection", MainInitiator.LOG_LEVEL.ERROR);
-            e.printStackTrace();
-        }
-        if (resp != null && jsonLootArray != null) {
-            LootElement[] lootArray = new LootElement[jsonLootArray.length()];
-            for (int i = 0; i < jsonLootArray.length(); i++) {
-                LootElement loot = new LootElement(jsonLootArray.getJSONObject(i).getString("lootId"));
-                loot.setCount(jsonLootArray.getJSONObject(i).getInt("count"));
-                loot.setDisenchantLootName(jsonLootArray.getJSONObject(i).getString("disenchantLootName"));
-                loot.setSplashPath(jsonLootArray.getJSONObject(i).getString("splashPath"));
-                loot.setValue(jsonLootArray.getJSONObject(i).getInt("value"));
-                lootArray[i] = loot;
-            }
-            return lootArray;
-        }
-
-        return null;
     }
 
     private JSONObject handleJSONObjectResponse (HttpURLConnection con) {
         return toJsonObject(handleStringResponse(con));
     }
 
-    private Summoner[] handleSummonerArrayResponse(HttpURLConnection con) {
-        String resp = null;
-        JSONArray jsonSummonerArray = null;
-        Summoner[] summonerArray = null;
-        try {
-            resp = handleStringResponse(con);
-            jsonSummonerArray = toJsonArray(resp);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (resp != null && jsonSummonerArray != null) {
-            summonerArray = new Summoner[jsonSummonerArray.length()];
-            for (int i = 0, j = jsonSummonerArray.length(); i < j; i++ ) {
-                Summoner summoner = new Summoner(jsonSummonerArray.getJSONObject(i).getString("puuid"));
-                summoner.setSummonerId(jsonSummonerArray.getJSONObject(i).getBigInteger("summonerId"));
-                summoner.setSummonerLevel(jsonSummonerArray.getJSONObject(i).getInt("summonerLevel"));
-                summoner.setDisplayName(jsonSummonerArray.getJSONObject(i).getString("summonerName"));
-                summoner.setInternalName(jsonSummonerArray.getJSONObject(i).getString("summonerInternalName"));
-                summoner.setProfileIconId(jsonSummonerArray.getJSONObject(i).getInt("summonerIconId"));
-                summoner.setFirstPositionPreference(jsonSummonerArray.getJSONObject(i).getString("firstPositionPreference"));
-                summoner.setSecondPositionPreference(jsonSummonerArray.getJSONObject(i).getString("secondPositionPreference"));
-
-                summonerArray[i] = summoner;
-            }
-        }
-        return summonerArray;
-    }
-
     private JSONArray handleJSONArrayResponse (HttpURLConnection con) {
 
         return toJsonArray(handleStringResponse(con));
-    }
-
-    private Summoner handleSummonerResponse(HttpURLConnection con) {
-        String resp = null;
-        JSONObject jsonSummoner = null;
-        try {
-            resp = handleStringResponse(con);
-            jsonSummoner = toJsonObject(resp);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return Summoner.fromJsonObject(jsonSummoner);
-    }
-
-    private BufferedImage handleImageResponse (HttpURLConnection con) {
-        BufferedImage resp = null;
-        try {
-            InputStream is = con.getInputStream();
-            resp = ImageIO.read(is);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return resp;
     }
 
     private JSONArray toJsonArray(String s) {
@@ -533,48 +397,12 @@ public class ConnectionManager {
             } else {
                 resp = inputStreamToString(conn.getErrorStream());
             }
+            conn.disconnect();
         } catch (Exception e) {
             log(e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
             return null;
         }
         return resp;
-    }
-
-    public String inviteIntoLobby(String summonerId, String summonerName) {
-            HttpURLConnection con = buildConnection(conOptions.POST, "/lol-lobby/v2/lobby/invitations" , "[{\"toSummonerId\": "+summonerId+",\"toSummonerName\":\""+summonerName+"\"}]");
-            if (con == null) return conError;
-            try {
-                Integer respCode = con.getResponseCode();
-                if(con.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                    log("inviteIntoLobby-Error: Expected HTTP_OKAY (200) got: " + respCode, MainInitiator.LOG_LEVEL.ERROR);
-                    return "Error: Invitation failed";
-                }
-                return "Success! (WIP)";
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        return conRespError;
-    }
-
-    public String updatePlayerPreferences(Integer firstEntry, Integer secondEntry, Integer thirdEntry, Integer titleId, Integer bannerId) {
-        String reqBody;
-        if(titleId == -1) {
-            reqBody = "{\"challengeIds\":["+firstEntry+","+secondEntry+","+thirdEntry+"],\"title\" : \"\", \"bannerAccent\": \""+bannerId+"\"}";
-        } else reqBody = "{\"challengeIds\":["+firstEntry+","+secondEntry+","+thirdEntry+"],\"title\" : \""+titleId+"\", \"bannerAccent\": \""+bannerId+"\"}";
-        HttpURLConnection con = buildConnection(conOptions.POST, "/lol-challenges/v1/update-player-preferences", reqBody);
-        if (con == null) return conError;
-        try {
-            Integer respCode = con.getResponseCode();
-            con.disconnect();
-            if(respCode== HttpURLConnection.HTTP_NO_CONTENT) {
-                return "Success";
-            }
-            log("updatePlayerPreferences-Error: Expected HTTP_NO_CONTENT (204) but got: " + respCode, MainInitiator.LOG_LEVEL.ERROR);
-            return "Error: You dont own either title or id";
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return conRespError;
     }
 
     public boolean isLeagueAuthDataAvailable() {
@@ -585,8 +413,8 @@ public class ConnectionManager {
         if (timer != null) {
             timer.cancel();
         }
-        if (ChampHash != null) {
-            ChampHash.clear();
+        if (champHash != null) {
+            champHash.clear();
         }
         lockfileContents = null;
         preUrl = null;
@@ -616,4 +444,19 @@ public class ConnectionManager {
         mainInitiator.log(this.getClass().getName() +": " +s);
     }
 
+    public String getPort() {
+        return port;
+    }
+
+    public String getPreUrl() {
+        return preUrl;
+    }
+
+    public String getAuthString() {
+        return authString;
+    }
+
+    public SSLContext getSslContextGlobal() {
+        return sslContextGlobal;
+    }
 }
