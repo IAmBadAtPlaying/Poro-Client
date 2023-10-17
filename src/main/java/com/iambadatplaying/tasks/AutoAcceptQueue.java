@@ -35,8 +35,8 @@ public class AutoAcceptQueue extends Task {
 
     private void handleUpdateData(JSONObject updateData) {
         try {
-            System.out.println("Gameflow:" + updateData);
-            String newGameflowPhase = updateData.getString("data");
+            JSONObject data = updateData.getJSONObject("data");
+            String newGameflowPhase = data.getString("phase");
             if("ReadyCheck".equals(newGameflowPhase)) {
                 Timer timer = new java.util.Timer();
                 timer.schedule(new TimerTask() {
@@ -93,7 +93,7 @@ public class AutoAcceptQueue extends Task {
         JSONObject delay = new JSONObject();
         delay.put("displayName", "Delay");
         delay.put("description", "Time till Ready-Check gets accepted in ms");
-        delay.put("type", "Integer");
+        delay.put("type", INPUT_TYPE.NUMBER.toString());
         delay.put("required", true);
         delay.put("currentValue", this.delay);
         delay.put("backendKey", "delay");

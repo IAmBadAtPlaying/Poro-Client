@@ -1,6 +1,8 @@
 package com.iambadatplaying.restServlets;
 
+import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.servlet.ServletException;
@@ -16,6 +18,10 @@ public class RunesSaveServlet extends BaseRESTServlet{
         if (json == null || json.isEmpty()) return;
         BigInteger pageId = getCurrentRunePageId();
 
+        if (pageId == null) {
+            pageId = getValidRunePageId();
+        }
+
         deleteRunePage(pageId);
         createNewRunePage(json);
 
@@ -23,6 +29,23 @@ public class RunesSaveServlet extends BaseRESTServlet{
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 
+    private BigInteger getValidRunePageId() {
+        JSONArray resp = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/pages"));
+        if (resp == null) return null;
+        String runeSiteName = "[Unknown]";
+        if (resp.isEmpty()) {
+            log("No runepages found, creating new one", MainInitiator.LOG_LEVEL.INFO);
+            return null;
+        }
+        for (int i = resp.length()-1; i >= 0; i--) {
+            JSONObject page = resp.getJSONObject(i);
+            if (!page.getBoolean("isTemporary")) {
+                log("Runepage \""+page.getString("name")+ "\" will be replaced!", MainInitiator.LOG_LEVEL.INFO);
+                return page.getBigInteger("id");
+            }
+        }
+        return null;
+    }
 
     private BigInteger getCurrentRunePageId() {
         JSONObject resp = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/currentpage"));
@@ -31,7 +54,7 @@ public class RunesSaveServlet extends BaseRESTServlet{
         try {
             result = resp.getBigInteger("id");
         } catch (Exception e) {
-            e.printStackTrace();
+            log("Current Rune page id not found, usually caused by using the rune presets", MainInitiator.LOG_LEVEL.INFO);
         }
         return result;
     }

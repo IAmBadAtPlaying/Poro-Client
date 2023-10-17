@@ -67,4 +67,6 @@ public class SocketClient {
     public void setSocket(Socket socket) {
         this.socket = socket;
     }
+
+
 }

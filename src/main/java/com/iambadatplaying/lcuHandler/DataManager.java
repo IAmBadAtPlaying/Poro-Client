@@ -1,12 +1,17 @@
 package com.iambadatplaying.lcuHandler;
 
 import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.structs.messaging.Conversation;
+import com.iambadatplaying.structs.messaging.Message;
+import com.sun.istack.internal.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,10 +19,17 @@ import java.util.concurrent.TimeUnit;
 
 public class DataManager {
 
+    //FRONTEND EVENTS
+    public static final String EVENT_MESSAGE_UPDATE = "MessageUpdate";
+    public static final String EVENT_LOOT_UPDATE = "LootUpdate";
+
+
     private static final String LOOT_COUNT = "count";
     
     private static final String SUMMONER_PUUID = "puuid";
     private static final String SUMMONER_SUMMONER_ID = "summonerId";
+
+    private static final String TYPE_SYSTEM = "system";
 
     private enum ChampSelectState {
         PREPARATION(10),
@@ -140,6 +152,7 @@ public class DataManager {
     private volatile boolean shutdownInProgress = false;
 
     private HashMap<Integer, JSONObject> availableQueueMap;
+    private HashMap<String, Conversation> conversationMap;
 
     private JSONObject lootJsonObject;
 
@@ -167,6 +180,7 @@ public class DataManager {
         this.chromaSkinId = new JSONObject();
         this.championJson = new JSONObject();
         this.summonerSpellJson = new JSONObject();
+        this.conversationMap = new HashMap<>();
 
         this.disenchantExecutor = Executors.newFixedThreadPool(4);
 
@@ -176,6 +190,181 @@ public class DataManager {
         fetchChromaSkinId();
         fetchChampionJson();
         fetchSummonerSpells();
+    }
+
+    public Conversation getConversation(String conversationId) {
+        if(!conversationId.contains("@")) {
+            try {
+                conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (conversationMap.get(conversationId) != null) {
+            log("Conversation found in map");
+            Conversation conversation = conversationMap.get(conversationId);
+            if(Conversation.SCOPE.PEER_TO_PEER.equals(conversation.getScope())) setActiveConversationId(conversationId);
+            return conversationMap.get(conversationId);
+        } else {
+            log("Conversation not found in map, fetching info and posting active conversation");
+            Conversation conversation = initializeConversation(conversationId);
+            conversationMap.put(conversationId, conversation);
+            return conversation;
+        }
+    }
+
+    private Conversation initializeConversation(String conversationId) {
+        postConversationScope(conversationId);
+        Conversation conversation = fetchConversationRoomInfo(conversationId);
+        fetchPreviousMessages(conversation);
+        if (conversation == null) return null;
+        if (Conversation.SCOPE.PEER_TO_PEER.equals(conversation.getScope())) setActiveConversationId(conversation.getId());
+        return conversation;
+    }
+
+    private void setActiveConversationId(String conversationId) {
+        log("Setting active conversation to " + conversationId);
+        JSONObject activeConversation = new JSONObject();
+        activeConversation.put("id", conversationId);
+        Integer respCode = (Integer) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/conversations/active", activeConversation.toString()));
+        log("Response code: " + respCode);
+    }
+
+    private void postConversationScope(String conversationId) {
+        log("[Conversation Scope]: Posting for " + conversationId);
+        JSONObject conversationScope = new JSONObject();
+        conversationScope.put("id", conversationId);
+        conversationScope.put("type", "chat");
+        Integer respCode = (Integer) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations", conversationScope.toString()));
+        log("[Conversation Scope]: Response code: " + respCode);
+    }
+
+    public void addConversationMessage(String conversationId, JSONObject jsonMessage) {
+        if (!conversationId.contains("@")) {
+            try {
+                conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
+            } catch (Exception e) {
+
+            }
+        }
+
+        Message message = Message.fromJsonObject(jsonMessage);
+
+        if(conversationMap.containsKey(conversationId)) {
+            Conversation conversation = conversationMap.get(conversationId);
+            if (justLeftRoom(conversationId, message)) {
+                log("Conversation left, clearing messages for " + conversationId, MainInitiator.LOG_LEVEL.INFO);
+                conversationMap.computeIfPresent(conversationId, (k, v) -> {
+                    v.getMessages().clear();
+                    //This will effectively do conversationMap.remove(conversationId);
+                    return null;
+                });
+                return;
+            }
+            conversation.addMessage(message);
+            sendMessageUpdate(conversationId, message);
+        }
+        //TODO: Overthink the approach for messages in not initialized Messages. For now we just ignore them
+    }
+
+    private void sendMessageUpdate(String conversationId, Message message) {
+        if (message == null) return;
+        JSONObject sendMessageUpdate = new JSONObject();
+        try {
+            conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
+            sendMessageUpdate.put("conversationId", conversationId);
+            sendMessageUpdate.put("message", message.toJsonObject());
+            mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(EVENT_MESSAGE_UPDATE, sendMessageUpdate));
+        } catch (Exception e) {
+            return;
+        }
+
+    }
+
+    public void sendConversationUpdate(Conversation conversation) {
+        JSONObject sendMessageUpdate = new JSONObject();
+        sendMessageUpdate.put("conversationId", conversation.getId());
+        copyJsonAttrib("messages", conversation.toJsonObject(), sendMessageUpdate);
+        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ConversationUpdate", sendMessageUpdate));
+    }
+
+    private Conversation fetchConversationRoomInfo(@NotNull String conversationId) {
+            log("[Conversation Fetch] Fetching for " + conversationId);
+            String url = "/lol-chat/v1/conversations/" + conversationId;
+            JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));
+            System.out.println(data);
+            if (data != null) {
+                log(data.toString());
+                return Conversation.fromJsonObject(data);
+            } else {
+                log("Error fetching conversation info");
+            }
+            return null;
+    }
+
+    private void logConversation(String conversationId) {
+        if (!conversationMap.containsKey(conversationId)) {
+            log("Conversation not found");
+            return;
+        }
+        System.out.println(conversationMap.get(conversationId).toJsonObject());
+    }
+
+    //Todo check if Author id is the same as the current user
+    private boolean olderMessagesExist(String conversationId, Message message) {
+        if (message == null) return true;
+        String messageType = message.getType();
+        if (TYPE_SYSTEM.equals(messageType)) {
+            String messageBody = message.getBody();
+            if (Message.MESSAGE_JOINED.equals(messageBody)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    //Todo check if Author id is the same as the current user
+    private boolean justLeftRoom(String conversationId, Message message) {
+        if (message == null) return false;
+        String type = message.getType();
+        if (TYPE_SYSTEM.equals(type)) {
+            String messageBody = message.getBody();
+            if (Message.MESSAGE_LEFT.equals(messageBody)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void fetchPreviousMessages(Conversation conversation) {
+        if (conversation == null) return;
+        String url = "/lol-chat/v1/conversations/" + conversation.getId() + "/messages";
+        JSONArray data = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));
+        ArrayList<Message> messages = Message.createMessageList(data);
+        conversation.addMessages(messages);
+    }
+
+    public void addJsonMessages(Conversation conversation, JSONArray jsonMessages) {
+        if (conversation == null) return;
+        if (jsonMessages == null) return;
+
+        for (int i = 0; i < jsonMessages.length(); i++) {
+            JSONObject jsonMessage = jsonMessages.getJSONObject(i);
+            Message message = Message.fromJsonObject(jsonMessage);
+            if (message != null) {
+                if(message.isSystemMessage()) continue;
+                conversation.addMessage(message);
+            }
+        }
+    }
+
+    public ArrayList<Message> getConversationMessages(String conversationId) {
+        if (!conversationMap.containsKey(conversationId)) {
+            return new ArrayList<>();
+        }
+
+        return conversationMap.get(conversationId).getMessages();
     }
 
     public void shutdown() {
@@ -230,6 +419,8 @@ public class DataManager {
         if (disenchantingInProgress) return false;
         disenchantingInProgress = true;
 
+        String disenchantType = "";
+
         //3 Skins shards per reroll
         ArrayList<JSONArray> disenchantCollection = new ArrayList<>();
 
@@ -237,9 +428,16 @@ public class DataManager {
         for (int i = 0; i < lootArray.length(); i++) {
             JSONObject lootObject = lootArray.getJSONObject(i);
             String type = lootObject.getString("type");
-            if (!"SKIN_RENTAL".equals(type)) {
-                log("Not a skin shard, skipping");
-                continue;
+            switch (type) {
+                case "SKIN_RENTAL":
+                    disenchantType = "SKIN";
+                    break;
+                case  "WARDSKIN_RENTAL":
+                    disenchantType = "WARDSKIN";
+                    break;
+                default:
+                    log("Not a valid shard, skipping");
+                    continue;
             }
             String lootId = lootObject.getString("lootId");
             Integer count = lootObject.getInt(LOOT_COUNT);
@@ -257,9 +455,10 @@ public class DataManager {
 
         log("Rerolling " + (elementCount - (elementCount % 3)) + " elements");
         long startTime = System.currentTimeMillis();
+        final String disenchantTypeFinal = disenchantType;
         for (JSONArray disenchantArray : disenchantCollection) {
             disenchantExecutor.execute(() -> {
-                //mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-loot/v1/recipes/SKIN_reroll/craft?repeat=1", disenchantArray.toString()));
+                mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-loot/v1/recipes/"+disenchantTypeFinal+"_reroll/craft?repeat=1", disenchantArray.toString()));
                 log(disenchantArray.toString());
                 log("Time for reroll: " + (System.currentTimeMillis() - startTime) + "ms");
             });
@@ -269,7 +468,7 @@ public class DataManager {
             @Override
             public void run() {
                 updateLootMap();
-                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LootUpdate", lootJsonObject));
+                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(EVENT_LOOT_UPDATE, lootJsonObject));
             }
         };
         Timer timer = new Timer();
@@ -287,6 +486,17 @@ public class DataManager {
         return true;
     }
 
+    private JSONObject createDisenchantObject(JSONObject lootObject) {
+        JSONObject disenchantObject = new JSONObject();
+        disenchantObject.put("repeat", 1);
+        disenchantObject.put("recipeName", lootObject.getString("type") + "_disenchant");
+
+        JSONArray lootNames = new JSONArray();
+        lootNames.put(lootObject.getString("lootName"));
+        disenchantObject.put("lootNames", lootNames);
+        return disenchantObject;
+    }
+
     public synchronized boolean disenchantElements(JSONArray lootArray) {
         if (lootArray == null || lootArray.isEmpty()) return false;
         if (disenchantingInProgress) return false;
@@ -294,7 +504,6 @@ public class DataManager {
 
 
         int MAXIMUM_DISENCHANT_COUNT = 50;
-        //Maximum of 50 disenchants per request TODO: This is 50 elements, not 50 disenchants, each element has a count that needs to be considered
 
         //Integer division is intentional
         ArrayList<JSONArray> disenchantCollection = new ArrayList<>();
@@ -306,28 +515,34 @@ public class DataManager {
             if (!currentLoot.has(LOOT_COUNT)) {
                 continue;
             }
+            //TODO: This can be done better
             int count = currentLoot.getInt(LOOT_COUNT);
             for (int j = 0; j < count; j++) {
                 if (actualCount % MAXIMUM_DISENCHANT_COUNT == 0) {
                     disenchantCollection.add(new JSONArray());
                 }
-                disenchantCollection.get(actualCount / MAXIMUM_DISENCHANT_COUNT).put(currentLoot);
+                disenchantCollection.get(actualCount / MAXIMUM_DISENCHANT_COUNT).put(createDisenchantObject(currentLoot));
                 actualCount++;
             }
         }
 
         log("Disenchanting " + actualCount + " elements");
         for (JSONArray disenchantArray : disenchantCollection) {
-            disenchantExecutor.execute(() -> {
+            try {
                 log(disenchantArray.toString());
-            });
+                String response = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-loot/v1/craft/mass", disenchantArray.toString()));
+                log(response);
+                Thread.sleep(1000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         TimerTask refetchLoot = new TimerTask() {
             @Override
             public void run() {
                 updateLootMap();
-                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LootUpdate", lootJsonObject));
+                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(EVENT_LOOT_UPDATE, lootJsonObject));
             }
         };
         Timer timer = new Timer();
@@ -345,12 +560,17 @@ public class DataManager {
 
     private void updateLootMap() {
         JSONObject preFormattedLoot = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-loot/v2/player-loot-map"));
-//        JSONObject unmodifiedLoot = preFormattedLoot.getJSONObject("playerLoot");
-//        final JSONObject updatedLoot = new JSONObject();
-//        unmodifiedLoot.keySet().forEach((k) -> {
-//            JSONObject lootObject = unmodifiedLoot.getJSONObject(k);
-//        });
         lootJsonObject = preFormattedLoot.getJSONObject("playerLoot");
+    }
+
+    public JSONObject updateFELootMap(JSONObject lootObject) {
+        log("Updating FE Loot Map");
+        if (lootObject == null) return null;
+        JSONObject bufferObject = lootObject.getJSONObject("playerLoot");
+        if (bufferObject == null) return null;
+        log("FE Loot Map updated");
+        lootJsonObject = bufferObject;
+        return lootJsonObject;
     }
 
     private void createLootObject() {
@@ -458,6 +678,7 @@ public class DataManager {
             if (puuid == null || puuid.isEmpty()) return null;
             String statusMessage = backendFriendObject.getString("statusMessage");
             String name = backendFriendObject.getString("name");
+            String id = backendFriendObject.getString("id");
             if (name == null || name.isEmpty()) return null;
             Integer iconId = backendFriendObject.getInt("icon");
             if (iconId < 1) {
@@ -468,8 +689,10 @@ public class DataManager {
             data.put("statusMessage", statusMessage);
             data.put("name", name);
             data.put("iconId", iconId);
+            data.put("id", id);
             data.put(SUMMONER_SUMMONER_ID, summonerId);
             data.put("availability", availability);
+            copyJsonAttrib("groupId", backendFriendObject, data);
             copyJsonAttrib("lol", backendFriendObject, data);
 
             return data;
@@ -973,9 +1196,6 @@ public class DataManager {
     }
 
     private void log(Object o, MainInitiator.LOG_LEVEL l) {
-        if (o != null) {
-            mainInitiator.log(this.getClass().getName() + ": " + o.toString());
-        } else mainInitiator.log(this.getClass().getName() + ": " + null);
-
+            mainInitiator.log(this.getClass().getSimpleName() + ": " + o);
     }
 }

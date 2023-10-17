@@ -53,8 +53,8 @@ public class Socket {
     @OnWebSocketMessage
     public void onMessage(String message) {
         if ((message != null) && !message.isEmpty()) {
-            new Thread(() -> mainInitiator.getBackendMessageHandler().handleMessage(message)).start();
-            new Thread(() -> mainInitiator.getTaskManager().updateAllTasks(message)).start();
+                new Thread(() -> mainInitiator.getBackendMessageHandler().handleMessage(message)).start();
+                new Thread(() -> mainInitiator.getTaskManager().updateAllTasks(message)).start();
         }
     }
 
@@ -95,10 +95,10 @@ public class Socket {
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() + ": " + s, level);
+        mainInitiator.log(this.getClass().getSimpleName()+ ": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() + ": " + s);
+        mainInitiator.log(this.getClass().getSimpleName() + ": " + s);
     }
 }

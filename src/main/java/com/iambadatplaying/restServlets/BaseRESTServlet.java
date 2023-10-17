@@ -43,11 +43,11 @@ public class BaseRESTServlet extends HttpServlet {
     }
 
     public void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     @Override
     public void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
     }
 }

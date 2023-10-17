@@ -36,5 +36,9 @@ public class RESTContextHandler extends ServletContextHandler {
 
         ServletHolder shutdownServletHolder = new ServletHolder(ShutdownServlet.class);
         addServlet(shutdownServletHolder, "/shutdown");
+
+        ServletHolder conversationServletHolder = new ServletHolder(MessagingServlet.class);
+        addServlet(conversationServletHolder, "/conversations/*");
+
     }
 }

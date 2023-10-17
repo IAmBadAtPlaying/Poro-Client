@@ -250,6 +250,56 @@ public class ChatAppearanceOverride extends Task {
         return availabilityOptions;
     }
 
+    private JSONArray getChallengeCrystalLevelOptions() {
+        JSONObject rankedIron = new JSONObject();
+        rankedIron.put("name", "Iron");
+        rankedIron.put("value", "IRON");
+
+        JSONObject rankedBronze = new JSONObject();
+        rankedBronze.put("name", "Bronze");
+        rankedBronze.put("value", "BRONZE");
+
+        JSONObject rankedSilver = new JSONObject();
+        rankedSilver.put("name", "Silver");
+        rankedSilver.put("value", "SILVER");
+
+        JSONObject rankedGold = new JSONObject();
+        rankedGold.put("name", "Gold");
+        rankedGold.put("value", "GOLD");
+
+        JSONObject rankedPlatinum = new JSONObject();
+        rankedPlatinum.put("name", "Platinum");
+        rankedPlatinum.put("value", "PLATINUM");
+
+        JSONObject rankedDiamond = new JSONObject();
+        rankedDiamond.put("name", "Diamond");
+        rankedDiamond.put("value", "DIAMOND");
+
+        JSONObject rankedMaster = new JSONObject();
+        rankedMaster.put("name", "Master");
+        rankedMaster.put("value", "MASTER");
+
+        JSONObject rankedGrandmaster = new JSONObject();
+        rankedGrandmaster.put("name", "Grandmaster");
+        rankedGrandmaster.put("value", "GRANDMASTER");
+
+        JSONObject rankedChallenger = new JSONObject();
+        rankedChallenger.put("name", "Challenger");
+        rankedChallenger.put("value", "CHALLENGER");
+
+        JSONArray challengeCrystalLevelOptions = new JSONArray();
+        challengeCrystalLevelOptions.put(rankedIron);
+        challengeCrystalLevelOptions.put(rankedBronze);
+        challengeCrystalLevelOptions.put(rankedSilver);
+        challengeCrystalLevelOptions.put(rankedGold);
+        challengeCrystalLevelOptions.put(rankedPlatinum);
+        challengeCrystalLevelOptions.put(rankedDiamond);
+        challengeCrystalLevelOptions.put(rankedMaster);
+        challengeCrystalLevelOptions.put(rankedGrandmaster);
+        challengeCrystalLevelOptions.put(rankedChallenger);
+        return challengeCrystalLevelOptions;
+    }
+
     private JSONArray buildRequiredArgs() {
         JSONArray requiredArgs = new JSONArray();
         JSONObject iconId = new JSONObject();
@@ -293,7 +343,8 @@ public class ChatAppearanceOverride extends Task {
         JSONObject challengeCrystalLevel = new JSONObject();
         challengeCrystalLevel.put("displayName", "Challenge Crystal Level");
         challengeCrystalLevel.put("backendKey", "challengeCrystalLevel");
-        challengeCrystalLevel.put("type", INPUT_TYPE.TEXT.toString());
+        challengeCrystalLevel.put("type", INPUT_TYPE.SELECT.toString());
+        challengeCrystalLevel.put("options", getChallengeCrystalLevelOptions());
         challengeCrystalLevel.put("required", false);
         challengeCrystalLevel.put("currentValue", this.challengeCrystalLevel);
         challengeCrystalLevel.put("description", "The challenge crystal level to display in your Hovercard");

@@ -10,7 +10,7 @@ import com.iambadatplaying.ressourceServer.ResourceServer;
 import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
 
-import java.awt.*;
+import java.awt.Desktop;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -26,7 +26,8 @@ public class MainInitiator {
     public enum LOG_LEVEL {
         DEBUG(0),
         INFO(1),
-        ERROR(2);
+        WARN(2),
+        ERROR(3);
 
         private int value;
 

@@ -77,7 +77,7 @@ public class SocketServer {
 
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {

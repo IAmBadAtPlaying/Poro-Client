@@ -6,6 +6,7 @@ import org.json.JSONObject;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.HashMap;
 
 
@@ -75,6 +76,7 @@ public class TaskManager {
         log("Loading default tasks");
         addTaskToMap(new AutoAcceptQueue());
         addTaskToMap(new AutoPickChamp());
+        addTaskToMap(new PickReminderTask());
     }
 
     public void addTaskToMap(Task task) {
@@ -137,6 +139,7 @@ public class TaskManager {
     }
 
     public JSONArray getTaskAndArgs() {
+
         JSONArray taskList = new JSONArray();
         for (Task task : allTasksMap.values()) {
             JSONObject taskObject = new JSONObject();
@@ -160,12 +163,16 @@ public class TaskManager {
         return null;
     }
 
+    public Collection<Task> getRunningTasks() {
+        return runningtaskList.values();
+    }
+
     private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
     }
 
 }

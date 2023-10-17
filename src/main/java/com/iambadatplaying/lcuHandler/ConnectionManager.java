@@ -1,18 +1,15 @@
 package com.iambadatplaying.lcuHandler;
 
 import com.iambadatplaying.MainInitiator;
-import com.iambadatplaying.structs.LootElement;
-import com.iambadatplaying.structs.Summoner;
+import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import javax.imageio.ImageIO;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
-import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -38,7 +35,7 @@ public class ConnectionManager {
 
         public static conOptions getByString(String s) {
             if (s == null) return null;
-            switch (s) {
+            switch (s.toUpperCase()) {
                 case "GET":
                     return conOptions.GET;
                 case "POST":
@@ -138,7 +135,8 @@ public class ConnectionManager {
             Process leagueUxProcess = processBuilder.start();
             String commandline = inputStreamToString(leagueUxProcess.getInputStream()).trim();
             if ("CommandLine".equals(commandline.trim())) {
-                log("CommandLine returned no arguments -> Missing permissions", MainInitiator.LOG_LEVEL.INFO);
+                log("CommandLine returned no arguments -> Missing permissions, will exit", MainInitiator.LOG_LEVEL.ERROR);
+                System.exit(Starter.ERROR_INSUFFICIENT_PERMISSIONS);
                 return false;
             } else {
                 String[] args = commandline.split("\" \"");
@@ -365,8 +363,6 @@ public class ConnectionManager {
             } catch (Exception ignored) {
 
             }
-        } finally {
-            con.disconnect();
         }
         return is;
     }
@@ -437,11 +433,11 @@ public class ConnectionManager {
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
     }
 
     public String getPort() {

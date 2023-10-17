@@ -74,6 +74,13 @@ public class ProxyHandler extends AbstractHandler {
         }
 
         try {
+            if ("OPTIONS".equals(request.getMethod())) {
+                httpServletResponse.setStatus(200);
+                httpServletResponse.setHeader("Access-Control-Allow-Origin", "*");
+                httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
+                request.setHandled(true);
+                return;
+            }
             con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.getByString(request.getMethod()), resource, postBody);
             if (con == null) {
                 log("Cannot establish connection to " + resource + ", League might not be running", MainInitiator.LOG_LEVEL.ERROR);
@@ -138,10 +145,10 @@ public class ProxyHandler extends AbstractHandler {
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
     }
 }
