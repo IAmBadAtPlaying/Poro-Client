@@ -1,3 +1,4 @@
+
 let socket;
 let pktNr = 0;
 
@@ -56,12 +57,26 @@ function createLobby(lobbyId) {
 }
 
 function makeLCURequest(requestType, endpoint, body) {
-    let request = new Array();
-    request.push(0);
-    request.push(requestType);
-    request.push(endpoint);
-    request.push(body);
-    send(request);
+    switch (requestType) {
+        case "GET":
+            axios.get("/proxy" + endpoint).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
+        break;
+        case "POST":
+            axios.post("/proxy" + endpoint, body).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
+        break;
+        case "PUT":
+            axios.put("/proxy" + endpoint, body).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
+        break;
+        case "DELETE":
+            axios.delete("/proxy" + endpoint, body).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
+        break
+        case "PATCH":
+             axios.patch("/proxy" + endpoint, body).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
+        break;
+        default:
+            console.error("Invalid request type: " + requestType);
+        break;
+    }
 }
 
 function makeRiotRequest(requestType, endpoint, body) {

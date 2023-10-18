@@ -15,7 +15,7 @@ public class Socket {
         this.mainInitiator = mainInitiator;
     }
 
-    public volatile TimerTask timerTask;
+    private TimerTask timerTask;
 
     private volatile boolean connected = false;
 
@@ -31,17 +31,12 @@ public class Socket {
         log("Closed: " + reason, MainInitiator.LOG_LEVEL.DEBUG);
         timerTask.cancel();
         this.timerTask = null;
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                mainInitiator.handleGracefulReset();
-            }
-        }).start();
+        new Thread(() -> mainInitiator.handleGracefulReset()).start();
     }
 
     @OnWebSocketError
     public void onError(Throwable t) {
-        if (!(t.getMessage() == null) && !t.getMessage().equals("null")) {
+        if ((t.getMessage() != null) && !t.getMessage().equals("null")) {
             log(t.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
         }
     }
@@ -51,75 +46,59 @@ public class Socket {
         log("Connect: " + session.getRemoteAddress().getAddress(), MainInitiator.LOG_LEVEL.INFO);
         this.currentSession = session;
         this.connected = true;
+        subscribeToEndpoint("OnJsonApiEvent");
         createNewKeepAlive(session);
     }
 
     @OnWebSocketMessage
     public void onMessage(String message) {
-        if (!(message == null) && !message.isEmpty()) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    mainInitiator.getBackendMessageHandler().handleMessage(message);
-                }
-            }).start();
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    mainInitiator.getTaskManager().updateAllTasks(message);
-                }
-            }).start();
+        if ((message != null) && !message.isEmpty()) {
+                new Thread(() -> mainInitiator.getBackendMessageHandler().handleMessage(message)).start();
+                new Thread(() -> mainInitiator.getTaskManager().updateAllTasks(message)).start();
         }
     }
 
-    public void createNewKeepAlive(Session s) {
+    private void createNewKeepAlive(Session s) {
         log("Created new Keep alive!", MainInitiator.LOG_LEVEL.DEBUG);
-        new java.util.Timer().schedule(
-                this.timerTask = new TimerTask() {
-                                           @Override
-                                           public void run() {
-                                               try {
-                                                   s.getRemote().sendString("[]");
-                                               } catch (Exception e) {
-                                                   e.printStackTrace();
-                                               }
-                                               createNewKeepAlive(s);
-                                           }
-                                       }
-                ,
-                290000
-        );
-    }
-
-    public Session getCurrentSession() {
-        return currentSession;
+        this.timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    s.getRemote().sendString("[]");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                createNewKeepAlive(s);
+            }
+        };
+        new java.util.Timer().schedule(timerTask, 290000);
     }
 
     public void subscribeToEndpoint(String endpoint) {
         try {
-            log( "Subscribing to: " +endpoint);
-            currentSession.getRemote().sendString("[5, \""+endpoint+"\"]");
+            log("Subscribing from: " + endpoint);
+            currentSession.getRemote().sendString("[5, \"" + endpoint + "\"]");
         } catch (Exception e) {
-            log("Cannot subscribe to endpoint " +endpoint, MainInitiator.LOG_LEVEL.ERROR);
+            log("Cannot subscribe to endpoint " + endpoint, MainInitiator.LOG_LEVEL.ERROR);
             e.printStackTrace();
         }
     }
 
     public void unsubscribeFromEndpoint(String endpoint) {
         try {
-            log( "Unsubscribing from: " +endpoint);
-            currentSession.getRemote().sendString("[6, \""+endpoint+"\"]");
+            log("Unsubscribing from: " + endpoint);
+            currentSession.getRemote().sendString("[6, \"" + endpoint + "\"]");
         } catch (Exception e) {
-            log( "Cannot unsubscribe from endpoint " +endpoint, MainInitiator.LOG_LEVEL.ERROR);
+            log("Cannot unsubscribe from endpoint " + endpoint, MainInitiator.LOG_LEVEL.ERROR);
             e.printStackTrace();
         }
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+        mainInitiator.log(this.getClass().getSimpleName()+ ": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        mainInitiator.log(this.getClass().getSimpleName() + ": " + s);
     }
 }

@@ -7,15 +7,18 @@ import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 
 import java.net.URI;
-import java.util.ArrayList;
 
 public class SocketClient {
 
     private MainInitiator mainInitiator = null;
     private WebSocketClient client = null;
-    private volatile Socket socket = null;
+    private Socket socket = null;
 
-    private int MAXIMUM_TEXT_SIZE = 3000000; //Sometimes really huge messages get send IDK why
+    //Sometimes really huge messages get send by the client.
+    //This is caused by the loot, inventory and the friend list.
+    //On an alternate account these limits are not reached, on the main account with a lot of skins and friends they are.
+    //TODO: This is a workaround, find a better solution as this is not guaranteed to work for everyone
+    private static final int MAXIMUM_TEXT_SIZE = 4000000;
 
     public SocketClient(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
@@ -23,26 +26,24 @@ public class SocketClient {
 
     public void init() {
         ConnectionManager cm = mainInitiator.getConnectionManager();
-        if(cm.authString == null) {
+        if(cm.getAuthString() == null) {
             return;
         }
         SslContextFactory ssl = new SslContextFactory.Client(false);
 
         HttpClient http = new HttpClient(ssl);
-        String sUri = "wss://127.0.0.1:"+cm.port+"/";
+        String sUri = "wss://127.0.0.1:"+cm.getPort()+"/";
         this.client = new WebSocketClient(http);
         client.getPolicy().setMaxTextMessageSize(MAXIMUM_TEXT_SIZE);
         client.setMaxTextMessageBufferSize(MAXIMUM_TEXT_SIZE);
-        client.setMaxBinaryMessageBufferSize(MAXIMUM_TEXT_SIZE);
         socket = new Socket(mainInitiator);
 
-        ssl.setSslContext(mainInitiator.getConnectionManager().sslContextGlobal);
+        ssl.setSslContext(mainInitiator.getConnectionManager().getSslContextGlobal());
         try {
             client.start();
             URI uri = new URI(sUri);
             ClientUpgradeRequest request = new ClientUpgradeRequest();
-            ClientUpgradeRequest f = new ClientUpgradeRequest();
-            request.setHeader("Authorization",cm.authString);
+            request.setHeader("Authorization",cm.getAuthString());
             client.connect(socket, uri, request);
         } catch (Exception e) {
             e.printStackTrace();
@@ -66,4 +67,6 @@ public class SocketClient {
     public void setSocket(Socket socket) {
         this.socket = socket;
     }
+
+
 }

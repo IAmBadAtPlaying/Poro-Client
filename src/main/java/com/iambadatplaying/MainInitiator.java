@@ -2,21 +2,32 @@ package com.iambadatplaying;
 
 import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
 import com.iambadatplaying.frontendHanlder.SocketServer;
+import com.iambadatplaying.lcuHandler.BackendMessageHandler;
+import com.iambadatplaying.lcuHandler.ConnectionManager;
+import com.iambadatplaying.lcuHandler.DataManager;
+import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
-import com.iambadatplaying.lcuHandler.*;
 import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
 
-import java.awt.*;
+import java.awt.Desktop;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class MainInitiator {
+
+    //FIXME: Change before Production
+    public static final boolean isDev = true;
 
     public enum LOG_LEVEL {
         DEBUG(0),
         INFO(1),
-        ERROR(2);
+        WARN(2),
+        ERROR(3);
 
         private int value;
 
@@ -29,6 +40,27 @@ public class MainInitiator {
         }
     }
 
+    public enum STATE {
+        UNINITIALIZED,
+        STARTING,
+        RESTARTING,
+        AWAITING_LCU,
+        RUNNING,
+        STOPPING,
+        STOPPED;
+
+        public STATE getStateFromString(String s) {
+            for (STATE state : STATE.values()) {
+                if (state.name().equalsIgnoreCase(s)) {
+                    return state;
+                }
+            }
+            return null;
+        }
+    }
+
+    private STATE state = STATE.UNINITIALIZED;
+
     private SocketClient client;
     private SocketServer server;
     private ConnectionManager connectionManager;
@@ -40,13 +72,14 @@ public class MainInitiator {
 
     private DataManager dataManager;
 
-    public final static Integer MAX_LOBBY_SIZE = 5;
+    private Path taskDirPath;
+
 
     private String basePath = null;
 
     private volatile boolean running = false;
 
-    public static String[] requiredEndpoints = {"OnJsonApiEvent_lol-gameflow_v1_gameflow-phase", "OnJsonApiEvent_lol-lobby_v2_lobby", "OnJsonApiEvent_lol-champ-select_v1_session", "OnJsonApiEvent_lol-chat_v1_friends", "OnJsonApiEvent_lol-regalia_v2_summoners","OnJsonApiEvent_lol-loot_v2_player-loot-map"};
+    public static String[] requiredEndpoints = {"OnJsonApiEvent"};
 
     public static void main(String[] args) {
         MainInitiator mainInit = new MainInitiator();
@@ -54,7 +87,35 @@ public class MainInitiator {
         mainInit.setRunning(true);
     }
 
+    public Path getTaskPath() {
+        if (taskDirPath == null) {
+            try {
+                URL location = this.getClass().getProtectionDomain().getCodeSource().getLocation();
+                Path currentDirPath = Paths.get(location.toURI()).getParent();
+                log("Location: " + currentDirPath, MainInitiator.LOG_LEVEL.INFO);
+                Path taskDir = Paths.get(currentDirPath.toString() + "/tasks");
+                if (!Files.exists(taskDir)) {
+                    if (taskDir.toFile().mkdir()) {
+                        log("Created tasks directory " + taskDir);
+                        taskDirPath = taskDir;
+                    } else {
+                        log("Failed to create tasks directory " + taskDir, MainInitiator.LOG_LEVEL.ERROR);
+                        taskDirPath = null;
+                    }
+                } else {
+                    taskDirPath = taskDir;
+                }
+                return taskDir;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+        return taskDirPath;
+    }
+
     public void init() {
+        state = STATE.STARTING;
         if (isRunning()) {
             return;
         }
@@ -71,26 +132,25 @@ public class MainInitiator {
             frontendMessageHandler = new FrontendMessageHandler(this);
             taskManager = new TaskManager(this);
             connectionManager.init();
-            if (!connectionManager.isLeagueAuthDataAvailable()) {
-            }
+            state = STATE.AWAITING_LCU;
             while (!connectionManager.isLeagueAuthDataAvailable()) {
                 try {
                     Thread.sleep(500);
                 } catch (Exception e) {
                 }
             }
-            while (!lootReady()) {
+            while (!feProcessesReady()) {
                 try {
                     Thread.sleep(500); //League Backend Socket needs time to be able to serve the resources TODO: This is fucking horrible
                 } catch (Exception e) {
 
                 }
             }
-            if (connectionManager.authString != null) {
-                dataManager.init();
-                taskManager.init();
+            if (connectionManager.getAuthString() != null) {
                 client.init();
                 server.init();
+                dataManager.init();
+                taskManager.init();
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -107,16 +167,27 @@ public class MainInitiator {
                     }
                 }).start();
                 setRunning(true);
+                state = STATE.RUNNING;
             } else {
-                System.out.println("Error, League is not running");
+                log("League is not running, will not start", LOG_LEVEL.ERROR);
                 System.exit(1);
             }
             while (client.getSocket() == null || !client.getSocket().isConnected()) {
+                try {
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             try {
                 Thread.sleep(1000);
                 showRunningNotification();
-                Desktop.getDesktop().browse(new URI("http://127.0.0.1:3000/"));
+                if (isDev) {
+                    Desktop.getDesktop().browse(new URI("http://localhost:3000"));
+                } else {
+                    Desktop.getDesktop().browse(new URI("http://localhost:35199/static/index.html"));
+                }
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -126,10 +197,12 @@ public class MainInitiator {
         }
     }
 
-    private boolean lootReady() {
+    private boolean feProcessesReady() {
         try {
-            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-loot/v1/ready"));
-            return "true".equals(resp.trim());
+            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-player-preferences/v1/player-preferences-ready"));
+            boolean isReady = "true".equals(resp.trim());
+            log("FE-Process ready: " + isReady);
+            return isReady;
         } catch (Exception e) {
 
         }
@@ -137,8 +210,10 @@ public class MainInitiator {
     }
 
     public void shutdown() {
+        state = STATE.STOPPING;
         setRunning(false);
         resetAllInternal();
+        state = STATE.STOPPED;
         System.exit(0);
     }
 
@@ -162,6 +237,7 @@ public class MainInitiator {
 
     public void handleGracefulReset() {
         if (isRunning()) {
+            state = STATE.RESTARTING;
             resetAllInternal();
             try {
                 Thread.sleep(1000);
@@ -175,7 +251,7 @@ public class MainInitiator {
 
     private void showRunningNotification() {
         try {
-            String body = "{\"data\": {\"title\": \"Poro Client connected!\", \"details\": \"http://127.0.0.1:35199/static/index.html\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-settings/global/default/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
+            String body = "{\"data\": {\"title\": \"Poro Client connected!\", \"details\": \"http://127.0.0.1:35199/static/index.html\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"/fe/lol-settings/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
             HttpURLConnection con = getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", body);
             con.getResponseCode();
             con.disconnect();
@@ -184,8 +260,11 @@ public class MainInitiator {
         }
     }
 
-    public static void log(String s, LOG_LEVEL level) {
-        if (level.ordinal() < 0) {
+    public void log(String s, LOG_LEVEL level) {
+        if (isDev && level.ordinal() < 0) {
+            return;
+        }
+        if (!isDev && level.ordinal() < 1) {
             return;
         }
         String prefix = "[" + level.name() + "]";
@@ -203,7 +282,7 @@ public class MainInitiator {
         System.out.println(prefix + ": " + s);
     }
 
-    public static void log(String s) {
+    public void log(String s) {
         log(s, LOG_LEVEL.DEBUG);
     }
 
@@ -254,6 +333,10 @@ public class MainInitiator {
 
     public void setRunning(boolean newStatus) {
         running = newStatus;
+    }
+
+    public STATE getState() {
+        return state;
     }
 
 }

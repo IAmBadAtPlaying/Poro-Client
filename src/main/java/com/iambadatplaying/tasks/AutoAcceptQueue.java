@@ -9,25 +9,21 @@ import java.net.HttpURLConnection;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class AutoAcceptQueue implements Task {
+public class AutoAcceptQueue extends Task {
 
-    private final String gameflow_v1_gameflow_phase = "OnJsonApiEvent_lol-gameflow_v1_gameflow-phase";
+    private final String gameflow_v1_gameflow_phase = "/lol-gameflow/v1/session";
     private final String[] apiTriggerEvents = {gameflow_v1_gameflow_phase};
-
-    private MainInitiator mainInitiator;
-
-    private volatile boolean running = false;
 
     private Integer delay;
     private Timer timer;
 
-    @Override
     public void notify(JSONArray webSocketEvent) {
         if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.length() < 3) {
             return;
         }
-        String apiTrigger = webSocketEvent.getString(1);
-        switch (apiTrigger) {
+        JSONObject data = webSocketEvent.getJSONObject(2);
+        String uriTrigger = data.getString("uri");
+        switch (uriTrigger) {
             case gameflow_v1_gameflow_phase:
                 JSONObject updateObject = webSocketEvent.getJSONObject(2);
                 handleUpdateData(updateObject);
@@ -39,8 +35,8 @@ public class AutoAcceptQueue implements Task {
 
     private void handleUpdateData(JSONObject updateData) {
         try {
-            System.out.println("Gameflow:" + updateData);
-            String newGameflowPhase = updateData.getString("data");
+            JSONObject data = updateData.getJSONObject("data");
+            String newGameflowPhase = data.getString("phase");
             if("ReadyCheck".equals(newGameflowPhase)) {
                 Timer timer = new java.util.Timer();
                 timer.schedule(new TimerTask() {
@@ -61,44 +57,50 @@ public class AutoAcceptQueue implements Task {
         }
     }
 
-    @Override
-    public String[] getTriggerApiEvents() {
-        return apiTriggerEvents;
-    }
-
-    @Override
-    public void setMainInitiator(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
-    }
-
-    @Override
-    public void init() {
-        if (mainInitiator == null || !mainInitiator.isRunning()) {
-            log("No running Main-Initiator present, Task will not start", MainInitiator.LOG_LEVEL.ERROR);
-            return;
-        }
-        running = true;
+    protected void doInitialize() {
         timer = new Timer();
         if (delay == null) {
             delay = 0;
         }
     }
 
-    @Override
-    public void shutdown() {
-        running = false;
+    protected void doShutdown() {
         timer.cancel();
         delay = null;
         timer = null;
     }
 
-    @Override
-    public void setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JSONObject arguments) {
         try {
+            log(arguments.toString(), MainInitiator.LOG_LEVEL.DEBUG);
             delay = arguments.getInt("delay");
+            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            mainInitiator.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase().toLowerCase());
         }
+        return false;
+    }
+    public JSONObject getTaskArgs() {
+        JSONObject taskArgs = new JSONObject();
+        taskArgs.put("delay", delay);
+        return taskArgs;
+    }
+
+    public JSONArray getRequiredArgs() {
+        JSONArray requiredArgs = new JSONArray();
+
+        JSONObject delay = new JSONObject();
+        delay.put("displayName", "Delay");
+        delay.put("description", "Time till Ready-Check gets accepted in ms");
+        delay.put("type", INPUT_TYPE.NUMBER.toString());
+        delay.put("required", true);
+        delay.put("currentValue", this.delay);
+        delay.put("backendKey", "delay");
+
+        requiredArgs.put(delay);
+
+        return requiredArgs;
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {

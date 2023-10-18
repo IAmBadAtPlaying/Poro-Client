@@ -9,14 +9,9 @@ import java.net.HttpURLConnection;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class AutoPickChamp implements Task {
+public class AutoPickChamp extends Task {
 
-    private final String lol_champ_select_v1_session = "OnJsonApiEvent_lol-champ-select_v1_session";
-    private final String[] apiTriggerEvents = {lol_champ_select_v1_session};
-
-    private MainInitiator mainInitiator;
-
-    private boolean running;
+    private final String lol_champ_select_v1_session = "/lol-champ-select/v1/session";
 
     private volatile boolean alreadyPicked;
 
@@ -24,16 +19,15 @@ public class AutoPickChamp implements Task {
     private Integer delay;
     private Timer timer;
 
-    @Override
     public void notify(JSONArray webSocketEvent) {
         if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.length() < 3) {
             return;
         }
-        String apiTrigger = webSocketEvent.getString(1);
-        switch (apiTrigger) {
+        JSONObject data = webSocketEvent.getJSONObject(2);
+        String uriTrigger = data.getString("uri");
+        switch (uriTrigger) {
             case lol_champ_select_v1_session:
-                JSONObject updateObject = webSocketEvent.getJSONObject(2);
-                handleUpdateData(updateObject);
+                handleUpdateData(data);
         }
     }
 
@@ -104,45 +98,59 @@ public class AutoPickChamp implements Task {
         alreadyPicked = false;
     }
 
-    @Override
-    public String[] getTriggerApiEvents() {
-        return apiTriggerEvents;
-    }
-
-    @Override
-    public void setMainInitiator(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
-    }
-
-    @Override
-    public void init() {
-        if (mainInitiator == null || !mainInitiator.isRunning()) {
-            log("No running Main-Initiator present, Task will not start", MainInitiator.LOG_LEVEL.ERROR);
-            return;
-        }
+    protected void doInitialize() {
         timer = new Timer();
         alreadyPicked = false;
         running = true;
     }
 
-    @Override
-    public void shutdown() {
-        running = false;
+    public void doShutdown() {
         timer.cancel();
         alreadyPicked = false;
         timer = null;
     }
 
-    @Override
-    public void setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JSONObject arguments) {
         try {
             delay = arguments.getInt("delay");
             championId = arguments.getInt("championId");
-            log("Set delay to: " + delay);
-            log("Set Champion id to: " + championId);
+            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
+            return true;
         } catch (Exception e) {
-
+            mainInitiator.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase());
         }
+        return false;
+    }
+
+    public JSONObject getTaskArgs() {
+        JSONObject taskArgs = new JSONObject();
+        taskArgs.put("delay", delay);
+        taskArgs.put("championId", championId);
+        return taskArgs;
+    }
+
+    public JSONArray getRequiredArgs() {
+        JSONArray requiredArgs = new JSONArray();
+        JSONObject delay = new JSONObject();
+        delay.put("displayName", "Delay");
+        delay.put("backendKey", "delay");
+        delay.put("type", INPUT_TYPE.NUMBER.toString());
+        delay.put("required", true);
+        delay.put("currentValue", this.delay);
+        delay.put("description", "Time until the champion gets picked in milliseconds");
+
+        JSONObject championId = new JSONObject();
+        championId.put("displayName", "Champion ID");
+        championId.put("backendKey", "championId");
+        championId.put("type", INPUT_TYPE.NUMBER.toString());
+        championId.put("required", true);
+        championId.put("currentValue", this.championId);
+        championId.put("description", "The ID of the champion you want to pick");
+
+        requiredArgs.put(delay);
+        requiredArgs.put(championId);
+
+        return requiredArgs;
     }
 
     private void log(String s, MainInitiator.LOG_LEVEL level) {
