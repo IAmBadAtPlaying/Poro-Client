@@ -3,7 +3,6 @@ package com.iambadatplaying.lcuHandler;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.structs.messaging.Conversation;
 import com.iambadatplaying.structs.messaging.Message;
-import com.sun.istack.internal.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -289,7 +288,7 @@ public class DataManager {
         mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ConversationUpdate", sendMessageUpdate));
     }
 
-    private Conversation fetchConversationRoomInfo(@NotNull String conversationId) {
+    private Conversation fetchConversationRoomInfo(String conversationId) {
             log("[Conversation Fetch] Fetching for " + conversationId);
             String url = "/lol-chat/v1/conversations/" + conversationId;
             JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));

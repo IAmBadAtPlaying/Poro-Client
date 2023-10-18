@@ -1,11 +1,9 @@
 package com.iambadatplaying.structs.messaging;
 
-import com.sun.istack.internal.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Conversation {
     public enum SCOPE {
@@ -50,7 +48,7 @@ public class Conversation {
     private static final String SCOPE_POST_GAME = "post-game";
 
 
-    public Conversation(@NotNull String id) {
+    public Conversation(String id) {
         if (id == null) throw new IllegalArgumentException("Conversation id cannot be null");
         this.id = id;
         if (id.contains(SCOPE_CHAMP_SELECT)) {
