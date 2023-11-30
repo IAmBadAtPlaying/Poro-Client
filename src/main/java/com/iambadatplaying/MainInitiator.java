@@ -1,6 +1,8 @@
 package com.iambadatplaying;
 
+import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
+import com.iambadatplaying.frontendHanlder.Socket;
 import com.iambadatplaying.frontendHanlder.SocketServer;
 import com.iambadatplaying.lcuHandler.BackendMessageHandler;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
@@ -9,6 +11,8 @@ import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
 import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.awt.Desktop;
 import java.net.HttpURLConnection;
@@ -59,6 +63,11 @@ public class MainInitiator {
         }
     }
 
+    public static final int RESSOURCE_SERVER_PORT = 35199;
+    public static final int FRONTEND_SERVER_PORT = 8887;
+
+    private static final String appDirName = "poroclient";
+
     private STATE state = STATE.UNINITIALIZED;
 
     private SocketClient client;
@@ -71,11 +80,14 @@ public class MainInitiator {
     private TaskManager taskManager;
 
     private DataManager dataManager;
+    private ReworkedDataManager reworkedDataManager;
+
+    private ConfigLoader configLoader;
 
     private Path taskDirPath;
 
 
-    private String basePath = null;
+    private Path basePath = null;
 
     private volatile boolean running = false;
 
@@ -122,10 +134,14 @@ public class MainInitiator {
         log("Initializing");
         try {
             //TODO: Change this ugly shit holy fucking god
+            configLoader = new ConfigLoader(this);
+            configLoader.loadConfig();
+            basePath = configLoader.getAppFolderPath();
             resourceServer = new ResourceServer(this);
             resourceServer.init();
             connectionManager = new ConnectionManager(this);
             dataManager = new DataManager(this);
+            reworkedDataManager = new ReworkedDataManager(this);
             client = new SocketClient(this);
             server = new SocketServer(this);
             backendMessageHandler = new BackendMessageHandler(this);
@@ -150,6 +166,7 @@ public class MainInitiator {
                 client.init();
                 server.init();
                 dataManager.init();
+                reworkedDataManager.init();
                 taskManager.init();
                 new Thread(new Runnable() {
                     @Override
@@ -224,6 +241,7 @@ public class MainInitiator {
             server.shutdown();
             client.shutdown();
             dataManager.shutdown();
+            reworkedDataManager.shutdown();
             connectionManager.shutdown();
             resourceServer = null;
             taskManager = null;
@@ -240,13 +258,12 @@ public class MainInitiator {
             state = STATE.RESTARTING;
             resetAllInternal();
             try {
-                Thread.sleep(1000);
+                Thread.sleep(3000);
             } catch (Exception e) {
 
             }
             init();
         }
-
     }
 
     private void showRunningNotification() {
@@ -286,14 +303,41 @@ public class MainInitiator {
         log(s, LOG_LEVEL.DEBUG);
     }
 
-    public void frontendMessageReceived(String message, Session session) {
+    public static String getAppDirName() {
+        return appDirName;
+    }
+
+    public void frontendMessageReceived(String message, Socket socket) {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                frontendMessageHandler.handleMessage(message, session);
+                frontendMessageHandler.handleMessage(message, socket);
             }
         }).start();
     }
+    public void backendMessageReceived(String message) {
+        if (message != null && !message.isEmpty()) {
+            if (getState() != STATE.RUNNING) return;
+            JSONArray messageArray = null;
+            JSONObject dataPackage = null;
+            String uri = null;
+            String type = null;
+            JSONObject data = null;
+            try {
+                messageArray = new JSONArray(message);
+                dataPackage = messageArray.getJSONObject(2);
+                if (dataPackage == null) return;
+            } catch (Exception e) {
+                log("Failed to parse message: " + message, LOG_LEVEL.ERROR);
+                return;
+            }
+            final JSONObject finalDataPackage = dataPackage;
+//            new Thread(() -> getReworkedDataManager().update(finalDataPackage)).start();
+            new Thread(() -> getBackendMessageHandler().handleMessage(message)).start();
+            new Thread(() -> getTaskManager().updateAllTasks(message)).start();
+        }
+    }
+
 
     public TaskManager getTaskManager() {
         return taskManager;
@@ -311,7 +355,16 @@ public class MainInitiator {
         return connectionManager;
     }
 
-    public String getBasePath() {
+    public Path getBasePath() {
+        if (basePath == null) {
+            try {
+                URL location = this.getClass().getProtectionDomain().getCodeSource().getLocation();
+                Path currentDirPath = Paths.get(location.toURI()).getParent();
+                log("Base-Location: " + currentDirPath, MainInitiator.LOG_LEVEL.INFO);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         return basePath;
     }
 
@@ -329,6 +382,15 @@ public class MainInitiator {
 
     public DataManager getDataManager() {
         return dataManager;
+    }
+
+    public ReworkedDataManager getReworkedDataManager() {
+        return reworkedDataManager;
+    }
+
+
+    public ConfigLoader getConfigLoader() {
+        return configLoader;
     }
 
     public void setRunning(boolean newStatus) {

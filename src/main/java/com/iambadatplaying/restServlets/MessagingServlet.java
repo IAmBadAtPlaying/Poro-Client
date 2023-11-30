@@ -9,7 +9,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 public class MessagingServlet extends BaseRESTServlet{
@@ -95,15 +94,5 @@ public class MessagingServlet extends BaseRESTServlet{
 
             return;
         }
-    }
-
-
-    private String[] sliceAtSlash(String pathInfo) {
-        if (pathInfo != null && pathInfo.length() > 1) {
-            String path = pathInfo.substring(1); // remove leading slash
-            String[] pathParts = path.split("/");
-            return pathParts;
-        }
-        return new String[0];
     }
 }

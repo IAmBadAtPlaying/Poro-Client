@@ -72,11 +72,16 @@ public class TaskManager {
 //        addTask("AutoPickChamp");
 //    }
 
+    private Path getTaskPath() {
+        return Paths.get(mainInitiator.getBasePath().toString() + "/tasks");
+    }
+
     private void loadDefaultTasks() {
         log("Loading default tasks");
         addTaskToMap(new AutoAcceptQueue());
         addTaskToMap(new AutoPickChamp());
         addTaskToMap(new PickReminderTask());
+        addTaskToMap(new SuppressUx());
     }
 
     public void addTaskToMap(Task task) {
@@ -130,6 +135,7 @@ public class TaskManager {
 
     public synchronized void shutdown() {
         running = false;
+        if (runningtaskList == null) return;
         for (Task task : runningtaskList.values()) {
             if (task != null) {
                 task.shutdown();

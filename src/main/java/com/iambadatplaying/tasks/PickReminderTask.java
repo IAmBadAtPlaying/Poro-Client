@@ -43,7 +43,6 @@ public class PickReminderTask extends Task{
 
                     currentChatId = chatId;
                     StringBuilder sb = new StringBuilder();
-                    System.out.println(jsonData.getJSONObject("data").toString());
                     sb.append("[Poro-Client] You are playing with\n");
 
                     timer.schedule(new TimerTask() {

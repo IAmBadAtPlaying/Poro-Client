@@ -30,6 +30,7 @@ public class ShutdownServlet extends BaseRESTServlet{
 
         response.setStatus(javax.servlet.http.HttpServletResponse.SC_OK);
         response.setHeader("Content-Type", "application/json");
+        response.setHeader("Access-Control-Allow-Origin", "*");
 
         JSONObject responseJson = new JSONObject();
 
@@ -44,12 +45,17 @@ public class ShutdownServlet extends BaseRESTServlet{
 
     private void handleNormalShutdown() {
         new Thread(() -> {
+            log("[Shutdown] Invoking Self-shutdown", MainInitiator.LOG_LEVEL.INFO);
+            String discBody = "{\"data\": {\"title\": \"Poro Client disconnected!\", \"details\": \"Have fun!\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"/fe/lol-settings/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
+            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications" , discBody));
+            //Show Riot UX again so the user doesn't end up with league still running and them not noticing
+            log("Sending Riot UX request", MainInitiator.LOG_LEVEL.INFO);
+            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            log("[Shutdown] Invoking Self-shutdown", MainInitiator.LOG_LEVEL.INFO);
             mainInitiator.shutdown();
         }).start();
     }
@@ -61,11 +67,7 @@ public class ShutdownServlet extends BaseRESTServlet{
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            String discBody = "{\"data\": {\"title\": \"Poro Client disconnected!\", \"details\": \"Poro-Client shutdown successful\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"/fe/lol-settings/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
-            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications" , discBody));
-            //Show Riot UX again so the user doesn't end up with league still running and them not noticing
-            log("Sending Riot UX request", MainInitiator.LOG_LEVEL.INFO);
-            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
+            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/process-control/v1/process/quit", ""));
             log("[Shutdown] Invoking Self-shutdown", MainInitiator.LOG_LEVEL.INFO);
             mainInitiator.shutdown();
         }).start();

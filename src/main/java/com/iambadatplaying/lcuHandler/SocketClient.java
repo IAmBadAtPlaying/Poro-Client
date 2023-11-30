@@ -52,7 +52,7 @@ public class SocketClient {
 
     public void shutdown() {
         try {
-            client.stop();
+            client.destroy();
         } catch (Exception e) {
             e.printStackTrace();
         }

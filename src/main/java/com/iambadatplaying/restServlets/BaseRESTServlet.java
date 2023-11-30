@@ -8,8 +8,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
-public class BaseRESTServlet extends HttpServlet {
+public abstract class BaseRESTServlet extends HttpServlet {
     protected MainInitiator mainInitiator;
 
     @Override
@@ -25,6 +26,7 @@ public class BaseRESTServlet extends HttpServlet {
         String line;
         JSONObject json = new JSONObject();
         try {
+            req.setCharacterEncoding(StandardCharsets.UTF_8.toString());
             while ((line = req.getReader().readLine() )!= null) {
                 sb.append(line);
             }
@@ -35,6 +37,14 @@ public class BaseRESTServlet extends HttpServlet {
         return json;
     }
 
+    protected String[] sliceAtSlash(String pathInfo) {
+        if (pathInfo != null && pathInfo.length() > 1) {
+            String path = pathInfo.substring(1); // remove leading slash
+            String[] pathParts = path.split("/");
+            return pathParts;
+        }
+        return new String[0];
+    }
 
     @Override
     public void init() throws ServletException {

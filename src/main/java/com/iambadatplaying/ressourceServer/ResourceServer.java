@@ -24,7 +24,7 @@ public class ResourceServer {
     }
 
     public void init() {
-        server = new Server(35199);
+        server = new Server(MainInitiator.RESSOURCE_SERVER_PORT);
 
         ProxyHandler proxyHandler = new ProxyHandler(mainInitiator);
 
@@ -32,13 +32,16 @@ public class ResourceServer {
         resourceHandler.setDirectoriesListed(true);
         resourceHandler.setResourceBase(MainInitiator.class.getResource("/html").toExternalForm());
 
+        ResourceHandler userDataHandler = new ResourceHandler();
+        userDataHandler.setDirectoriesListed(true);
+        userDataHandler.setResourceBase(mainInitiator.getConfigLoader().getAppFolderPath().toAbsolutePath().toString());
 
         RESTContextHandler restContext = new RESTContextHandler(mainInitiator);
         restContext.setContextPath("/rest");
 
-        ContextHandler configContext = new ContextHandler();
-        configContext.setContextPath("/config");
-        configContext.setHandler(new ConfigHandler(mainInitiator));
+//        ContextHandler configContext = new ContextHandler();
+//        configContext.setContextPath("/config");
+//        configContext.setHandler(new ConfigHandler(mainInitiator));
 
         // Proxy-prefix to handle Proxy requests
         ContextHandler proxyContext = new ContextHandler();
@@ -79,9 +82,41 @@ public class ResourceServer {
         staticContext.setContextPath("/static");
         staticContext.setHandler(resourceHandler);
 
+        ContextHandler userDataContext = new ContextHandler() {
+            @Override
+            public void doHandle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+                DispatcherType dispatch = baseRequest.getDispatcherType();
+                boolean newContext = baseRequest.takeNewContext();
+                try {
+                    if (newContext) {
+                        this.requestInitialized(baseRequest, request);
+                    }
+                    response.setHeader("Access-Control-Allow-Origin", "*");
+                    response.setHeader("Access-Control-Allow-Methods", "GET");
+                    response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+                    if (dispatch == DispatcherType.REQUEST && this.isProtectedTarget(target)) {
+                        baseRequest.setHandled(true);
+                        response.sendError(404);
+                        return;
+                    }
+
+                    this.nextHandle(target, baseRequest, request, response);
+                } finally {
+                    if (newContext) {
+                        this.requestDestroyed(baseRequest, request);
+                    }
+
+                }
+            }
+        };
+        userDataContext.setContextPath("/config");
+        userDataContext.setHandler(userDataHandler);
+
         HandlerList handlerList = new HandlerList();
         handlerList.addHandler(proxyContext);
-        handlerList.addHandler(configContext);
+        handlerList.addHandler(userDataContext);
+//        handlerList.addHandler(configContext);
         handlerList.addHandler(staticContext);
         handlerList.addHandler(restContext);
 

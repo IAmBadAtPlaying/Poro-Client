@@ -32,7 +32,6 @@ public class RunesSaveServlet extends BaseRESTServlet{
     private BigInteger getValidRunePageId() {
         JSONArray resp = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/pages"));
         if (resp == null) return null;
-        String runeSiteName = "[Unknown]";
         if (resp.isEmpty()) {
             log("No runepages found, creating new one", MainInitiator.LOG_LEVEL.INFO);
             return null;

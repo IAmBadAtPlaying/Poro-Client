@@ -3,16 +3,18 @@ package com.iambadatplaying.frontendHanlder;
 import com.iambadatplaying.MainInitiator;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.server.WebSocketHandler;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public class SocketServer {
 
     private final MainInitiator mainInitiator;
-    private final ArrayList<Session> sessions = new ArrayList<>();
+    private final List<Socket> sockets = Collections.synchronizedList(new ArrayList<Socket>());
 
     private Server server = null;
 
@@ -20,23 +22,18 @@ public class SocketServer {
         this.mainInitiator = mainInitiator;
     }
 
-    public synchronized void removeSession(Session session) {
-        sessions.remove(session);
+    public synchronized void removeSocket(Socket socket) {
+        sockets.remove(socket);
     }
 
     public void sendToAllSessions(String message) {
-        for(Session session: sessions) {
-            new Thread(() -> {try {
-                mainInitiator.getFrontendMessageHandler().sendMessage(message,session);
-                } catch (Exception e) {
-                    log("Error sending message: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
-                }
-            }).start();
+        for(Socket socket: sockets) {
+            socket.sendMessage(message);
         }
     }
 
-    public synchronized void addSession(Session session) {
-        sessions.add(session);
+    public synchronized void addSocket(Socket socket) {
+        sockets.add(socket);
     }
 
     public void init() {
@@ -46,7 +43,7 @@ public class SocketServer {
 
         connector.setReuseAddress(true);
         connector.setHost("127.0.0.1");
-        connector.setPort(8887);
+        connector.setPort(MainInitiator.FRONTEND_SERVER_PORT);
 
         server.addConnector(connector);
 
@@ -67,10 +64,15 @@ public class SocketServer {
     }
 
     public void shutdown() {
-        sessions.clear();
         try {
+            for (Socket socket: sockets) {
+                if (socket == null) continue;
+                socket.externalShutdown();
+            }
+            sockets.clear();
             server.stop();
         } catch (Exception e) {
+            log("Error while stopping socket server", MainInitiator.LOG_LEVEL.ERROR);
             e.printStackTrace();
         }
     }

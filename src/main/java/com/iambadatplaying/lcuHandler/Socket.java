@@ -31,7 +31,7 @@ public class Socket {
         log("Closed: " + reason, MainInitiator.LOG_LEVEL.DEBUG);
         timerTask.cancel();
         this.timerTask = null;
-        new Thread(() -> mainInitiator.handleGracefulReset()).start();
+        mainInitiator.handleGracefulReset();
     }
 
     @OnWebSocketError
@@ -52,10 +52,7 @@ public class Socket {
 
     @OnWebSocketMessage
     public void onMessage(String message) {
-        if ((message != null) && !message.isEmpty()) {
-                new Thread(() -> mainInitiator.getBackendMessageHandler().handleMessage(message)).start();
-                new Thread(() -> mainInitiator.getTaskManager().updateAllTasks(message)).start();
-        }
+        mainInitiator.backendMessageReceived(message);
     }
 
     private void createNewKeepAlive(Session s) {

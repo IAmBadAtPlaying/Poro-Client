@@ -17,6 +17,7 @@ public abstract class Task {
         COLOR,
         CHECKBOX,
         NUMBER,
+        CHAMPION_SELECT, //TODO: Implement
         SELECT;
     }
 

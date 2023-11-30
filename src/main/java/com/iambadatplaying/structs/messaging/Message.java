@@ -50,7 +50,6 @@ public class Message {
             JSONObject jsonMessage = jsonMessages.getJSONObject(i);
             Message message = Message.fromJsonObject(jsonMessage);
             if (message == null) continue;
-            if (message.isSystemMessage()) continue;
             messages.add(message);
         }
         return messages;

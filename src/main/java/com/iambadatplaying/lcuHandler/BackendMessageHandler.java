@@ -50,10 +50,11 @@ public class BackendMessageHandler {
         }
         try {
             messageArray = new JSONArray(message);
-            if (messageArray != null && !messageArray.isEmpty()) { //[8,"endpoint",{}]
+            if (!messageArray.isEmpty()) { //[8,"endpoint",{}]
                 JSONObject jsonData = messageArray.getJSONObject(2);
                 String uri = jsonData.getString("uri");
-                log(uri +"; " +jsonData.get("data"));
+                String type = jsonData.getString("eventType");
+                log(type + " " + uri + ": " +jsonData.get("data"));
                         switch (uri) {
                             case lolGameflowV1GameflowPhase:
                                 handle_lol_gameflow_v1_gameflow_phase(jsonData); //TODO: Doesnt work, replace with Gameflow session instead
@@ -82,7 +83,7 @@ public class BackendMessageHandler {
                         }
                 }
         } catch (Exception e) {
-            log(e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+            log("[handleMessage]: " + e + " - "+message, MainInitiator.LOG_LEVEL.ERROR);
             return;
         }
     }
@@ -216,24 +217,25 @@ public class BackendMessageHandler {
     //For OnJsonApiEvent_lol-loot_v2_player-loot-map; the updated / event Value is the new map;
 
     private void handle_lol_champ_select_v1_session(JSONObject jsonData) {
-        String uri = jsonData.getString("uri");
-        String type = jsonData.getString("eventType");
-        JSONObject actualData = jsonData.getJSONObject("data");
-        switch (type) {
-            case "Create":
-            case "Update":
-                log(actualData);
-                JSONObject data = mainInitiator.getDataManager().updateFEChampSelectSession(actualData);
-                if (data == null) return;
-                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ChampSelectUpdate", data));
-                break;
-            case "Delete":
-                mainInitiator.getDataManager().resetChampSelectSession();
-                break;
-            default:
-                log("OnJsonApiEvent_lol-champ-select_v1_session - Unkown type: " +type);
-            break;
-        }
+        return;
+//        String uri = jsonData.getString("uri");
+//        String type = jsonData.getString("eventType");
+//        JSONObject actualData = jsonData.getJSONObject("data");
+//        switch (type) {
+//            case "Create":
+//            case "Update":
+//                log(actualData);
+//                JSONObject data = mainInitiator.getDataManager().updateFEChampSelectSession(actualData);
+//                if (data == null) return;
+//                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ChampSelectUpdate", data));
+//                break;
+//            case "Delete":
+//                mainInitiator.getDataManager().resetChampSelectSession();
+//                break;
+//            default:
+//                log("OnJsonApiEvent_lol-champ-select_v1_session - Unkown type: " +type);
+//            break;
+//        }
     }
 
     private void handle_lol_regalia_v2_summoners(JSONObject jsonData) {
@@ -244,7 +246,9 @@ public class BackendMessageHandler {
         BigInteger summonerId = new BigInteger(summonerIdStr);
 
         mainInitiator.getDataManager().updateFERegaliaInfo(summonerId);
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LobbyUpdate", mainInitiator.getDataManager().getCurrentLobbyState()));
+        JSONObject currentState =  mainInitiator.getDataManager().getCurrentLobbyState();
+        if (currentState == null) return;
+        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LobbyUpdate", currentState));
     }
 
     private void handle_lol_chat_v1_friends(JSONObject jsonData) {
@@ -255,10 +259,10 @@ public class BackendMessageHandler {
     }
 
     private void handle_lol_gameflow_v1_gameflow_phase(JSONObject jsonData) {
-        JSONObject actualData = jsonData.getJSONObject("data");
-        JSONObject data = mainInitiator.getDataManager().updateFEGameflowStatus(actualData);
-        if (data == null || data.isEmpty()) return;
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("GameflowPhaseUpdate",data));
+//        JSONObject actualData = jsonData.getJSONObject("data");
+//        JSONObject data = mainInitiator.getDataManager().updateFEGameflowStatus(actualData);
+//        if (data == null || data.isEmpty()) return;
+//        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("GameflowPhaseUpdate",data));
     }
 
     private void handle_lol_lobby_v2_lobby(JSONObject jsonData) {

@@ -2,10 +2,15 @@ package com.iambadatplaying.tasks;
 
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
+import com.iambadatplaying.ressourceServer.ProxyHandler;
+import com.iambadatplaying.ressourceServer.ResourceServer;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -38,33 +43,7 @@ public class AutoPickChamp extends Task {
                 return;
             }
             if (!alreadyPicked) {
-                JSONObject data = updateData.getJSONObject("data");
-                JSONArray actions = data.getJSONArray("actions");
-                if (actions.isEmpty()) {
-                    return;
-                }
-                JSONArray currentAction = actions.getJSONArray(actions.length() -1);
-                for (int i = 0; i < currentAction.length(); i++) {
-                    JSONObject currentSubAction = currentAction.getJSONObject(i);
-                    Boolean isInProgress = currentSubAction.getBoolean("isInProgress");
-                    if (isInProgress) {
-                        Boolean isAllyAction = currentSubAction.getBoolean("isAllyAction");
-                        if (isAllyAction) {
-                            Integer actorCellId = currentSubAction.getInt("actorCellId");
-                            Integer localPlayerCellId = data.getInt("localPlayerCellId");
-                            if (localPlayerCellId.equals(actorCellId)) {
-                                String type = currentSubAction.getString("type");
-                                if ("pick".equals(type)) {
-                                    log("Requirements for champ pick met!", MainInitiator.LOG_LEVEL.DEBUG);
-                                    Integer actionId = currentSubAction.getInt("id");
-                                    currentSubAction.put("championId", championId);
-                                    lockInChampion(currentSubAction, actionId);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
+                scheduleLockIn(championId);
             } else log("Already picked, skipping", MainInitiator.LOG_LEVEL.DEBUG);
         } catch (Exception e) {
             e.printStackTrace();
@@ -72,20 +51,22 @@ public class AutoPickChamp extends Task {
     }
 
 
-    private void lockInChampion(JSONObject action, Integer actionId) {
+    private void scheduleLockIn(Integer championId) {
             alreadyPicked = true;
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
                     try {
                         log("Trying to invoke champion Pick", MainInitiator.LOG_LEVEL.DEBUG);
-                        HttpURLConnection con1 = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PATCH,"/lol-champ-select/v1/session/actions/"+actionId, action.toString());
-                        Integer respCode = con1.getResponseCode();
-                        if(200 == respCode || 204 == respCode) {
-                            HttpURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-champ-select/v1/session/actions/"+actionId+"/complete" , "{}");
-                            con.getResponseCode();
-                            con.disconnect();
-                        }
+                        JSONObject action = new JSONObject();
+                        action.put("championId", championId);
+                        action.put("lockIn", true);
+                        HttpURLConnection proxyCon = (HttpURLConnection) new URL("http://localhost:"+ MainInitiator.RESSOURCE_SERVER_PORT +"/rest/champSelect/pick").openConnection();
+                        proxyCon.setRequestMethod("POST");
+                        proxyCon.setDoOutput(true);
+                        proxyCon.getOutputStream().write(action.toString().getBytes());
+                        proxyCon.getResponseCode();
+                        proxyCon.disconnect();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

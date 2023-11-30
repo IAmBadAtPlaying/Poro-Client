@@ -22,42 +22,24 @@ public class DataManager {
     public static final String EVENT_MESSAGE_UPDATE = "MessageUpdate";
     public static final String EVENT_LOOT_UPDATE = "LootUpdate";
 
+    public static final String INSTRUCTION_PLAY_SOUND = "PlaySound";
 
     private static final String LOOT_COUNT = "count";
-    
+
     private static final String SUMMONER_PUUID = "puuid";
     private static final String SUMMONER_SUMMONER_ID = "summonerId";
 
     private static final String TYPE_SYSTEM = "system";
 
     private enum ChampSelectState {
-        PREPARATION(10),
-        BANNING(11),
-        AWAITING_BAN_RESULTS(21),
-        AWAITING_PICK(22),
-        PICKING_WITHOUT_BAN(12),
-        PICKING_WITH_BAN(13),
-        AWAITING_FINALIZATION(25),
-        FINALIZATION(15);
-
-        private int value;
-
-        private ChampSelectState(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-
-        public static ChampSelectState fromValue(int value) {
-            for (ChampSelectState state : ChampSelectState.values()) {
-                if (state.getValue() == value) {
-                    return state;
-                }
-            }
-            return null;
-        }
+        PREPARATION,
+        BANNING,
+        AWAITING_BAN_RESULTS,
+        AWAITING_PICK,
+        PICKING_WITHOUT_BAN,
+        PICKING_WITH_BAN,
+        AWAITING_FINALIZATION,
+        FINALIZATION;
 
         // Logic breaks in tournament draft
         public static ChampSelectState fromParameters(JSONObject parameters) {
@@ -180,6 +162,7 @@ public class DataManager {
         this.championJson = new JSONObject();
         this.summonerSpellJson = new JSONObject();
         this.conversationMap = new HashMap<>();
+        this.synchronizedFriendListMap = Collections.synchronizedMap(new HashMap<>());
 
         this.disenchantExecutor = Executors.newFixedThreadPool(4);
 
@@ -192,7 +175,7 @@ public class DataManager {
     }
 
     public Conversation getConversation(String conversationId) {
-        if(!conversationId.contains("@")) {
+        if (!conversationId.contains("@")) {
             try {
                 conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
             } catch (Exception e) {
@@ -203,7 +186,8 @@ public class DataManager {
         if (conversationMap.get(conversationId) != null) {
             log("Conversation found in map");
             Conversation conversation = conversationMap.get(conversationId);
-            if(Conversation.SCOPE.PEER_TO_PEER.equals(conversation.getScope())) setActiveConversationId(conversationId);
+            if (Conversation.SCOPE.PEER_TO_PEER.equals(conversation.getScope()))
+                setActiveConversationId(conversationId);
             return conversationMap.get(conversationId);
         } else {
             log("Conversation not found in map, fetching info and posting active conversation");
@@ -218,7 +202,8 @@ public class DataManager {
         Conversation conversation = fetchConversationRoomInfo(conversationId);
         fetchPreviousMessages(conversation);
         if (conversation == null) return null;
-        if (Conversation.SCOPE.PEER_TO_PEER.equals(conversation.getScope())) setActiveConversationId(conversation.getId());
+        if (Conversation.SCOPE.PEER_TO_PEER.equals(conversation.getScope()))
+            setActiveConversationId(conversation.getId());
         return conversation;
     }
 
@@ -226,7 +211,7 @@ public class DataManager {
         log("Setting active conversation to " + conversationId);
         JSONObject activeConversation = new JSONObject();
         activeConversation.put("id", conversationId);
-        Integer respCode = (Integer) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/conversations/active", activeConversation.toString()));
+        Integer respCode = (Integer) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/conversations/active", activeConversation.toString()));
         log("Response code: " + respCode);
     }
 
@@ -235,7 +220,7 @@ public class DataManager {
         JSONObject conversationScope = new JSONObject();
         conversationScope.put("id", conversationId);
         conversationScope.put("type", "chat");
-        Integer respCode = (Integer) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations", conversationScope.toString()));
+        Integer respCode = (Integer) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations", conversationScope.toString()));
         log("[Conversation Scope]: Response code: " + respCode);
     }
 
@@ -250,7 +235,7 @@ public class DataManager {
 
         Message message = Message.fromJsonObject(jsonMessage);
 
-        if(conversationMap.containsKey(conversationId)) {
+        if (conversationMap.containsKey(conversationId)) {
             Conversation conversation = conversationMap.get(conversationId);
             if (justLeftRoom(conversationId, message)) {
                 log("Conversation left, clearing messages for " + conversationId, MainInitiator.LOG_LEVEL.INFO);
@@ -289,17 +274,16 @@ public class DataManager {
     }
 
     private Conversation fetchConversationRoomInfo(String conversationId) {
-            log("[Conversation Fetch] Fetching for " + conversationId);
-            String url = "/lol-chat/v1/conversations/" + conversationId;
-            JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));
-            System.out.println(data);
-            if (data != null) {
-                log(data.toString());
-                return Conversation.fromJsonObject(data);
-            } else {
-                log("Error fetching conversation info");
-            }
-            return null;
+        log("[Conversation Fetch] Fetching for " + conversationId);
+        String url = "/lol-chat/v1/conversations/" + conversationId;
+        JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));
+        if (data != null) {
+            log(data.toString());
+            return Conversation.fromJsonObject(data);
+        } else {
+            log("Error fetching conversation info");
+        }
+        return null;
     }
 
     private void logConversation(String conversationId) {
@@ -307,7 +291,6 @@ public class DataManager {
             log("Conversation not found");
             return;
         }
-        System.out.println(conversationMap.get(conversationId).toJsonObject());
     }
 
     //Todo check if Author id is the same as the current user
@@ -352,7 +335,7 @@ public class DataManager {
             JSONObject jsonMessage = jsonMessages.getJSONObject(i);
             Message message = Message.fromJsonObject(jsonMessage);
             if (message != null) {
-                if(message.isSystemMessage()) continue;
+                if (message.isSystemMessage()) continue;
                 conversation.addMessage(message);
             }
         }
@@ -371,11 +354,11 @@ public class DataManager {
         try {
             if (!disenchantExecutor.isTerminated()) {
                 disenchantExecutor.shutdownNow();
-                if(disenchantExecutor.awaitTermination(3,  TimeUnit.SECONDS)) {
+                if (disenchantExecutor.awaitTermination(3, TimeUnit.SECONDS)) {
                     log("Executor shutdown successful");
-                }else log("Executor shutdown failed");
+                } else log("Executor shutdown failed");
             }
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             log("Executor termination failed: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
         }
         disenchantExecutor = null;
@@ -389,7 +372,7 @@ public class DataManager {
         cellIdMemberMap = null;
         if (cellIdActionMap != null) cellIdActionMap.clear();
         cellIdActionMap = null;
-        if(availableQueueMap != null) availableQueueMap.clear();
+        if (availableQueueMap != null) availableQueueMap.clear();
         availableQueueMap = null;
 
         this.championJson = null;
@@ -403,7 +386,7 @@ public class DataManager {
     }
 
     public void initQueueMap() {
-        JSONArray queueArray = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-game-queues/v1/queues"));
+        JSONArray queueArray = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-queues/v1/queues"));
         for (int i = 0; i < queueArray.length(); i++) {
             JSONObject currentQueue = queueArray.getJSONObject(i);
             if ("Available".equals(currentQueue.getString("queueAvailability"))) {
@@ -431,7 +414,7 @@ public class DataManager {
                 case "SKIN_RENTAL":
                     disenchantType = "SKIN";
                     break;
-                case  "WARDSKIN_RENTAL":
+                case "WARDSKIN_RENTAL":
                     disenchantType = "WARDSKIN";
                     break;
                 default:
@@ -457,7 +440,7 @@ public class DataManager {
         final String disenchantTypeFinal = disenchantType;
         for (JSONArray disenchantArray : disenchantCollection) {
             disenchantExecutor.execute(() -> {
-                mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-loot/v1/recipes/"+disenchantTypeFinal+"_reroll/craft?repeat=1", disenchantArray.toString()));
+                mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-loot/v1/recipes/" + disenchantTypeFinal + "_reroll/craft?repeat=1", disenchantArray.toString()));
                 log(disenchantArray.toString());
                 log("Time for reroll: " + (System.currentTimeMillis() - startTime) + "ms");
             });
@@ -473,7 +456,7 @@ public class DataManager {
         Timer timer = new Timer();
         timer.schedule(refetchLoot, 2000);
         try {
-            if(disenchantExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+            if (disenchantExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
                 log("Successfully rerolled all elements in given time");
             } else log("Some elements could not be rerolled in time");
         } catch (InterruptedException e) {
@@ -529,7 +512,7 @@ public class DataManager {
         for (JSONArray disenchantArray : disenchantCollection) {
             try {
                 log(disenchantArray.toString());
-                String response = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-loot/v1/craft/mass", disenchantArray.toString()));
+                String response = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-loot/v1/craft/mass", disenchantArray.toString()));
                 log(response);
                 Thread.sleep(1000);
             } catch (Exception e) {
@@ -547,7 +530,7 @@ public class DataManager {
         Timer timer = new Timer();
         timer.schedule(refetchLoot, 2000);
         try {
-            if(disenchantExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+            if (disenchantExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
                 log("Successfully disenchanted all elements in given time");
             } else log("Some elements could not be disenchanted in time");
         } catch (InterruptedException e) {
@@ -558,7 +541,7 @@ public class DataManager {
     }
 
     private void updateLootMap() {
-        JSONObject preFormattedLoot = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-loot/v2/player-loot-map"));
+        JSONObject preFormattedLoot = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v2/player-loot-map"));
         lootJsonObject = preFormattedLoot.getJSONObject("playerLoot");
     }
 
@@ -585,7 +568,7 @@ public class DataManager {
     }
 
     public void updateClientSystemStates() {
-        JSONObject clientSystemStates = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-platform-config/v1/namespaces/ClientSystemStates"));
+        JSONObject clientSystemStates = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-platform-config/v1/namespaces/ClientSystemStates"));
         JSONArray enabledQueueIds = clientSystemStates.getJSONArray("enabledQueueIdsList");
         if (platformConfigQueues == null) {
             platformConfigQueues = new JSONObject();
@@ -620,7 +603,7 @@ public class DataManager {
     public JSONObject getFEGameflowStatus() {
         JSONObject feGameflowObject;
         if (currentLobbyState == null) {
-            String currentGameflowString = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-gameflow/v1/gameflow-phase"));
+            String currentGameflowString = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-gameflow/v1/gameflow-phase"));
             currentGameflowString = currentGameflowString.replace("\"", "");
             JSONObject currentGameflowObject = new JSONObject().put("phase", currentGameflowString.trim());
             feGameflowObject = beToFeGameflowInfo(currentGameflowObject);
@@ -646,426 +629,487 @@ public class DataManager {
 
     public JSONObject getFEFriendObject() {
         JSONObject feFriendObject = new JSONObject();
-        if (synchronizedFriendListMap == null) {
-            log ("FE Friend List not initialized, creating..");
-            this.synchronizedFriendListMap = Collections.synchronizedMap(new HashMap<String, JSONObject>());
-            try {
-                JSONArray friendArray = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
-                for (int i = 0; i < friendArray.length(); i++) {
-                    JSONObject friendObject = beToFeFriendsInfo(friendArray.getJSONObject(i));
-                    if (friendObject == null || friendObject.isEmpty()) continue;
-                    feFriendObject.put(friendObject.getString(SUMMONER_PUUID),friendObject);
-                    synchronizedFriendListMap.put(friendObject.getString(SUMMONER_PUUID), friendObject);
+        if (synchronizedFriendListMap == null) synchronizedFriendListMap = Collections.synchronizedMap(new HashMap<>());
+        if (synchronizedFriendListMap.isEmpty())
+            {
+                try {
+                    JSONArray friendArray = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
+                    for (int i = 0; i < friendArray.length(); i++) {
+                        JSONObject friendObject = beToFeFriendsInfo(friendArray.getJSONObject(i));
+                        if (friendObject == null || friendObject.isEmpty()) continue;
+                        feFriendObject.put(friendObject.getString(SUMMONER_PUUID), friendObject);
+                        synchronizedFriendListMap.put(friendObject.getString(SUMMONER_PUUID), friendObject);
+                    }
+                } catch (Exception e) {
                 }
-            } catch (Exception e) {
-
-            }
-        } else {
-            log ("FE Friend List already initialized, returning saved values");
-            for (JSONObject json : synchronizedFriendListMap.values()) {
-                feFriendObject.put(json.getString(SUMMONER_PUUID),json);
-            }
-        }
-        return feFriendObject;
-    }
-
-    private JSONObject beToFeFriendsInfo(JSONObject backendFriendObject) {
-        JSONObject data = new JSONObject();
-        try {
-            String availability = backendFriendObject.getString("availability");
-            String puuid = backendFriendObject.getString(SUMMONER_PUUID);
-            if (puuid == null || puuid.isEmpty()) return null;
-            String statusMessage = backendFriendObject.getString("statusMessage");
-            String name = backendFriendObject.getString("name");
-            String id = backendFriendObject.getString("id");
-            if (name == null || name.isEmpty()) return null;
-            Integer iconId = backendFriendObject.getInt("icon");
-            if (iconId < 1) {
-                iconId = 1;
-            }
-            BigInteger summonerId = backendFriendObject.getBigInteger(SUMMONER_SUMMONER_ID);
-            data.put(SUMMONER_PUUID, puuid);
-            data.put("statusMessage", statusMessage);
-            data.put("name", name);
-            data.put("iconId", iconId);
-            data.put("id", id);
-            data.put(SUMMONER_SUMMONER_ID, summonerId);
-            data.put("availability", availability);
-            copyJsonAttrib("groupId", backendFriendObject, data);
-            copyJsonAttrib("lol", backendFriendObject, data);
-
-            return data;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return data;
-    }
-
-    public JSONObject getFELobbyObject() {
-        JSONObject feLobbyObject = new JSONObject();
-        if (currentLobbyState == null) {
-            log("No Lobby State available, creating...");
-            try {
-                JSONObject lobbyObject = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-lobby/v2/lobby"));
-                log(lobbyObject);
-                if (lobbyObject.has("errorCode")) {
-                    return feLobbyObject;
+            } else {
+                for (JSONObject json : synchronizedFriendListMap.values()) {
+                    feFriendObject.put(json.getString(SUMMONER_PUUID), json);
                 }
-                feLobbyObject = beToFeLobbyInfo(lobbyObject);
-                currentLobbyState = feLobbyObject;
-                return feLobbyObject;
+
+            }
+            return feFriendObject;
+        }
+
+        private JSONObject beToFeFriendsInfo(JSONObject backendFriendObject) {
+            JSONObject data = new JSONObject();
+            try {
+                String availability = backendFriendObject.getString("availability");
+                String puuid = backendFriendObject.getString(SUMMONER_PUUID);
+                if (puuid == null || puuid.isEmpty()) return null;
+                String statusMessage = backendFriendObject.getString("statusMessage");
+                String name = backendFriendObject.getString("name");
+                String id = backendFriendObject.getString("id");
+                if (name == null || name.isEmpty()) return null;
+                Integer iconId = backendFriendObject.getInt("icon");
+                if (iconId < 1) {
+                    iconId = 1;
+                }
+                BigInteger summonerId = backendFriendObject.getBigInteger(SUMMONER_SUMMONER_ID);
+                data.put(SUMMONER_PUUID, puuid);
+                data.put("statusMessage", statusMessage);
+                data.put("name", name);
+                data.put("iconId", iconId);
+                data.put("id", id);
+                data.put(SUMMONER_SUMMONER_ID, summonerId);
+                data.put("availability", availability);
+                copyJsonAttrib("groupId", backendFriendObject, data);
+                copyJsonAttrib("lol", backendFriendObject, data);
+
+                return data;
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }
-        return currentLobbyState;
-    }
-
-    public JSONObject updateFEFriend(JSONObject data) {
-        JSONObject updatedFEData = beToFeFriendsInfo(data);
-        if (updatedFEData == null) {
-            return null;
-        }
-        JSONObject currentFEData = synchronizedFriendListMap.get(updatedFEData.getString(SUMMONER_PUUID));
-        if (updatedFEData.similar(currentFEData)) {
-            return null;
-        }
-        synchronizedFriendListMap.put(updatedFEData.getString(SUMMONER_PUUID), updatedFEData);
-        return updatedFEData;
-    }
-
-    public JSONObject getCurrentLobbyState() {
-        return currentLobbyState;
-    }
-
-    private JSONObject beToFeLobbyInfo(JSONObject data) {
-        if (data == null ||data.isEmpty()) {
-            return null;
+            return data;
         }
 
-        JSONObject feData = new JSONObject();
-
-        copyJsonAttrib("partyId", data, feData);
-        copyJsonAttrib("invitations", data, feData);
-
-        JSONObject gameConfig = data.getJSONObject("gameConfig");
-        JSONObject feGameConfig = new JSONObject();
-
-        //TODO: Add Custom Game support; add TFT Support
-        copyJsonAttrib("queueId", gameConfig, feGameConfig);
-        copyJsonAttrib("showPositionSelector", gameConfig, feGameConfig);
-        copyJsonAttrib("isCustom", gameConfig,feGameConfig);
-        copyJsonAttrib("maxLobbySize", gameConfig, feGameConfig);
-        copyJsonAttrib("allowablePremadeSizes", gameConfig, feGameConfig);
-        copyJsonAttrib("mapId", gameConfig, feGameConfig);
-        copyJsonAttrib("gameMode", gameConfig, feGameConfig);
-
-        JSONObject localMember = data.getJSONObject("localMember");
-        JSONObject feLocalMember = beLobbyMemberToFeLobbyMember(localMember);
-
-        JSONArray members = data.getJSONArray("members");
-        JSONArray feMembers = new JSONArray();
-        int j = 0;
-        feMembers.put(indexToFEIndex(0),feLocalMember);
-        j++;
-        for (int i = 0; i < members.length(); i++) {
-            int actualIndex = indexToFEIndex(j);
-            JSONObject currentMember = beLobbyMemberToFeLobbyMember(members.getJSONObject(i));
-            if (currentMember.getString(SUMMONER_PUUID).equals(feLocalMember.getString(SUMMONER_PUUID))) {
-                continue;
+        public JSONObject getFELobbyObject () {
+            JSONObject feLobbyObject = new JSONObject();
+            if (currentLobbyState == null) {
+                log("No Lobby State available, creating...");
+                try {
+                    JSONObject lobbyObject = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/lobby"));
+                    log(lobbyObject);
+                    if (lobbyObject.has("errorCode")) {
+                        return feLobbyObject;
+                    }
+                    feLobbyObject = beToFeLobbyInfo(lobbyObject);
+                    currentLobbyState = feLobbyObject;
+                    return feLobbyObject;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
-            feMembers.put(actualIndex, currentMember);
+            return currentLobbyState;
+        }
+
+        public JSONObject updateFEFriend (JSONObject data){
+            try {
+                JSONObject updatedFEData = beToFeFriendsInfo(data);
+                if (updatedFEData == null) {
+                    return null;
+                }
+                String key = updatedFEData.getString(SUMMONER_PUUID);
+                if (key != null) {
+                    JSONObject currentFEData = synchronizedFriendListMap.get(key);
+                    if (updatedFEData.similar(currentFEData)) {
+                        return null;
+                    }
+                }
+                synchronizedFriendListMap.put(updatedFEData.getString(SUMMONER_PUUID), updatedFEData);
+                return updatedFEData;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return new JSONObject();
+        }
+
+        public JSONObject getCurrentLobbyState () {
+            return currentLobbyState;
+        }
+
+        private JSONObject beToFeLobbyInfo (JSONObject data){
+            if (data == null || data.isEmpty()) {
+                return null;
+            }
+
+            JSONObject feData = new JSONObject();
+
+            copyJsonAttrib("partyId", data, feData);
+            copyJsonAttrib("invitations", data, feData);
+
+            JSONObject gameConfig = data.getJSONObject("gameConfig");
+            JSONObject feGameConfig = new JSONObject();
+
+            //TODO: Add Custom Game support; add TFT Support
+            copyJsonAttrib("queueId", gameConfig, feGameConfig);
+            copyJsonAttrib("showPositionSelector", gameConfig, feGameConfig);
+            copyJsonAttrib("isCustom", gameConfig, feGameConfig);
+            copyJsonAttrib("maxLobbySize", gameConfig, feGameConfig);
+            copyJsonAttrib("allowablePremadeSizes", gameConfig, feGameConfig);
+            copyJsonAttrib("mapId", gameConfig, feGameConfig);
+            copyJsonAttrib("gameMode", gameConfig, feGameConfig);
+
+            JSONObject localMember = data.getJSONObject("localMember");
+            JSONObject feLocalMember = beLobbyMemberToFeLobbyMember(localMember);
+
+            JSONArray members = data.getJSONArray("members");
+            JSONArray feMembers = new JSONArray();
+            int j = 0;
+            feMembers.put(indexToFEIndex(0), feLocalMember);
             j++;
-        }
-        for (; j < MAX_LOBBY_SIZE; j++) {
-            feMembers.put(indexToFEIndex(j), new JSONObject());
-        }
-
-        feData.put("gameConfig", feGameConfig);
-        feData.put("localMember", feLocalMember);
-        feData.put("members", feMembers);
-        return feData;
-    }
-
-    private int indexToFEIndex(int preParsedIndex) {
-        int actualIndex = 0;
-        int diff = indexDiff(preParsedIndex);
-
-        actualIndex = MAX_LOBBY_HALFS_INDEX + diff;
-        return actualIndex;
-    }
-
-    private int indexDiff(int index) {
-        if (index % 2 == 0) {
-            index /= 2;
-            return index;
-        } else return -indexDiff(index + 1);
-    }
-
-    public JSONObject updateFELobby(JSONObject data) {
-        JSONObject updatedFEData = beToFeLobbyInfo(data);
-        if (updatedFEData == null) {
-            currentLobbyState = null;
-            return null;
-        }
-        if (updatedFEData.similar(currentLobbyState)) {
-            log("No FE relevant Lobby update");
-            return null;
-        }
-        currentLobbyState = updatedFEData;
-        return updatedFEData;
-    }
-
-    public JSONObject updateFEChampSelectSession (JSONObject data) {
-        JSONObject updatedFEData = beToFEChampSelectSession(data);
-        if (updatedFEData == null) {
-            return null;
-        }
-        if (updatedFEData.similar(currentChampSelectState)) {
-            return null;
-        }
-        currentChampSelectState = updatedFEData;
-        return updatedFEData;
-    }
-
-    public JSONObject beToFEChampSelectSession(JSONObject data) {
-        //Idea: Store every member of "myTeam" and "theirTeam" in a HashMap, lookup via actorCellId
-        //This would allow modifying each entry in myTeam and their team via the action tab => Hovering / Pick Intent / Ban Hover
-        JSONObject feChampSelect = new JSONObject();
-
-        copyJsonAttrib("isCustomGame", data, feChampSelect); //This might need to trigger further changes
-        copyJsonAttrib("localPlayerCellId", data, feChampSelect);
-        copyJsonAttrib("gameId", data, feChampSelect);
-        copyJsonAttrib("hasSimultaneousBans", data, feChampSelect);
-        copyJsonAttrib("skipChampionSelect", data, feChampSelect);
-        copyJsonAttrib("benchEnabled", data, feChampSelect);
-        copyJsonAttrib("rerollsRemaining", data, feChampSelect);
-
-        //Handle Actions
-        //We only need to update via the last action / NO doest work
-        copyJsonAttrib("actions", data, feChampSelect);
-        JSONArray actions = data.getJSONArray("actions");
-        beActionToFEAction(actions);
-
-        JSONObject feTimer = new JSONObject();
-        JSONObject timer = data.getJSONObject("timer");
-
-        //MyTeam
-        int localPlayerCellId = data.getInt("localPlayerCellId");
-        JSONArray feMyTeam = data.getJSONArray("myTeam");
-        for (int i = 0; i < feMyTeam.length(); i++) {
-            int playerCellId = feMyTeam.getJSONObject(i).getInt("cellId");
-            JSONObject playerObject = teamMemberToSessionMap(feMyTeam.getJSONObject(i), timer);
-            if (playerCellId == localPlayerCellId) {
-                feChampSelect.put("localPlayerPhase", playerObject.getString("stateDebug"));
-            }
-            feMyTeam.put(i, playerObject);
-        }
-        feChampSelect.put("myTeam", feMyTeam);
-
-        //TheirTeam
-        copyJsonAttrib("theirTeam", data, feChampSelect);
-        JSONArray feTheirTeam = data.getJSONArray("myTeam");
-        for (int i = 0; i < feMyTeam.length(); i++) {
-            feTheirTeam.put(i, teamMemberToSessionMap(feTheirTeam.getJSONObject(i),timer));
-        }
-
-        copyJsonAttrib("phase", timer, feTimer);
-        copyJsonAttrib("isInfinite", timer, feTimer);
-        copyJsonAttrib("isInfinite", timer, feTimer);
-
-        feChampSelect.put("timer",feTimer);
-
-        JSONObject bans = data.getJSONObject("bans");
-        JSONObject feBans = new JSONObject();
-
-        copyJsonAttrib("theirTeamBans", bans, feBans);
-        copyJsonAttrib("myTeamBans", bans, feBans);
-        copyJsonAttrib("numBans", bans, feBans);
-
-
-        feChampSelect.put("bans", feBans);
-
-        return feChampSelect;
-    }
-
-    private JSONObject teamMemberToSessionMap(JSONObject feMember, JSONObject timer) {
-        Integer cellId = feMember.getInt("cellId");
-        JSONObject mappedAction = cellIdActionMap.get(cellId);
-        if (mappedAction == null || mappedAction.isEmpty()) {
-            log("No fitting action found for cellId: " + cellId);
-        } else {
-
-            copyJsonAttrib("pickAction", mappedAction, feMember);
-            copyJsonAttrib("banAction", mappedAction, feMember);
-        }
-
-        JSONObject phaseObject = new JSONObject();
-        copyJsonAttrib("phase", timer, phaseObject);
-        copyJsonAttrib("pickAction", mappedAction, phaseObject);
-        copyJsonAttrib("banAction", mappedAction, phaseObject);
-
-        ChampSelectState state = ChampSelectState.fromParameters(phaseObject);
-        if (state == null) {
-            log(feMember);
-            log(timer);
-            log("No fitting state found for cellId: " + cellId);
-        } else {
-            System.out.println("CellId: " + cellId + "; State: " + state + "; Value: " + state.getValue());
-
-            feMember.put("state", state.getValue());
-
-            //TODO: DEBUG, remove this
-            feMember.put("stateDebug", state.name());
-        }
-        cellIdMemberMap.put(cellId, feMember);
-        return feMember;
-    }
-
-    private void updateInternalActionMapping(JSONObject singleAction) {
-        Integer actorCellId = singleAction.getInt("actorCellId");
-        Boolean completed = singleAction.getBoolean("completed");
-        Boolean inProgress = singleAction.getBoolean("isInProgress");
-        Integer championId = singleAction.getInt("championId");
-        Integer id = singleAction.getInt("id");
-        String type = singleAction.getString("type");
-        cellIdActionMap.compute(actorCellId, (k, v) -> {
-            if (v == null || v.isEmpty()) {
-                v = new JSONObject();
-            }
-            JSONObject currentAction = new JSONObject();
-
-            currentAction.put("type", type);
-            currentAction.put("completed", completed);
-            currentAction.put("isInProgress", inProgress);
-            currentAction.put("championId", championId);
-            currentAction.put("id", id);
-            switch (type) {
-                case "pick":
-                    v.put("pickAction", currentAction);
-                break;
-                case "ban":
-                    v.put("banAction",currentAction);
-                break;
-                default:
-                    log("Unkown Type: " + type, MainInitiator.LOG_LEVEL.ERROR);
-                break;
-            }
-            return v;
-        });
-
-    }
-
-    private int performChampionAction(String actionType, Integer championId, boolean lockIn) throws IOException {
-        if (currentChampSelectState == null || currentChampSelectState.isEmpty()) {
-            return -1;
-        }
-
-        if (!currentChampSelectState.has("localPlayerCellId")) {
-            return -1;
-        }
-
-        Integer localPlayerCellId = currentChampSelectState.getInt("localPlayerCellId");
-        JSONObject actionBundle = cellIdActionMap.get(localPlayerCellId);
-
-        if (actionBundle == null || actionBundle.isEmpty()) {
-            return -1;
-        }
-
-        JSONObject actionObject;
-
-        if (actionType.equals("pick")) {
-            actionObject = actionBundle.getJSONObject("pickAction");
-        } else if (actionType.equals("ban")) {
-            actionObject = actionBundle.getJSONObject("banAction");
-        } else {
-            return -1;
-        }
-
-        int actionId = actionObject.getInt("id");
-        JSONObject hoverAction = new JSONObject();
-        hoverAction.put("championId", championId);
-
-        if (lockIn) {
-            hoverAction.put("completed", true);
-        }
-
-        String request = "/lol-champ-select/v1/session/actions/" + actionId;
-        HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PATCH, request, hoverAction.toString());
-        return con.getResponseCode();
-    }
-
-    public int pickChampion(Integer championId, boolean lockIn) throws IOException {
-        return performChampionAction("pick", championId, lockIn);
-    }
-
-    public int banChampion(Integer championId, boolean lockIn) throws IOException {
-        return performChampionAction("ban", championId, lockIn);
-    }
-
-    private void beActionToFEAction(JSONArray action) {
-        if (action == null || action.isEmpty()) return;
-        for (int i = 0; i < action.length(); i++) {
-            JSONArray subAction = action.getJSONArray(i);
-            if (subAction == null || subAction.isEmpty()) continue;
-            for (int j = 0; j < subAction.length(); j++) {
-                JSONObject singleAction = subAction.getJSONObject(j);
-                updateInternalActionMapping(singleAction);
-            }
-        }
-    }
-
-    public JSONObject updateFERegaliaInfo(BigInteger summonerId) {
-
-        JSONObject regalia = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-regalia/v2/summoners/"+summonerId.toString()+"/regalia"));
-        regaliaMap.put(summonerId, regalia);
-        log(regalia);
-
-        if (currentLobbyState == null) return regalia;
-        JSONArray members = currentLobbyState.getJSONArray("members");
-        for (int i = 0; i < members.length(); i++) {
-            JSONObject member = members.getJSONObject(i);
-            if (member != null && !member.isEmpty() && member.has(SUMMONER_SUMMONER_ID)) {
-                if (!summonerId.equals(member.getBigInteger(SUMMONER_SUMMONER_ID))) {
+            for (int i = 0; i < members.length(); i++) {
+                int actualIndex = indexToFEIndex(j);
+                JSONObject currentMember = beLobbyMemberToFeLobbyMember(members.getJSONObject(i));
+                if (currentMember.getString(SUMMONER_PUUID).equals(feLocalMember.getString(SUMMONER_PUUID))) {
                     continue;
                 }
-                member.put("regalia", regalia);
+                feMembers.put(actualIndex, currentMember);
+                j++;
+            }
+            for (; j < MAX_LOBBY_SIZE; j++) {
+                feMembers.put(indexToFEIndex(j), new JSONObject());
+            }
+
+            feData.put("gameConfig", feGameConfig);
+            feData.put("localMember", feLocalMember);
+            feData.put("members", feMembers);
+            return feData;
+        }
+
+        private int indexToFEIndex ( int preParsedIndex){
+            int actualIndex = 0;
+            int diff = indexDiff(preParsedIndex);
+
+            actualIndex = MAX_LOBBY_HALFS_INDEX + diff;
+            return actualIndex;
+        }
+
+        private int indexDiff ( int index){
+            if (index % 2 == 0) {
+                index /= 2;
+                return index;
+            } else return -indexDiff(index + 1);
+        }
+
+        public JSONObject updateFELobby (JSONObject data){
+            JSONObject updatedFEData = beToFeLobbyInfo(data);
+            if (updatedFEData == null) {
+                currentLobbyState = null;
+                return null;
+            }
+            if (updatedFEData.similar(currentLobbyState)) {
+                log("No FE relevant Lobby update");
+                return null;
+            }
+            currentLobbyState = updatedFEData;
+            return updatedFEData;
+        }
+
+        //DONE
+        public JSONObject updateFEChampSelectSession (JSONObject data){
+            JSONObject updatedFEData = beToFEChampSelectSession(data);
+            if (updatedFEData == null) {
+                return null;
+            }
+            if (updatedFEData.similar(currentChampSelectState)) {
+                return null;
+            }
+            currentChampSelectState = updatedFEData;
+            return updatedFEData;
+        }
+
+        public JSONObject beToFEChampSelectSession (JSONObject data){
+            //Idea: Store every member of "myTeam" and "theirTeam" in a HashMap, lookup via actorCellId
+            //This would allow modifying each entry in myTeam and their team via the action tab => Hovering / Pick Intent / Ban Hover
+            JSONObject feChampSelect = new JSONObject();
+
+            copyJsonAttrib("isCustomGame", data, feChampSelect); //This might need to trigger further changes
+            copyJsonAttrib("localPlayerCellId", data, feChampSelect);
+            copyJsonAttrib("gameId", data, feChampSelect);
+            copyJsonAttrib("hasSimultaneousBans", data, feChampSelect);
+            copyJsonAttrib("skipChampionSelect", data, feChampSelect);
+            copyJsonAttrib("benchEnabled", data, feChampSelect);
+            copyJsonAttrib("rerollsRemaining", data, feChampSelect);
+
+            //Handle Actions
+            //We only need to update via the last action / NO doest work
+            copyJsonAttrib("actions", data, feChampSelect);
+            JSONArray actions = data.getJSONArray("actions");
+            beActionToFEAction(actions);
+
+            JSONObject feTimer = new JSONObject();
+            JSONObject timer = data.getJSONObject("timer");
+
+            //MyTeam
+            int localPlayerCellId = data.getInt("localPlayerCellId");
+            JSONArray feMyTeam = data.getJSONArray("myTeam");
+            for (int i = 0; i < feMyTeam.length(); i++) {
+                int playerCellId = feMyTeam.getJSONObject(i).getInt("cellId");
+                JSONObject playerObject = teamMemberToSessionMap(feMyTeam.getJSONObject(i), timer);
+                if (playerCellId == localPlayerCellId) {
+                    feChampSelect.put("localPlayerPhase", playerObject.getString("state"));
+                }
+                feMyTeam.put(i, playerObject);
+            }
+            feChampSelect.put("myTeam", feMyTeam);
+
+            //TheirTeam
+            copyJsonAttrib("theirTeam", data, feChampSelect);
+            JSONArray feTheirTeam = data.getJSONArray("myTeam");
+            for (int i = 0; i < feMyTeam.length(); i++) {
+                log(feTheirTeam.getJSONObject(i), MainInitiator.LOG_LEVEL.INFO);
+                feTheirTeam.put(i, enemyMemberToSessionMap(feTheirTeam.getJSONObject(i), timer));
+            }
+
+            copyJsonAttrib("phase", timer, feTimer);
+            copyJsonAttrib("isInfinite", timer, feTimer);
+
+            feChampSelect.put("timer", feTimer);
+
+            JSONObject bans = data.getJSONObject("bans");
+            JSONObject feBans = new JSONObject();
+
+            copyJsonAttrib("theirTeamBans", bans, feBans);
+            copyJsonAttrib("myTeamBans", bans, feBans);
+            copyJsonAttrib("numBans", bans, feBans);
+
+
+            feChampSelect.put("bans", feBans);
+
+            return feChampSelect;
+        }
+
+        private JSONObject teamMemberToSessionMap (JSONObject feMember, JSONObject timer){
+            Integer cellId = feMember.getInt("cellId");
+            JSONObject mappedAction = cellIdActionMap.get(cellId);
+            if (mappedAction == null || mappedAction.isEmpty()) {
+                log("No fitting action found for cellId: " + cellId);
+            } else {
+
+                copyJsonAttrib("pickAction", mappedAction, feMember);
+                copyJsonAttrib("banAction", mappedAction, feMember);
+            }
+
+            JSONObject phaseObject = new JSONObject();
+            copyJsonAttrib("phase", timer, phaseObject);
+            copyJsonAttrib("pickAction", mappedAction, phaseObject);
+            copyJsonAttrib("banAction", mappedAction, phaseObject);
+
+            ChampSelectState state = ChampSelectState.fromParameters(phaseObject);
+            if (state == null) {
+                log(feMember);
+                log(timer);
+                log("No fitting state found for cellId: " + cellId);
+            } else {
+
+                feMember.put("state", state.name());
+            }
+            cellIdMemberMap.put(cellId, feMember);
+            return feMember;
+        }
+
+        private JSONObject enemyMemberToSessionMap (JSONObject feMember, JSONObject timer){
+            Integer cellId = feMember.getInt("cellId");
+            JSONObject mappedAction = cellIdActionMap.get(cellId);
+            if (mappedAction == null || mappedAction.isEmpty()) {
+                log("[ENEMY]: No fitting action found for cellId: " + cellId);
+            } else {
+                copyJsonAttrib("pickAction", mappedAction, feMember);
+                copyJsonAttrib("banAction", mappedAction, feMember);
+            }
+
+            JSONObject phaseObject = new JSONObject();
+            copyJsonAttrib("phase", timer, phaseObject);
+            copyJsonAttrib("pickAction", mappedAction, phaseObject);
+            copyJsonAttrib("banAction", mappedAction, phaseObject);
+
+            ChampSelectState state = ChampSelectState.fromParameters(phaseObject);
+            if (state == null) {
+                log(feMember);
+                log(timer);
+                log("No fitting state found for cellId: " + cellId);
+            } else {
+                feMember.put("state", state.name());
+            }
+            cellIdMemberMap.put(cellId, feMember);
+            return feMember;
+        }
+
+        private void updateInternalActionMapping (JSONObject singleAction){
+            Integer actorCellId = singleAction.getInt("actorCellId");
+            Boolean completed = singleAction.getBoolean("completed");
+            Boolean inProgress = singleAction.getBoolean("isInProgress");
+            Boolean isAllyAction = singleAction.getBoolean("isAllyAction");
+            Integer championId = singleAction.getInt("championId");
+            Integer id = singleAction.getInt("id");
+            String type = singleAction.getString("type");
+            cellIdActionMap.compute(actorCellId, (k, v) -> {
+                if (v == null || v.isEmpty()) {
+                    v = new JSONObject();
+                }
+                JSONObject currentAction = new JSONObject();
+                if (!isAllyAction) {
+                    log("[CHAMP-SELECT-DEBUG]: ENEMY ACTION AT ID: " + id, MainInitiator.LOG_LEVEL.WARN);
+                    log("[CHAMP-SELECT-DEBUG]: ENEMY ACTION TYPE: " + type, MainInitiator.LOG_LEVEL.WARN);
+                }
+                currentAction.put("type", type);
+                currentAction.put("completed", completed);
+                currentAction.put("isInProgress", inProgress);
+                currentAction.put("championId", championId);
+                currentAction.put("id", id);
+                switch (type) {
+                    case "pick":
+                        v.put("pickAction", currentAction);
+                        break;
+                    case "ban":
+                        v.put("banAction", currentAction);
+                        break;
+                    default:
+                        log("Unkown Type: " + type, MainInitiator.LOG_LEVEL.ERROR);
+                        break;
+                }
+                return v;
+            });
+
+        }
+
+        private int performChampionAction (String actionType, Integer championId,boolean lockIn) throws IOException {
+            if (currentChampSelectState == null || currentChampSelectState.isEmpty() || championId == null) {
+                return -1;
+            }
+
+            if (!currentChampSelectState.has("localPlayerCellId")) {
+                return -1;
+            }
+
+            Integer localPlayerCellId = currentChampSelectState.getInt("localPlayerCellId");
+            JSONObject actionBundle = cellIdActionMap.get(localPlayerCellId);
+
+            if (actionBundle == null || actionBundle.isEmpty()) {
+                return -1;
+            }
+
+            JSONObject actionObject;
+
+            if (actionType.equals("pick")) {
+                actionObject = actionBundle.getJSONObject("pickAction");
+            } else if (actionType.equals("ban")) {
+                actionObject = actionBundle.getJSONObject("banAction");
+            } else {
+                return -1;
+            }
+
+            int actionId = actionObject.getInt("id");
+            JSONObject hoverAction = new JSONObject();
+            hoverAction.put("championId", championId);
+
+            if (lockIn) {
+                if ("pick".equals(actionType)) {
+                    JSONObject soundObject = new JSONObject();
+                    soundObject.put("source", "/lol-game-data/assets/v1/champion-sfx-audios/" + championId + ".ogg");
+                    mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(INSTRUCTION_PLAY_SOUND, soundObject));
+                    new Timer().schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            JSONObject voiceLineObject = new JSONObject();
+                            voiceLineObject.put("source", "/lol-game-data/assets/v1/champion-choose-vo/" + championId + ".ogg");
+                            mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(INSTRUCTION_PLAY_SOUND, voiceLineObject));
+                        }
+                    }, 300);
+                } //else {
+//                JSONObject soundObject = new JSONObject();
+//                soundObject.put("source", "/lol-game-data/assets/v1/champion-sfx-audios/"+ championId+".ogg");
+//                JSONObject voiceLineObject = new JSONObject();
+//                voiceLineObject.put("source", "/lol-game-data/assets/v1/champion-ban-vo/"+ championId+".ogg");
+//                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(INSTRUCTION_PLAY_SOUND, soundObject));
+//                new Timer().schedule(new TimerTask() {
+//                    @Override
+//                    public void run() {
+//                        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(INSTRUCTION_PLAY_SOUND, voiceLineObject));
+//                    }
+//                }, 300);
+//            }
+                hoverAction.put("completed", true);
+            }
+
+            String request = "/lol-champ-select/v1/session/actions/" + actionId;
+            HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PATCH, request, hoverAction.toString());
+            return con.getResponseCode();
+        }
+
+        public int pickChampion (Integer championId,boolean lockIn) throws IOException {
+            return performChampionAction("pick", championId, lockIn);
+        }
+
+        public int banChampion (Integer championId,boolean lockIn) throws IOException {
+            return performChampionAction("ban", championId, lockIn);
+        }
+
+        private void beActionToFEAction (JSONArray action){
+            if (action == null || action.isEmpty()) return;
+            for (int i = 0; i < action.length(); i++) {
+                JSONArray subAction = action.getJSONArray(i);
+                if (subAction == null || subAction.isEmpty()) continue;
+                for (int j = 0; j < subAction.length(); j++) {
+                    JSONObject singleAction = subAction.getJSONObject(j);
+                    updateInternalActionMapping(singleAction);
+                }
             }
         }
-        currentLobbyState.put("members", members);
 
-        return regalia;
-    }
+        public JSONObject updateFERegaliaInfo (BigInteger summonerId){
 
+            JSONObject regalia = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-regalia/v2/summoners/" + summonerId.toString() + "/regalia"));
+            regaliaMap.put(summonerId, regalia);
+            log(regalia);
 
-    public JSONObject getFERegaliaInfo(BigInteger summonerId) {
-        JSONObject regaliaObject = regaliaMap.get(summonerId);
-        if (regaliaObject == null) {
-            return updateFERegaliaInfo(summonerId);
+            if (currentLobbyState == null) return regalia;
+            JSONArray members = currentLobbyState.getJSONArray("members");
+            for (int i = 0; i < members.length(); i++) {
+                JSONObject member = members.getJSONObject(i);
+                if (member != null && !member.isEmpty() && member.has(SUMMONER_SUMMONER_ID)) {
+                    if (!summonerId.equals(member.getBigInteger(SUMMONER_SUMMONER_ID))) {
+                        continue;
+                    }
+                    member.put("regalia", regalia);
+                    break;
+                }
+            }
+            currentLobbyState.put("members", members);
+
+            return regalia;
         }
-        return regaliaObject;
-    }
 
-    private JSONObject beLobbyMemberToFeLobbyMember(JSONObject member) {
-        JSONObject feMember = new JSONObject();
-        if (member == null) return feMember;
-        copyJsonAttrib("isLeader", member, feMember);
-        copyJsonAttrib("isBot", member, feMember);
-        copyJsonAttrib(SUMMONER_PUUID, member, feMember);
-        copyJsonAttrib("summonerLevel",member,feMember);
-        copyJsonAttrib("ready",member,feMember);
-        copyJsonAttrib(SUMMONER_SUMMONER_ID,member,feMember);
-        copyJsonAttrib("isLeader",member,feMember);
-        copyJsonAttrib("summonerName",member,feMember);
-        copyJsonAttrib("secondPositionPreference",member,feMember);
-        copyJsonAttrib("firstPositionPreference",member,feMember);
-        copyJsonAttrib("summonerIconId", member, feMember);
 
-        feMember.put("regalia", getFERegaliaInfo(feMember.getBigInteger(SUMMONER_SUMMONER_ID)));
-        return feMember;
-    }
+        public JSONObject getFERegaliaInfo (BigInteger summonerId){
+            JSONObject regaliaObject = regaliaMap.get(summonerId);
+            if (regaliaObject == null) {
+                return updateFERegaliaInfo(summonerId);
+            }
+            return regaliaObject;
+        }
 
-    private void copyJsonAttrib(String key, JSONObject src, JSONObject dst) {
+        private JSONObject beLobbyMemberToFeLobbyMember (JSONObject member){
+            JSONObject feMember = new JSONObject();
+            if (member == null) return feMember;
+            copyJsonAttrib("isLeader", member, feMember);
+            copyJsonAttrib("isBot", member, feMember);
+            copyJsonAttrib(SUMMONER_PUUID, member, feMember);
+            copyJsonAttrib("summonerLevel", member, feMember);
+            copyJsonAttrib("ready", member, feMember);
+            copyJsonAttrib(SUMMONER_SUMMONER_ID, member, feMember);
+            copyJsonAttrib("isLeader", member, feMember);
+            copyJsonAttrib("summonerName", member, feMember);
+            copyJsonAttrib("secondPositionPreference", member, feMember);
+            copyJsonAttrib("firstPositionPreference", member, feMember);
+            copyJsonAttrib("summonerIconId", member, feMember);
+
+            feMember.put("regalia", getFERegaliaInfo(feMember.getBigInteger(SUMMONER_SUMMONER_ID)));
+            return feMember;
+        }
+
+        private void copyJsonAttrib (String key, JSONObject src, JSONObject dst){
             if (src == null || dst == null) return;
             if (src.has(key)) {
                 Object object = src.get(key);
@@ -1073,16 +1117,16 @@ public class DataManager {
                     dst.put(key, object);
                 }
             }
-    }
+        }
 
-    public JSONObject beToFeGameflowInfo(JSONObject currentGameflowPhase) {
-        String phase = currentGameflowPhase.getString("phase");
-        JSONObject gameflowContainer = new JSONObject();
-        gameflowContainer.put("GameflowPhase", phase);
-        return gameflowContainer;
-    }
+        public JSONObject beToFeGameflowInfo (JSONObject currentGameflowPhase){
+            String phase = currentGameflowPhase.getString("phase");
+            JSONObject gameflowContainer = new JSONObject();
+            gameflowContainer.put("GameflowPhase", phase);
+            return gameflowContainer;
+        }
 
-    private void fetchChampionJson() {
+        private void fetchChampionJson () {
             JSONArray championJson = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-data/assets/v1/champion-summary.json"));
             JSONObject parsedChampionJson = new JSONObject();
             if (championJson != null && !championJson.isEmpty()) {
@@ -1093,9 +1137,9 @@ public class DataManager {
                 }
             }
             this.championJson = parsedChampionJson;
-    }
+        }
 
-    private void fetchSummonerSpells() {
+        private void fetchSummonerSpells () {
 
             JSONArray summonerSpells = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-data/assets/v1/summoner-spells.json"));
             JSONObject parsedSummonerSpells = new JSONObject();
@@ -1109,9 +1153,9 @@ public class DataManager {
             this.summonerSpellJson = parsedSummonerSpells;
 
 
-    }
+        }
 
-    private void fetchChromaSkinId() {
+        private void fetchChromaSkinId () {
             JSONObject chromaSkinId = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-data/assets/v1/skins.json"));
             JSONObject parsedChromaSkinId = new JSONObject();
             if (chromaSkinId != null && !chromaSkinId.isEmpty()) {
@@ -1122,79 +1166,80 @@ public class DataManager {
                     if (hasChromas) {
                         JSONArray chromas = skin.getJSONArray("chromas");
                         if (chromas != null && chromas.length() > 0) {
-                            for(int i = 0; i < chromas.length(); i++) {
+                            for (int i = 0; i < chromas.length(); i++) {
                                 JSONObject chroma = chromas.getJSONObject(i);
                                 if (chroma != null && chroma.has("id")) {
                                     int chromaId = chroma.getInt("id");
-                                    parsedChromaSkinId.put(""+chromaId, id);
+                                    parsedChromaSkinId.put("" + chromaId, id);
                                 }
                             }
                         }
                     }
-                    parsedChromaSkinId.put(""+id, id);
+                    parsedChromaSkinId.put("" + id, id);
                 }
             }
             this.chromaSkinId = parsedChromaSkinId;
 
-    }
+        }
 
-    public static String getEventDataString(String event, JSONObject data) {
-        JSONObject dataToSend = new JSONObject();
-        dataToSend.put("event", event);
-        dataToSend.put("data", data);
-        return dataToSend.toString();
-    }
+        public static String getEventDataString (String event, JSONObject data){
+            JSONObject dataToSend = new JSONObject();
+            dataToSend.put("event", event);
+            dataToSend.put("data", data);
+            return dataToSend.toString();
+        }
 
-    public static String getEventDataString(String event, JSONArray data) {
-        JSONObject dataToSend = new JSONObject();
-        dataToSend.put("event", event);
-        dataToSend.put("data", data);
-        return dataToSend.toString();
-    }
+        public static String getEventDataString (String event, JSONArray data){
+            JSONObject dataToSend = new JSONObject();
+            dataToSend.put("event", event);
+            dataToSend.put("data", data);
+            return dataToSend.toString();
+        }
 
-    public static String getDataTransferString(String dataType, JSONObject data) {
-        JSONObject dataToSend = new JSONObject();
-        dataToSend.put("event", "DataTransfer");
+        @Deprecated
+        public static String getDataTransferString (String dataType, JSONObject data){
+            JSONObject dataToSend = new JSONObject();
+            dataToSend.put("event", "DataTransfer");
 
-        JSONObject dataTransfer = new JSONObject();
-        dataTransfer.put("dataType", dataType);
-        dataTransfer.put("data", data);
+            JSONObject dataTransfer = new JSONObject();
+            dataTransfer.put("dataType", dataType);
+            dataTransfer.put("data", data);
 
-        dataToSend.put("data", dataTransfer);
-        return dataToSend.toString();
-    }
+            dataToSend.put("data", dataTransfer);
+            return dataToSend.toString();
+        }
 
-    public static String getDataTransferString(String dataType, JSONArray data) {
-        JSONObject dataToSend = new JSONObject();
-        dataToSend.put("event", "DataTransfer");
+        public static String getDataTransferString (String dataType, JSONArray data){
+            JSONObject dataToSend = new JSONObject();
+            dataToSend.put("event", "DataTransfer");
 
-        JSONObject dataTransfer = new JSONObject();
-        dataTransfer.put("dataType", dataType);
-        dataToSend.put("data", data);
-        return dataToSend.toString();
-    }
+            JSONObject dataTransfer = new JSONObject();
+            dataTransfer.put("dataType", dataType);
+            dataToSend.put("data", data);
+            return dataToSend.toString();
+        }
 
-    public JSONObject getLoot() {
-        return lootJsonObject;
-    }
+        public JSONObject getLoot () {
+            return lootJsonObject;
+        }
 
-    public JSONObject getChromaSkinId() {
-        return chromaSkinId;
-    }
+        public JSONObject getChromaSkinId () {
+            return chromaSkinId;
+        }
 
-    public JSONObject getChampionJson() {
-        return championJson;
-    }
+        public JSONObject getChampionJson () {
+            return championJson;
+        }
 
-    public JSONObject getSummonerSpellJson() {
-        return summonerSpellJson;
-    }
+        public JSONObject getSummonerSpellJson () {
+            return summonerSpellJson;
+        }
 
-    private void log(Object o) {
-        log(o, MainInitiator.LOG_LEVEL.DEBUG);
-    }
+        private void log (Object o){
+            log(o, MainInitiator.LOG_LEVEL.DEBUG);
+        }
 
-    private void log(Object o, MainInitiator.LOG_LEVEL l) {
+        private void log (Object o, MainInitiator.LOG_LEVEL l){
             mainInitiator.log(this.getClass().getSimpleName() + ": " + o);
+        }
     }
-}

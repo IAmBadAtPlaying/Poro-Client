@@ -106,6 +106,7 @@ public class ConnectionManager {
             @Override
             public void run() {
                 log("Checking for Process", MainInitiator.LOG_LEVEL.INFO);
+                if (!mainInitiator.isRunning()) return;
                 if (getAuthFromProcess()) {
                     log("Success getting Process Info", MainInitiator.LOG_LEVEL.INFO);
                     leagueAuthDataAvailable = true;
