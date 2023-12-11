@@ -45,7 +45,7 @@ public class GameflowData extends StateDataManager {
     private Optional<JSONObject> backendToFrontendGameflow(JSONObject data) {
         JSONObject frontendData = new JSONObject();
 
-        Optional<String> gameflowPhase = Util.getString(data, "phase");
+        Optional<String> gameflowPhase = Util.getOptString(data, "phase");
         if (!gameflowPhase.isPresent()) return Optional.empty();
         frontendData.put("phase", gameflowPhase.get());
 

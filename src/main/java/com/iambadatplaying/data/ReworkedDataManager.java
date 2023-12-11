@@ -46,11 +46,11 @@ public class ReworkedDataManager {
 
     private void addStateManagers() {
         addManager(new LobbyData(mainInitiator));
-        addManager(new ChampSelectData(mainInitiator));
         addManager(new GameflowData(mainInitiator));
         addManager(new ChatMeManager(mainInitiator));
         addManager(new LootData(mainInitiator));
         addManager(new PatcherData(mainInitiator));
+        addManager(new ReworkedChampSelectData(mainInitiator));
     }
 
     private void addManager(StateDataManager manager) {

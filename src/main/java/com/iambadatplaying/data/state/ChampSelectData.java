@@ -177,40 +177,71 @@ public class ChampSelectData extends StateDataManager {
 
         Util.copyJsonAttributes(data, frontendChampSelect, "isCustomGame", JSON_KEY_LOCAL_PLAYER_CELL_ID, "gameId", "hasSimultaneousBans", "skipChampionSelect", "benchEnabled", "rerollsRemaining", "actions");
 
-        Optional<JSONArray> optActions = Util.getJSONArray(data, "actions");
+        Optional<JSONArray> optActions = Util.getOptJSONArray(data, "actions");
         if (!optActions.isPresent()) return Optional.empty();
         JSONArray actions = optActions.get();
         updateInternalActionMappings(actions);
 
         JSONObject feTimer = new JSONObject();
 
-        Optional<JSONObject> optTimer = Util.getJSONObject(data, "timer");
+        Optional<JSONObject> optTimer = Util.getOptJSONObject(data, "timer");
         if (!optTimer.isPresent()) {
             log("No timer found", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
         JSONObject timer = optTimer.get();
 
-        Optional<Integer> optLocalPlayerCellId = Util.getInteger(data, JSON_KEY_LOCAL_PLAYER_CELL_ID);
+        Optional<Integer> optLocalPlayerCellId = Util.getOptInt(data, JSON_KEY_LOCAL_PLAYER_CELL_ID);
         if (!optLocalPlayerCellId.isPresent()) {
             log("No localPlayerCellId found", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
         Integer localPlayerCellId = optLocalPlayerCellId.get();
 
-        Optional<JSONArray> optMyTeam = Util.getJSONArray(data, "myTeam");
+        Optional<JSONArray> optMyTeam = Util.getOptJSONArray(data, "myTeam");
         if (!optMyTeam.isPresent()) {
             log("No myTeam found", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
+        // TODO: Test if bans are always present
+        Optional<JSONObject> optBans = Util.getOptJSONObject(data, "bans");
+        if (!optBans.isPresent()) {
+            log("No bans found", MainInitiator.LOG_LEVEL.ERROR);
+            return Optional.empty();
+        }
+
+        JSONObject bans = optBans.get();
+        JSONObject feBans = new JSONObject();
+
+        Util.copyJsonAttributes(bans, feBans, "numBans");
+
+        Optional<JSONArray> optMyTeamBans = Util.getOptJSONArray(bans, "myTeamBans");
+        boolean myTeamBansEmpty = false;
+        if (optMyTeamBans.isPresent()) {
+            myTeamBansEmpty = optMyTeamBans.get().isEmpty();
+            feBans.put("myTeamBans", optMyTeamBans.get());
+        }
+
+        Optional<JSONArray> optTheirTeamBans = Util.getOptJSONArray(bans, "theirTeamBans");
+        boolean theirTeamBansEmpty = false;
+        if (optTheirTeamBans.isPresent()) {
+            theirTeamBansEmpty = optTheirTeamBans.get().isEmpty();
+            feBans.put("theirTeamBans", optTheirTeamBans.get());
+        }
+
+
         //Allied Team
         JSONArray feMyTeam = optMyTeam.get();
         for (int i = 0; i < feMyTeam.length(); i++) {
-            int playerCellId = feMyTeam.getJSONObject(i).getInt("cellId");
             JSONObject playerObject = teamMemberToSessionMap(feMyTeam.getJSONObject(i), timer);
-            if (playerCellId == localPlayerCellId) {
-                frontendChampSelect.put("localPlayerPhase", playerObject.getString(JSON_KEY_STATE));
+            if (myTeamBansEmpty && (playerObject.has(JSON_KEY_BAN_ACTION))) {
+                    JSONObject banAction = playerObject.getJSONObject(JSON_KEY_BAN_ACTION);
+                    if (banAction.has("championId") && banAction.has("completed") && (banAction.getBoolean("completed"))) {
+                            optMyTeamBans.get().put(banAction.getInt("championId"));
+
+                    }
+
             }
             feMyTeam.put(i, playerObject);
         }
@@ -218,7 +249,7 @@ public class ChampSelectData extends StateDataManager {
 
         //Enemy Team
         Util.copyJsonAttributes(data, frontendChampSelect, "theirTeam");
-        Optional<JSONArray> optTheirTeam = Util.getJSONArray(data, "theirTeam");
+        Optional<JSONArray> optTheirTeam = Util.getOptJSONArray(data, "theirTeam");
         if (!optTheirTeam.isPresent()) {
             log("No theirTeam found", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
@@ -229,26 +260,26 @@ public class ChampSelectData extends StateDataManager {
 
         for (int i = 0; i < feTheirTeam.length(); i++) {
             log(feTheirTeam.getJSONObject(i), MainInitiator.LOG_LEVEL.INFO);
-            feTheirTeam.put(i, enemyMemberToSessionMap(feTheirTeam.getJSONObject(i), timer));
+            JSONObject playerObject = enemyMemberToSessionMap(feTheirTeam.getJSONObject(i), timer);
+            feTheirTeam.put(i, playerObject);
+
+            if (theirTeamBansEmpty && (playerObject.has(JSON_KEY_BAN_ACTION))) {
+                JSONObject banAction = playerObject.getJSONObject(JSON_KEY_BAN_ACTION);
+                if (banAction.has("championId") && banAction.has("completed") && (banAction.getBoolean("completed"))) {
+                    optMyTeamBans.get().put(banAction.getInt("championId"));
+
+                }
+            }
         }
+
+        feBans.put("theirTeamBans", optTheirTeamBans.get());
+        feBans.put("myTeamBans", optMyTeamBans.get());
 
         Util.copyJsonAttributes(timer, feTimer, JSON_KEY_PHASE, "isInfinite");
 
         frontendChampSelect.put("timer", feTimer);
 
-        // TODO: Test if bans are always present
-        Optional<JSONObject> optBans = Util.getJSONObject(data, "bans");
-        if (!optBans.isPresent()) {
-            log("No bans found", MainInitiator.LOG_LEVEL.ERROR);
-            return Optional.empty();
-        }
 
-        JSONObject bans = optBans.get();
-        JSONObject feBans = new JSONObject();
-
-        Util.copyJsonAttributes(bans, feBans, "myTeamBans", "theirTeamBans", "numBans");
-
-        frontendChampSelect.put("bans", feBans);
 
         return Optional.of(frontendChampSelect);
     }
@@ -265,32 +296,6 @@ public class ChampSelectData extends StateDataManager {
         }
     }
 
-    private void handleBanActions(JSONObject action) {
-        if (action == null || action.isEmpty()) return;
-        Optional<Integer> optActorCellId = Util.getInteger(action, "actorCellId");
-        if (!optActorCellId.isPresent()) return;
-        Integer actorCellId = optActorCellId.get();
-        Optional<String> optType = Util.getString(action, "type");
-        if (!optType.isPresent()) return;
-        String type = optType.get();
-        cellIdActionMap.compute(actorCellId, (k, v) -> {
-            if (v == null || v.isEmpty()) {
-                v = new JSONObject();
-            }
-            JSONObject currentAction = new JSONObject();
-            currentAction.put("type", type);
-            Util.copyJsonAttributes(action, currentAction, JSON_KEY_COMPLETED, JSON_KEY_IS_IN_PROGRESS, "championId", "id");
-            switch (type) {
-                case "ban":
-                    v.put(JSON_KEY_BAN_ACTION, currentAction);
-                    break;
-                default:
-                    log("Unknown action type: " + type, MainInitiator.LOG_LEVEL.ERROR);
-                    break;
-            }
-            return v;
-        });
-    }
 
     //TODO Refactor with enemyMemberToSessionMap
     private JSONObject teamMemberToSessionMap(JSONObject feMember, JSONObject timer) {
@@ -347,10 +352,10 @@ public class ChampSelectData extends StateDataManager {
 
     private void updateSingleActionMapping(JSONObject singleAction) {
         if (singleAction.isEmpty()) return;
-        Optional<Integer> optActorCellId = Util.getInteger(singleAction, "actorCellId");
+        Optional<Integer> optActorCellId = Util.getOptInt(singleAction, "actorCellId");
         if (!optActorCellId.isPresent()) return;
         Integer actorCellId = optActorCellId.get();
-        Optional<String> optType = Util.getString(singleAction, "type");
+        Optional<String> optType = Util.getOptString(singleAction, "type");
         if (!optType.isPresent()) return;
         String type = optType.get();
         cellIdActionMap.compute(actorCellId, (k, v) -> {
@@ -373,53 +378,6 @@ public class ChampSelectData extends StateDataManager {
             }
             return v;
         });
-    }
-
-    private int performChampionAction(String actionType, Integer championId, boolean lockIn) {
-        if (currentState == null || currentState.isEmpty() || championId == null || championId < 0) {
-            return -1;
-        }
-
-        if (!currentState.has(JSON_KEY_LOCAL_PLAYER_CELL_ID)) {
-            return -1;
-        }
-
-        Integer localPlayerCellId = currentState.getInt(JSON_KEY_LOCAL_PLAYER_CELL_ID);
-        JSONObject actionBundle = cellIdActionMap.get(localPlayerCellId);
-
-        if (actionBundle == null || actionBundle.isEmpty()) {
-            return -1;
-        }
-
-        JSONObject actionObject;
-
-        if (actionType.equals("pick")) {
-            actionObject = actionBundle.getJSONObject(JSON_KEY_PICK_ACTION);
-        } else if (actionType.equals("ban")) {
-            actionObject = actionBundle.getJSONObject(JSON_KEY_BAN_ACTION);
-        } else {
-            return -1;
-        }
-
-        int actionId = actionObject.getInt("id");
-        JSONObject hoverAction = new JSONObject();
-        hoverAction.put("championId", championId);
-
-        if (lockIn) {
-            if ("pick".equals(actionType)) {
-                triggerPickLockInSound(championId);
-            }
-            hoverAction.put(JSON_KEY_COMPLETED, true);
-        }
-
-        try {
-            String request = "/lol-champ-select/v1/session/actions/" + actionId;
-            HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PATCH, request, hoverAction.toString());
-            return con.getResponseCode();
-        } catch (Exception e) {
-            log("Error while performing champion action: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
-        }
-        return -1;
     }
 
     private void triggerPickLockInSound(int championId) {

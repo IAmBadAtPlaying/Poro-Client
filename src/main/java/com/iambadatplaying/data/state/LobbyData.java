@@ -10,7 +10,6 @@ import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
-import java.util.Timer;
 
 public class LobbyData extends StateDataManager {
 
@@ -74,7 +73,7 @@ public class LobbyData extends StateDataManager {
 
         Util.copyJsonAttributes(data, frontendData, "partyId", "invitations");
 
-        Optional<JSONObject> optGameConfig = Util.getJSONObject(data, "gameConfig");
+        Optional<JSONObject> optGameConfig = Util.getOptJSONObject(data, "gameConfig");
         if (!optGameConfig.isPresent()) {
             log("Failed to get gameConfig", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
@@ -85,7 +84,7 @@ public class LobbyData extends StateDataManager {
 
         Util.copyJsonAttributes(gameConfig, frontendGameConfig, "queueId", "showPositionSelector", "isCustom", "maxLobbySize", "allowablePremadeSizes", "mapId", "gameMode");
 
-        Optional<JSONObject> optLocalMember = Util.getJSONObject(data, "localMember");
+        Optional<JSONObject> optLocalMember = Util.getOptJSONObject(data, "localMember");
 
         if (!optLocalMember.isPresent()) {
             log("Failed to get localMember", MainInitiator.LOG_LEVEL.ERROR);
@@ -95,7 +94,7 @@ public class LobbyData extends StateDataManager {
         JSONObject localMember = optLocalMember.get();
         JSONObject frontendLocalMember = backendToFrontendLobbyMember(localMember);
 
-        Optional<JSONArray> optMembers = Util.getJSONArray(data, "members");
+        Optional<JSONArray> optMembers = Util.getOptJSONArray(data, "members");
         if (!optMembers.isPresent()) {
             log("Failed to get members", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();

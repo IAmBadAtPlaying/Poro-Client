@@ -210,7 +210,7 @@ public class FrontendMessageHandler {
     }
 
     private void sendChampSelect(Socket socket) {
-        Optional<JSONObject> feChampSelectObject = mainInitiator.getReworkedDataManager().getStateManagers(ChampSelectData.class.getSimpleName()).getCurrentState();
+        Optional<JSONObject> feChampSelectObject = mainInitiator.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class.getSimpleName()).getCurrentState();
         JSONObject champSelectObject = new JSONObject();
         if (feChampSelectObject.isPresent()) {
             champSelectObject = feChampSelectObject.get();

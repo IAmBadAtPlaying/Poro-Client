@@ -54,7 +54,7 @@ public class BackendMessageHandler {
                 JSONObject jsonData = messageArray.getJSONObject(2);
                 String uri = jsonData.getString("uri");
                 String type = jsonData.getString("eventType");
-                log(type + " " + uri + ": " +jsonData.get("data"));
+//                log(type + " " + uri + ": " +jsonData.get("data"));
                         switch (uri) {
                             case lolGameflowV1GameflowPhase:
                                 handle_lol_gameflow_v1_gameflow_phase(jsonData); //TODO: Doesnt work, replace with Gameflow session instead

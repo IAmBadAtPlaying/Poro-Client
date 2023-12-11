@@ -6,9 +6,6 @@ import com.iambadatplaying.lcuHandler.ConnectionManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import javax.net.ssl.HttpsURLConnection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Optional;
 
 public class FriendManager extends MapDataManager<String> {
@@ -44,12 +41,12 @@ public class FriendManager extends MapDataManager<String> {
     private Optional<JSONObject> backendToFrontendFriend(JSONObject friend) {
         JSONObject frontendFriend = new JSONObject();
 
-        Optional<String> optPuuid = Util.getString(friend, "puuid");
+        Optional<String> optPuuid = Util.getOptString(friend, "puuid");
         if (!optPuuid.isPresent()) return Optional.empty();
         String puuid = optPuuid.get();
         frontendFriend.put("puuid", puuid);
 
-        Optional<Integer> optIcon = Util.getInteger(friend, "icon");
+        Optional<Integer> optIcon = Util.getOptInt(friend, "icon");
         if (optIcon.isPresent()) {
             Integer icon = optIcon.get();
             if (icon < 1) icon = 1;

@@ -36,27 +36,42 @@ public class Util {
         }
     }
 
-    public static Optional<Integer> getInteger(JSONObject jsonObject, String key) {
+    public static Optional<Integer> getOptInt(JSONObject jsonObject, String key) {
         if (jsonObject == null || !jsonObject.has(key)) return Optional.empty();
         return Optional.of(jsonObject.getInt(key));
     }
 
-    public static Optional<String> getString(JSONObject jsonObject, String key) {
+    public static Integer getInt(JSONObject jsonObject, String key, Integer defaultValue) {
+        if (jsonObject == null || !jsonObject.has(key)) return defaultValue;
+        return jsonObject.getInt(key);
+    }
+
+    public static Optional<String> getOptString(JSONObject jsonObject, String key) {
         if (jsonObject == null || !jsonObject.has(key)) return Optional.empty();
         return Optional.of(jsonObject.getString(key));
     }
 
-    public static Optional<Boolean> getBoolean(JSONObject jsonObject, String key) {
+    public static String getString(JSONObject jsonObject, String key, String defaultValue) {
+        if (jsonObject == null || !jsonObject.has(key)) return defaultValue;
+        return jsonObject.getString(key);
+    }
+
+    public static Optional<Boolean> getOptBool(JSONObject jsonObject, String key) {
         if (jsonObject == null || !jsonObject.has(key)) return Optional.empty();
         return Optional.of(jsonObject.getBoolean(key));
     }
 
-    public static Optional<JSONObject> getJSONObject(JSONObject jsonObject, String key) {
+    public static Boolean getBoolean(JSONObject jsonObject, String key, Boolean defaultValue) {
+        if (jsonObject == null || !jsonObject.has(key)) return defaultValue;
+        return jsonObject.getBoolean(key);
+    }
+
+    public static Optional<JSONObject> getOptJSONObject(JSONObject jsonObject, String key) {
         if (jsonObject == null || !jsonObject.has(key)) return Optional.empty();
         return Optional.of(jsonObject.getJSONObject(key));
     }
 
-    public static Optional<JSONArray> getJSONArray(JSONObject jsonObject, String key) {
+    public static Optional<JSONArray> getOptJSONArray(JSONObject jsonObject, String key) {
         if (jsonObject == null || !jsonObject.has(key)) return Optional.empty();
         return Optional.of(jsonObject.getJSONArray(key));
     }

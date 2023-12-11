@@ -69,6 +69,7 @@ public class UploadServlet extends BaseRESTServlet {
                 ConfigLoader.PROPERTY_CLIENT_BACKGROUND_CONTENT_TYPE
         );
 
+        resp.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
         resp.setContentType(contentType);
         serveFile(req, resp, path);
     }

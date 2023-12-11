@@ -123,7 +123,7 @@ public class AutoPickChamp extends Task {
         JSONObject championId = new JSONObject();
         championId.put("displayName", "Champion ID");
         championId.put("backendKey", "championId");
-        championId.put("type", INPUT_TYPE.NUMBER.toString());
+        championId.put("type", INPUT_TYPE.CHAMPION_SELECT.toString());
         championId.put("required", true);
         championId.put("currentValue", this.championId);
         championId.put("description", "The ID of the champion you want to pick");

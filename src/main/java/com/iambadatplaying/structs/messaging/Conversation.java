@@ -9,6 +9,7 @@ public class Conversation {
     public enum SCOPE {
         LOBBY,
         CHAMP_SELECT,
+        CLASH,
         POST_GAME,
         PEER_TO_PEER;
 
@@ -46,6 +47,7 @@ public class Conversation {
     private static final String SCOPE_CHAMP_SELECT = "champ-select";
     private static final String SCOPE_LOBBY = "sec";
     private static final String SCOPE_POST_GAME = "post-game";
+    private static final String SCOPE_CLASH = "clash";
 
 
     public Conversation(String id) {
@@ -53,6 +55,8 @@ public class Conversation {
         this.id = id;
         if (id.contains(SCOPE_CHAMP_SELECT)) {
             this.scope = SCOPE.CHAMP_SELECT;
+        } else if (id.contains(SCOPE_CLASH)) {
+            this.scope = SCOPE.CLASH;
         } else if (id.contains(SCOPE_LOBBY)) {
             this.scope = SCOPE.LOBBY;
         } else if (id.contains(SCOPE_POST_GAME)) {

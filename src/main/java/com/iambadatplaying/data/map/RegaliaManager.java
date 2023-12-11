@@ -11,8 +11,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.math.BigInteger;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Optional;
 
 public class RegaliaManager extends MapDataManager<BigInteger>{
@@ -103,7 +101,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
         if (!optLobbyData.isPresent()) return;
         JSONObject lobbyData = optLobbyData.get();
 
-        Optional<JSONArray> optMembers = Util.getJSONArray(lobbyData, "members");
+        Optional<JSONArray> optMembers = Util.getOptJSONArray(lobbyData, "members");
         if (!optMembers.isPresent()) return;
         JSONArray members = optMembers.get();
 

@@ -44,7 +44,7 @@ public class LootData extends StateDataManager {
     }
 
     private Optional<JSONObject> backendToFrontendLoot(JSONObject data) {
-        return Util.getJSONObject(data, "playerLoot");
+        return Util.getOptJSONObject(data, "playerLoot");
     }
 
     @Override

@@ -132,14 +132,21 @@ public class ProxyHandler extends AbstractHandler {
                 String key = entry.getKey();
                 List<String> value = entry.getValue();
                 if (key != null && value != null) {
-                    if ("Access-Control-Allow-Origin".equalsIgnoreCase(key)) continue;
-                    for (String s : value) {
-                        response.setHeader(key, s);
+                    switch (key) {
+                        case "access-control-allow-origin":
+                        case "Cache-Control":
+                            continue;
+                        default:
+                            for (String s : value) {
+                                response.setHeader(key, s);
+                            }
+                        break;
                     }
                 }
             }
         }
 
+        response.setHeader("Cache-Control", "immutable max-age=31536000");
         response.getOutputStream().write(resourceBytes);
         response.getOutputStream().flush();
     }
