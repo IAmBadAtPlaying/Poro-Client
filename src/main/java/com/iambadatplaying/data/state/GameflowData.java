@@ -1,5 +1,7 @@
 package com.iambadatplaying.data.state;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
@@ -25,29 +27,30 @@ public class GameflowData extends StateDataManager {
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JSONObject data) {
+    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
             case "Delete":
                 resetState();
                 break;
             case "Create":
             case "Update":
-                Optional<JSONObject> updatedFEData = backendToFrontendGameflow(data);
+                if (!data.isJsonObject()) return;
+                Optional<JsonObject> updatedFEData = backendToFrontendGameflow(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
-                JSONObject updatedState = updatedFEData.get();
-                if (updatedState.similar(currentState)) return;
+                JsonObject updatedState = updatedFEData.get();
+                if (Util.equalJsonElements(updatedState, currentState)) return;
                 currentState = updatedState;
                 sendCurrentState();
                 break;
         }
     }
 
-    private Optional<JSONObject> backendToFrontendGameflow(JSONObject data) {
-        JSONObject frontendData = new JSONObject();
+    private Optional<JsonObject> backendToFrontendGameflow(JsonObject data) {
+        JsonObject frontendData = new JsonObject();
 
         Optional<String> gameflowPhase = Util.getOptString(data, "phase");
         if (!gameflowPhase.isPresent()) return Optional.empty();
-        frontendData.put("phase", gameflowPhase.get());
+        frontendData.addProperty("phase", gameflowPhase.get());
 
         Util.copyJsonAttrib("gameDodge", data, frontendData);
 
@@ -60,13 +63,13 @@ public class GameflowData extends StateDataManager {
     }
 
     @Override
-    protected Optional<JSONObject> fetchCurrentState() {
-        JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolGameflowV1SessionPattern));
+    protected Optional<JsonObject> fetchCurrentState() {
+        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolGameflowV1SessionPattern));
         if (!data.has("errorCode")) return backendToFrontendGameflow(data);
         String phase = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-gameflow/v1/gameflow-phase"));
         if (phase == null) return Optional.empty();
-        JSONObject fallbackData = new JSONObject();
-        fallbackData.put("phase", phase.trim().replace("\"", ""));
+        JsonObject fallbackData = new JsonObject();
+        fallbackData.addProperty("phase", phase.trim().replace("\"", ""));
         return Optional.of(fallbackData);
     }
 

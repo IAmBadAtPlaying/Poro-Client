@@ -1,5 +1,8 @@
 package com.iambadatplaying.data.map;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import org.json.JSONArray;
@@ -19,8 +22,8 @@ public class AvailableQueueManager extends MapDataManager<Integer> {
     private static final String KEY_QUEUE_AVAILABILITY = "queueAvailability";
 
     @Override
-    public JSONObject load(Integer key) {
-        return new JSONObject();
+    public JsonObject load(Integer key) {
+        return new JsonObject();
     }
 
     @Override
@@ -29,11 +32,11 @@ public class AvailableQueueManager extends MapDataManager<Integer> {
     }
 
     private void fetchQueues() {
-        JSONArray queueArray = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-queues/v1/queues"));
-        for (int i = 0; i < queueArray.length(); i++) {
-            JSONObject currentQueue = queueArray.getJSONObject(i);
-            if (QUEUE_AVAILABLE.equals(currentQueue.getString(KEY_QUEUE_AVAILABILITY))) {
-                Integer queueId = currentQueue.getInt("id");
+        JsonArray queueArray = mainInitiator.getConnectionManager().getResponseBodyAsJsonArray(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-queues/v1/queues"));
+        for (int i = 0; i < queueArray.size(); i++) {
+            JsonObject currentQueue = queueArray.get(i).getAsJsonObject();
+            if (QUEUE_AVAILABLE.equals(currentQueue.get(KEY_QUEUE_AVAILABILITY).getAsString())) {
+                Integer queueId = currentQueue.get("id").getAsInt();
                 map.put(queueId, currentQueue);
             }
         }
@@ -45,7 +48,7 @@ public class AvailableQueueManager extends MapDataManager<Integer> {
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JSONObject data) {
+    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         //No known updates yet
     }
 

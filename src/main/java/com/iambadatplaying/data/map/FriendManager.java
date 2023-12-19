@@ -1,10 +1,11 @@
 package com.iambadatplaying.data.map;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.Optional;
 
@@ -17,8 +18,8 @@ public class FriendManager extends MapDataManager<String> {
     }
 
     @Override
-    public JSONObject load(String key) {
-        return new JSONObject();
+    public JsonObject load(String key) {
+        return new JsonObject();
     }
 
     @Override
@@ -27,30 +28,30 @@ public class FriendManager extends MapDataManager<String> {
     }
 
     private void fetchFriends() {
-        JSONArray friends = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
+        JsonArray friends = mainInitiator.getConnectionManager().getResponseBodyAsJsonArray(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
         if (friends == null) return;
-        for (int i = 0; i < friends.length(); i++) {
-            JSONObject friend = friends.getJSONObject(i);
-            Optional<JSONObject> optFrontendFriend = backendToFrontendFriend(friend);
+        for (int i = 0; i < friends.size(); i++) {
+            JsonObject friend = friends.get(i).getAsJsonObject();
+            Optional<JsonObject> optFrontendFriend = backendToFrontendFriend(friend);
             if (!optFrontendFriend.isPresent()) continue;
-            JSONObject frontendFriend = optFrontendFriend.get();
-            map.put(friend.getString("puuid"), frontendFriend);
+            JsonObject frontendFriend = optFrontendFriend.get();
+            map.put(friend.get("puuid").getAsString(), frontendFriend);
         }
     }
 
-    private Optional<JSONObject> backendToFrontendFriend(JSONObject friend) {
-        JSONObject frontendFriend = new JSONObject();
+    private Optional<JsonObject> backendToFrontendFriend(JsonObject friend) {
+        JsonObject frontendFriend = new JsonObject();
 
         Optional<String> optPuuid = Util.getOptString(friend, "puuid");
         if (!optPuuid.isPresent()) return Optional.empty();
         String puuid = optPuuid.get();
-        frontendFriend.put("puuid", puuid);
+        frontendFriend.addProperty("puuid",puuid);
 
         Optional<Integer> optIcon = Util.getOptInt(friend, "icon");
         if (optIcon.isPresent()) {
             Integer icon = optIcon.get();
             if (icon < 1) icon = 1;
-            frontendFriend.put("icon", icon);
+            frontendFriend.addProperty("icon", icon);
         }
 
         Util.copyJsonAttributes(friend, frontendFriend, "availability", "statusMessage", "name", "id",  "groupId", "lol");
@@ -64,7 +65,7 @@ public class FriendManager extends MapDataManager<String> {
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JSONObject data) {
+    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
             case "Delete":
                 String puuidWith = uri.replaceAll(lolChatV1FriendsPattern, "$1");
@@ -75,19 +76,22 @@ public class FriendManager extends MapDataManager<String> {
                 break;
             case "Create":
             case "Update":
-                Optional<JSONObject> updatedFriend = updateFriend(data);
-                JSONObject currentState = map.get(data.getString("puuid"));
+                Optional<JsonObject> updatedFriend = updateFriend(data);
                 if (!updatedFriend.isPresent()) return;
-                JSONObject updatedState = updatedFriend.get();
-                if (updatedState.similar(currentState)) return;
-                map.put(data.getString("puuid"), updatedState);
+                JsonObject dataObj = data.getAsJsonObject();
+                JsonObject currentState = map.get(dataObj.get("puuid").getAsString());
+                JsonObject updatedState = updatedFriend.get();
+                if (Util.equalJsonElements(updatedState, currentState)) return;
+                map.put(dataObj.get("puuid").getAsString(), updatedState);
                 mainInitiator.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString("FriendUpdate", updatedState));
                 break;
         }
     }
 
-    private Optional<JSONObject> updateFriend(JSONObject friend) {
-        Optional<JSONObject> updatedFriend = backendToFrontendFriend(friend);
+    private Optional<JsonObject> updateFriend(JsonElement friend) {
+        if (!friend.isJsonObject()) return Optional.empty();
+        JsonObject friendObj = friend.getAsJsonObject();
+        Optional<JsonObject> updatedFriend = backendToFrontendFriend(friendObj);
         return updatedFriend;
     }
 

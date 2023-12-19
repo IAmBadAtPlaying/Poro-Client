@@ -1,5 +1,8 @@
 package com.iambadatplaying.data.map;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.state.ChatMeManager;
@@ -22,7 +25,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     }
 
     @Override
-    public JSONObject load(BigInteger key) {
+    public JsonObject load(BigInteger key) {
         return updateRegalia(key);
     }
 
@@ -35,7 +38,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JSONObject data) {
+    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
             case "Delete":
                 break;
@@ -54,7 +57,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
         map = null;
     }
 
-    public void update(String uri, String type, JSONObject data) {
+    public void update(String uri, String type, JsonElement data) {
         if (!isRelevantURI(uri)) return;
         switch (type) {
             case "Delete":
@@ -71,7 +74,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     }
 
 
-    public JSONObject getRegalia(BigInteger summonerId) {
+    public JsonObject getRegalia(BigInteger summonerId) {
         if (map.containsKey(summonerId)) {
             return map.get(summonerId);
         } else {
@@ -82,14 +85,14 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     private void updateChatMe(BigInteger summonerId) {
         StateDataManager chatMeManager = mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class.getSimpleName());
         if (chatMeManager == null) return;
-        Optional<JSONObject> optChatMeData = chatMeManager.getCurrentState();
+        Optional<JsonObject> optChatMeData = chatMeManager.getCurrentState();
         if (!optChatMeData.isPresent()) return;
-        JSONObject chatMeData = optChatMeData.get();
+        JsonObject chatMeData = optChatMeData.get();
 
         if (!chatMeData.has("summonerId")) return;
-        if (!summonerId.equals(chatMeData.getBigInteger("summonerId"))) return;
+        if (!summonerId.equals(chatMeData.get("summonerId").getAsBigInteger())) return;
 
-        chatMeData.put("regalia", getRegalia(summonerId));
+        chatMeData.add("regalia", getRegalia(summonerId));
         mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class.getSimpleName()).setCurrentState(chatMeData);
         mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class.getSimpleName()).sendCurrentState();
     }
@@ -97,31 +100,31 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     private void updateLobbyMemeberRegalia(BigInteger summonerId) {
         StateDataManager lobbyManager = mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class.getSimpleName());
         if (lobbyManager == null) return;
-        Optional<JSONObject> optLobbyData = lobbyManager.getCurrentState();
+        Optional<JsonObject> optLobbyData = lobbyManager.getCurrentState();
         if (!optLobbyData.isPresent()) return;
-        JSONObject lobbyData = optLobbyData.get();
+        JsonObject lobbyData = optLobbyData.get();
 
-        Optional<JSONArray> optMembers = Util.getOptJSONArray(lobbyData, "members");
+        Optional<JsonArray> optMembers = Util.getOptJSONArray(lobbyData, "members");
         if (!optMembers.isPresent()) return;
-        JSONArray members = optMembers.get();
+        JsonArray members = optMembers.get();
 
-        for (int i = 0; i < members.length(); i++) {
-            JSONObject member = members.getJSONObject(i);
+        for (int i = 0; i < members.size(); i++) {
+            JsonObject member = members.get(i).getAsJsonObject();
             if (member != null && !member.isEmpty() && member.has("summonerId")) {
-                if (!summonerId.equals(member.getBigInteger("summonerId"))) continue;
-                member.put("regalia", getRegalia(summonerId));
+                if (!summonerId.equals(member.get("summonerId").getAsBigInteger())) continue;
+                member.add("regalia", getRegalia(summonerId));
                 break;
             }
         }
 
-        lobbyData.put("members", members);
+        lobbyData.add("members", members);
 
         mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class.getSimpleName()).setCurrentState(lobbyData);
         mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class.getSimpleName()).sendCurrentState();
     }
 
-    public JSONObject updateRegalia(BigInteger summonerId) {
-        JSONObject regalia = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-regalia/v3/summoners/"+summonerId.toString()+"/regalia"));
+    public JsonObject updateRegalia(BigInteger summonerId) {
+        JsonObject regalia =  mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-regalia/v3/summoners/"+summonerId.toString()+"/regalia"));
         map.put(summonerId, regalia);
         updateChatMe(summonerId);
         updateLobbyMemeberRegalia(summonerId);

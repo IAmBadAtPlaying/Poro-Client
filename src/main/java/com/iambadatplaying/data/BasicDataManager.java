@@ -1,7 +1,8 @@
 package com.iambadatplaying.data;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
-import org.json.JSONObject;
 
 public abstract class BasicDataManager {
     protected boolean initialized = false;
@@ -24,7 +25,7 @@ public abstract class BasicDataManager {
 
     protected abstract boolean isRelevantURI(String uri);
 
-    protected abstract void doUpdateAndSend(String uri, String type, JSONObject data);
+    protected abstract void doUpdateAndSend(String uri, String type, JsonElement data);
 
     public void shutdown() {
         if (!initialized) return;

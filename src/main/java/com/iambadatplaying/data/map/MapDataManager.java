@@ -1,5 +1,7 @@
 package com.iambadatplaying.data.map;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.data.BasicDataManager;
 import org.json.JSONObject;
@@ -15,27 +17,27 @@ public abstract class MapDataManager<T> extends BasicDataManager {
         map = Collections.synchronizedMap(new HashMap<>());
     }
 
-    protected Map<T, JSONObject> map;
+    protected Map<T, JsonObject> map;
 
-    public JSONObject get(T key) {
+    public JsonObject get(T key) {
         if(map.containsKey(key)) return map.get(key);
         else return load(key);
     }
-    public abstract JSONObject load(T key);
+    public abstract JsonObject load(T key);
 
-    public void edit(T key, JSONObject value) {
+    public void edit(T key, JsonObject value) {
         map.put(key, value);
     }
 
-    public JSONObject getMapAsJson() {
-        JSONObject mapAsJson = new JSONObject();
-        for (Map.Entry<T, JSONObject> entry : map.entrySet()) {
-            mapAsJson.put(entry.getKey().toString(), entry.getValue());
+    public JsonObject getMapAsJson() {
+        JsonObject mapAsJson = new JsonObject();
+        for (Map.Entry<T, JsonObject> entry : map.entrySet()) {
+            mapAsJson.add(entry.getKey().toString(), entry.getValue());
         }
         return mapAsJson;
     }
 
-    public void updateMap(String uri, String type, JSONObject data) {
+    public void updateMap(String uri, String type, JsonElement data) {
         if (!initialized) {
             log("Not initialized, wont have any effect", MainInitiator.LOG_LEVEL.WARN);
             return;

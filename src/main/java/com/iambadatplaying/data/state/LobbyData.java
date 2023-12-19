@@ -1,12 +1,13 @@
 package com.iambadatplaying.data.state;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
@@ -29,11 +30,11 @@ public class LobbyData extends StateDataManager {
     }
 
     @Override
-    protected Optional<JSONObject> fetchCurrentState() {
+    protected Optional<JsonObject> fetchCurrentState() {
         HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/lobby");
-        JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, con);
+        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(con);
         if (!data.has("errorCode")) return backendToFrontendLobby(data);
-        log("Cant fetch current state, maybe not in a lobby ?: " + data.getString("message"), MainInitiator.LOG_LEVEL.WARN);
+        log("Cant fetch current state, maybe not in a lobby ?: " + data.get("message").getAsString(), MainInitiator.LOG_LEVEL.WARN);
         return Optional.empty();
     }
 
@@ -43,17 +44,18 @@ public class LobbyData extends StateDataManager {
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type,JSONObject data) {
+    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
             case "Delete":
                 resetState();
                 break;
             case "Create":
             case "Update":
-                Optional<JSONObject> updatedFEData = backendToFrontendLobby(data);
+                if (!data.isJsonObject()) return;
+                Optional<JsonObject> updatedFEData = backendToFrontendLobby(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
-                JSONObject updatedState = updatedFEData.get();
-                if (updatedState.similar(currentState)) return;
+                JsonObject updatedState = updatedFEData.get();
+                if (Util.equalJsonElements(updatedState, currentState)) return;
                 currentState = updatedState;
                 sendCurrentState();
                 break;
@@ -68,59 +70,59 @@ public class LobbyData extends StateDataManager {
         mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
     }
 
-    private Optional<JSONObject> backendToFrontendLobby(JSONObject data) {
-        JSONObject frontendData = new JSONObject();
+    private Optional<JsonObject> backendToFrontendLobby(JsonObject data) {
+        JsonObject frontendData = new JsonObject();
 
         Util.copyJsonAttributes(data, frontendData, "partyId", "invitations");
 
-        Optional<JSONObject> optGameConfig = Util.getOptJSONObject(data, "gameConfig");
+        Optional<JsonObject> optGameConfig = Util.getOptJSONObject(data, "gameConfig");
         if (!optGameConfig.isPresent()) {
             log("Failed to get gameConfig", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
-        JSONObject gameConfig = optGameConfig.get();
-        JSONObject frontendGameConfig = new JSONObject();
+        JsonObject gameConfig = optGameConfig.get();
+        JsonObject frontendGameConfig = new JsonObject();
 
         Util.copyJsonAttributes(gameConfig, frontendGameConfig, "queueId", "showPositionSelector", "isCustom", "maxLobbySize", "allowablePremadeSizes", "mapId", "gameMode");
 
-        Optional<JSONObject> optLocalMember = Util.getOptJSONObject(data, "localMember");
+        Optional<JsonObject> optLocalMember = Util.getOptJSONObject(data, "localMember");
 
         if (!optLocalMember.isPresent()) {
             log("Failed to get localMember", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
-        JSONObject localMember = optLocalMember.get();
-        JSONObject frontendLocalMember = backendToFrontendLobbyMember(localMember);
+        JsonObject localMember = optLocalMember.get();
+        JsonObject frontendLocalMember = backendToFrontendLobbyMember(localMember);
 
-        Optional<JSONArray> optMembers = Util.getOptJSONArray(data, "members");
+        Optional<JsonArray> optMembers = Util.getOptJSONArray(data, "members");
         if (!optMembers.isPresent()) {
             log("Failed to get members", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
-        JSONArray members = optMembers.get();
-        JSONArray frontendMembers = new JSONArray();
+        JsonArray members = optMembers.get();
+        JsonArray frontendMembers = new JsonArray();
         int j = 0;
-        frontendMembers.put(indexToFEIndex(0), frontendLocalMember);
+        frontendMembers.set(indexToFEIndex(0), frontendLocalMember);
         j++;
-        for (int i = 0; i < members.length(); i++) {
+        for (int i = 0; i < members.size(); i++) {
             int actualIndex = indexToFEIndex(j);
-            JSONObject currentMember = backendToFrontendLobbyMember(members.getJSONObject(i));
-            if (currentMember.getString("puuid").equals(frontendLocalMember.getString("puuid"))) {
+            JsonObject currentMember = backendToFrontendLobbyMember(members.get(i).getAsJsonObject());
+            if (currentMember.get("puuid").getAsString().equals(frontendLocalMember.get("puuid").getAsString())) {
                 continue;
             }
-            frontendMembers.put(actualIndex, currentMember);
+            frontendMembers.set(actualIndex, currentMember);
             j++;
         }
         for (; j < 5; j++) {
-            frontendMembers.put(indexToFEIndex(j), new JSONObject());
+            frontendMembers.set(indexToFEIndex(j), new JsonObject());
         }
 
-        frontendData.put("gameConfig", frontendGameConfig);
-        frontendData.put("members", frontendMembers);
-        frontendData.put("localMember", frontendLocalMember);
+        frontendData.add("gameConfig", frontendGameConfig);
+        frontendData.add("members", frontendMembers);
+        frontendData.add("localMember", frontendLocalMember);
         return Optional.of(frontendData);
     }
 
@@ -139,11 +141,11 @@ public class LobbyData extends StateDataManager {
         } else return -indexDiff(index + 1);
     }
 
-    private JSONObject backendToFrontendLobbyMember(JSONObject member) {
-        JSONObject frontendMember = member;
+    private JsonObject backendToFrontendLobbyMember(JsonObject member) {
+        JsonObject frontendMember = member;
 
-       JSONObject regalia = (JSONObject) mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class.getSimpleName()).get(member.getBigInteger("summonerId"));
-       frontendMember.put("regalia", regalia);
+        JsonObject regalia = (JsonObject) mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class.getSimpleName()).get(member.get("summonerId").getAsBigInteger());
+        frontendMember.add("regalia", regalia);
 
        return frontendMember;
     }

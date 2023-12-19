@@ -1,9 +1,11 @@
 package com.iambadatplaying.data.state;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
-import org.json.JSONObject;
 
 import java.util.Optional;
 
@@ -26,14 +28,16 @@ public class PatcherData extends StateDataManager {
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JSONObject data) {
+    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
             case "Delete":
                 break;
             case "Create":
             case "Update":
-                if (data.similar(currentState)) return;
-                currentState = data;
+                if (!data.isJsonObject()) return;
+                JsonObject updatedState = data.getAsJsonObject();
+                if (Util.equalJsonElements(updatedState, currentState)) return;
+                currentState = updatedState;
                 sendCurrentState();
                 break;
         }
@@ -45,8 +49,8 @@ public class PatcherData extends StateDataManager {
     }
 
     @Override
-    protected Optional<JSONObject> fetchCurrentState() {
-        JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, PATCHER_URI));
+    protected Optional<JsonObject> fetchCurrentState() {
+        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, PATCHER_URI));
         if (!data.has("errorCode")) return Optional.of(data);
         return Optional.empty();
     }

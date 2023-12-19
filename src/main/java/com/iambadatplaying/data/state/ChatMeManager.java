@@ -1,11 +1,12 @@
 package com.iambadatplaying.data.state;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
-import org.json.JSONObject;
 
 import java.util.Optional;
 
@@ -30,17 +31,18 @@ public class ChatMeManager extends StateDataManager {
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JSONObject data) {
+    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
             case "Delete":
                 resetState();
                 break;
             case "Create":
             case "Update":
-                Optional<JSONObject> updatedFEData = backendToFrontendChatMe(data);
+                if (!data.isJsonObject()) return;
+                Optional<JsonObject> updatedFEData = backendToFrontendChatMe(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
-                JSONObject updatedState = updatedFEData.get();
-                if (updatedState.similar(currentState)) return;
+                JsonObject updatedState = updatedFEData.get();
+                if (Util.equalJsonElements(updatedState, currentState)) return;
                 currentState = updatedState;
                 sendCurrentState();
                 break;
@@ -48,13 +50,13 @@ public class ChatMeManager extends StateDataManager {
     }
 
 
-    private Optional<JSONObject> backendToFrontendChatMe(JSONObject data) {
-        JSONObject frontendData = new JSONObject();
+    private Optional<JsonObject> backendToFrontendChatMe(JsonObject data) {
+        JsonObject frontendData = new JsonObject();
 
         if (!Util.jsonKeysPresent(data,"availability", "name", "icon")) return Optional.empty();
         Util.copyJsonAttributes(data, frontendData, "availability", "statusMessage", "name", "icon", "gameName", "gameTag", "pid" , "id", "puuid", "lol", "summonerId");
 
-        frontendData.put("regalia", mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class.getSimpleName()).get(data.getBigInteger("summonerId")));
+        frontendData.add("regalia", mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class.getSimpleName()).get(data.get("summonerId").getAsBigInteger()));
 
         return Optional.of(frontendData);
     }
@@ -65,9 +67,9 @@ public class ChatMeManager extends StateDataManager {
     }
 
     @Override
-    protected Optional<JSONObject> fetchCurrentState() {
+    protected Optional<JsonObject> fetchCurrentState() {
         if (currentState != null) return Optional.of(currentState);
-        JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolChatV1MePattern));
+        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolChatV1MePattern));
         return backendToFrontendChatMe(data);
     }
 

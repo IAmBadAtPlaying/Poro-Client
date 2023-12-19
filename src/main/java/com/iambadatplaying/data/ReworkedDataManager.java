@@ -1,12 +1,13 @@
 package com.iambadatplaying.data;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.data.map.FriendManager;
 import com.iambadatplaying.data.map.MapDataManager;
 import com.iambadatplaying.data.state.*;
 import com.iambadatplaying.data.map.RegaliaManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.HashMap;
 
@@ -89,11 +90,12 @@ public class ReworkedDataManager {
         initialized = false;
     }
 
-    public void update(JSONObject message) {
+    public void update(JsonObject message) {
         try {
-            JSONObject data = message.getJSONObject("data");
-            String uri = message.getString("uri");
-            String type = message.getString("eventType");
+
+            JsonElement data = message.get("data");
+            String uri = message.get("uri").getAsString();
+            String type = message.get("eventType").getAsString();
             log(type + " " + uri + ": " +data);
             doUpdate(uri, type, data);
         } catch (Exception e) {
@@ -101,14 +103,19 @@ public class ReworkedDataManager {
         }
     }
 
-    private void doUpdate(String uri, String type, JSONObject data) {
+    private void doUpdate(String uri, String type, JsonElement data) {
         if (!initialized) {
             log("Not initialized, wont have any effect", MainInitiator.LOG_LEVEL.WARN);
             return;
         }
 
-        if (data == null || data.isEmpty()) {
+        if (data == null || data.isJsonNull()) {
             log("Data is empty, wont have any effect", MainInitiator.LOG_LEVEL.WARN);
+            return;
+        }
+
+        if (!data.isJsonArray() || !data.isJsonObject()) {
+            log("Data is not a JsonArray or JsonObject, wont have any effect", MainInitiator.LOG_LEVEL.WARN);
             return;
         }
 
@@ -143,17 +150,17 @@ public class ReworkedDataManager {
         return mapDataManagers.get(managerName);
     }
 
-    public static String getEventDataString(String event, JSONObject data) {
-        JSONObject dataToSend = new JSONObject();
-        dataToSend.put(DATA_STRING_EVENT, event);
-        dataToSend.put("data", data);
+    public static String getEventDataString(String event, JsonObject data) {
+        JsonObject dataToSend = new JsonObject();
+        dataToSend.addProperty(DATA_STRING_EVENT, event);
+        dataToSend.add("data", data);
         return dataToSend.toString();
     }
 
-    public static String getEventDataString(String event, JSONArray data) {
-        JSONObject dataToSend = new JSONObject();
-        dataToSend.put(DATA_STRING_EVENT, event);
-        dataToSend.put("data", data);
+    public static String getEventDataString(String event, JsonArray data) {
+        JsonObject dataToSend = new JsonObject();
+        dataToSend.addProperty(DATA_STRING_EVENT, event);
+        dataToSend.add("data", data);
         return dataToSend.toString();
     }
 

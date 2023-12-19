@@ -1,10 +1,11 @@
 package com.iambadatplaying.data.state;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
-import org.json.JSONObject;
 
 import java.util.Optional;
 
@@ -27,23 +28,24 @@ public class LootData extends StateDataManager {
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JSONObject data) {
+    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
             case "Delete":
                 break;
             case "Create":
             case "Update":
-                Optional<JSONObject> updatedFEData = backendToFrontendLoot(data);
+                if (!data.isJsonObject()) return;
+                Optional<JsonObject> updatedFEData = backendToFrontendLoot(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
-                JSONObject updatedState = updatedFEData.get();
-                if (updatedState.similar(currentState)) return;
+                JsonObject updatedState = updatedFEData.get();
+                if (Util.equalJsonElements(updatedState, currentState)) return;
                 currentState = updatedState;
                 sendCurrentState();
                 break;
         }
     }
 
-    private Optional<JSONObject> backendToFrontendLoot(JSONObject data) {
+    private Optional<JsonObject> backendToFrontendLoot(JsonObject data) {
         return Util.getOptJSONObject(data, "playerLoot");
     }
 
@@ -53,8 +55,8 @@ public class LootData extends StateDataManager {
     }
 
     @Override
-    protected Optional<JSONObject> fetchCurrentState() {
-        JSONObject data = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v2/player-loot-map"));
+    protected Optional<JsonObject> fetchCurrentState() {
+        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v2/player-loot-map"));
         if (!data.has("errorCode")) return backendToFrontendLoot(data);
         return Optional.empty();
     }

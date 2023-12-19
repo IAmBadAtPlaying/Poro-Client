@@ -1,8 +1,9 @@
 package com.iambadatplaying.data.state;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.data.BasicDataManager;
-import org.json.JSONObject;
 
 import java.util.Optional;
 
@@ -12,28 +13,28 @@ public abstract class StateDataManager extends BasicDataManager {
         super(mainInitiator);
     }
 
-    protected JSONObject currentState = null;
+    protected JsonObject currentState = null;
 
-    public Optional<JSONObject> getCurrentState() {
+    public Optional<JsonObject> getCurrentState() {
         if (!initialized) {
             log("Not initialized, wont fetch current state", MainInitiator.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
         if (currentState != null) return Optional.of(currentState);
-        Optional<JSONObject> newState = fetchCurrentState();
+        Optional<JsonObject> newState = fetchCurrentState();
         newState.ifPresent(jsonObject -> currentState = jsonObject);
         return newState;
     }
 
-    public void setCurrentState(JSONObject currentState) {
+    public void setCurrentState(JsonObject currentState) {
         this.currentState = currentState;
     }
 
-    protected abstract Optional<JSONObject> fetchCurrentState();
+    protected abstract Optional<JsonObject> fetchCurrentState();
 
     public abstract void sendCurrentState();
 
-    public void updateState(String uri, String type,JSONObject data) {
+    public void updateState(String uri, String type, JsonElement data) {
         if (!initialized) {
             log("Not initialized, wont have any effect", MainInitiator.LOG_LEVEL.WARN);
             return;
@@ -47,6 +48,6 @@ public abstract class StateDataManager extends BasicDataManager {
             log("Not initialized, wont have any effect", MainInitiator.LOG_LEVEL.WARN);
             return;
         }
-        currentState = new JSONObject();
+        currentState = new JsonObject();
     }
 }
