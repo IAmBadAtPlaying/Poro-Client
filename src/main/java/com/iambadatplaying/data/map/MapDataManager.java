@@ -4,7 +4,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.data.BasicDataManager;
-import org.json.JSONObject;
 
 import java.util.Collections;
 import java.util.HashMap;

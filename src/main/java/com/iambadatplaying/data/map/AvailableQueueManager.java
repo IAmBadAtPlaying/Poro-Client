@@ -5,11 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
-import java.util.Collections;
-import java.util.HashMap;
 
 public class AvailableQueueManager extends MapDataManager<Integer> {
 
