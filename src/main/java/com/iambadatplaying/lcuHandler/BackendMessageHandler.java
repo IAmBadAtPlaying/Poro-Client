@@ -1,10 +1,12 @@
 package com.iambadatplaying.lcuHandler;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Util;
 import com.iambadatplaying.structs.messaging.Conversation;
 import com.iambadatplaying.structs.messaging.Message;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.math.BigInteger;
 import java.net.URLDecoder;
@@ -30,7 +32,7 @@ public class BackendMessageHandler {
     private Pattern lolChatV1FriendsPatternCompiled;
     private Pattern lolRegaliaV2SummonerPatternCompiled;
 
-    private final static HashMap<String, JSONObject> summonersMap = new HashMap<>();
+    private final static HashMap<String, JsonObject> summonersMap = new HashMap<>();
 
     public BackendMessageHandler(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
@@ -44,22 +46,24 @@ public class BackendMessageHandler {
 
     //TODO: Maybe just export as Observable
     public void handleMessage(String message) {
-        JSONArray messageArray = null;
+        JsonElement jsonElement = Util.parseJson(message);
         if (message == null || message.isEmpty()) {
             return;
         }
         try {
-            messageArray = new JSONArray(message);
-            if (messageArray != null && !messageArray.isEmpty()) { //[8,"endpoint",{}]
-                JSONObject jsonData = messageArray.getJSONObject(2);
-                String uri = jsonData.getString("uri");
-                log(uri +"; " +jsonData.get("data"));
+            if (!jsonElement.isJsonArray()) return;
+            JsonArray messageArray = jsonElement.getAsJsonArray();
+            if (!messageArray.isEmpty()) { //[8,"endpoint",{}]
+                JsonObject jsonData = messageArray.get(2).getAsJsonObject();
+                String uri = jsonData.get("uri").getAsString();
+                String type = jsonData.get("eventType").getAsString();
+//                log(type + " " + uri + ": " +jsonData.get("data"));
                         switch (uri) {
                             case lolGameflowV1GameflowPhase:
                                 handle_lol_gameflow_v1_gameflow_phase(jsonData); //TODO: Doesnt work, replace with Gameflow session instead
                                 break;
                             case lolLobbyV2Lobby: //Works as intended
-                                handle_lol_lobby_v2_lobby(jsonData);
+//                                handle_lol_lobby_v2_lobby(jsonData);
                                 break;
                             case lolChampSelectV1Session: //Works as intended
                                 handle_lol_champ_select_v1_session(jsonData);
@@ -72,9 +76,9 @@ public class BackendMessageHandler {
                                 break;
                             default:
                                 if (uri.matches(lolChatV1FriendsPattern)) { //Works as intended
-                                    handle_lol_chat_v1_friends(jsonData);
+//                                    handle_lol_chat_v1_friends(jsonData);
                                 } else if (uri.matches(lolRegaliaV2SummonerPattern)) { //Works as intended
-                                    handle_lol_regalia_v2_summoners(jsonData);
+//                                    handle_lol_regalia_v2_summoners(jsonData);
                                 } else if (uri.startsWith("/lol-chat/v1/conversations/")) {
                                     messageTest(jsonData);
                                 }
@@ -82,22 +86,21 @@ public class BackendMessageHandler {
                         }
                 }
         } catch (Exception e) {
-            log(e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+            log("[handleMessage]: " + e + " - "+message, MainInitiator.LOG_LEVEL.ERROR);
             return;
         }
     }
 
-    private void handle_lol_loot_v2_player_loot_map(JSONObject jsonData) {
-        JSONObject actualData = jsonData.getJSONObject("data");
-        log(actualData.length());
-        JSONObject updatedLoot = mainInitiator.getDataManager().updateFELootMap(actualData);
+    private void handle_lol_loot_v2_player_loot_map(JsonObject jsonData) {
+        JsonObject actualData = jsonData.get("data").getAsJsonObject();
+        JsonObject updatedLoot = mainInitiator.getDataManager().updateFELootMap(actualData);
         if (updatedLoot == null) return;
         mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LootUpdate", mainInitiator.getDataManager().getLoot()));
     }
 
-    private void messageTest(JSONObject jsonData) {
+    private void messageTest(JsonObject jsonData) {
         try {
-            String uri = jsonData.getString("uri");
+            String uri = jsonData.get("uri").getAsString();
             if (uri.endsWith("/messages")) {
                 String conversationId = extractConversationId(uri);
                 if (conversationId == null) return;
@@ -113,7 +116,7 @@ public class BackendMessageHandler {
                 if (conversation == null) return;
                 log("Conversation: " + conversation.getId(), MainInitiator.LOG_LEVEL.INFO);
 
-                JSONArray messages = jsonData.getJSONArray("data");
+                JsonArray messages = jsonData.get("data").getAsJsonArray();
 
                 ArrayList<Message> messageList = Message.createMessageList(messages);
                 //Replacement is needed to avoid bugs
@@ -126,11 +129,11 @@ public class BackendMessageHandler {
                 String[] messageInfo = extractMessageInfo(uri);
                 if ((messageInfo[0] == null) || (messageInfo[1] == null)) return;
                 if (!messageInfo[0].endsWith("pvp.net")) return;
-                JSONObject actualData = jsonData.getJSONObject("data");
+                JsonObject actualData = jsonData.get("data").getAsJsonObject();
                 if (!actualData.has("body")) return;
-                String message = actualData.getString("body");
-                String fromId = actualData.getString("fromId");
-                String type = actualData.getString("type");
+                String message = actualData.get("body").getAsString();
+                String fromId = actualData.get("fromId").getAsString();
+                String type = actualData.get("type").getAsString();
 
 
                 mainInitiator.getDataManager().addConversationMessage(messageInfo[0], actualData);
@@ -169,39 +172,41 @@ public class BackendMessageHandler {
         return result;
     }
 
-    private void testHonorReveal(JSONObject jsonData) {
+    private void testHonorReveal(JsonObject jsonData) {
         try {
-            JSONObject actualData = jsonData.getJSONObject("data");
+            JsonObject actualData = jsonData.get("data").getAsJsonObject();
             if (actualData.has("payload")) {
-                String payload = actualData.getString("payload");
-                JSONArray payloadArray = new JSONArray(payload);
-                for (int i = 0; i < payloadArray.length(); i++) {
-                    JSONObject payloadObject = payloadArray.getJSONObject(i);
-                    String receiverPuuid = payloadObject.getString("puuid");
+                String payload = actualData.get("payload").getAsString();
+                JsonElement payloadElement = Util.parseJson(payload);
+                if (!payloadElement.isJsonArray()) return;
+                JsonArray payloadArray = payloadElement.getAsJsonArray();
+                for (int i = 0; i < payloadArray.size(); i++) {
+                    JsonObject payloadObject = payloadArray.get(i).getAsJsonObject();
+                    String receiverPuuid = payloadObject.get("puuid").getAsString();
 
                     String receiverName;
                     if (summonersMap.get(receiverPuuid) == null) {
-                        JSONObject receiverData = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v2/summoners/puuid/"+ receiverPuuid));
+                        JsonObject receiverData = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v2/summoners/puuid/"+ receiverPuuid));
                         summonersMap.put(receiverPuuid, receiverData);
-                        receiverName = receiverData.getString("displayName");
+                        receiverName = receiverData.get("displayName").getAsString();
                     } else {
-                        receiverName = summonersMap.get(receiverPuuid).getString("displayName");
+                        receiverName = summonersMap.get(receiverPuuid).get("displayName").getAsString();
                     }
                     log(receiverName + " received the following honors:" , MainInitiator.LOG_LEVEL.INFO);
-                    JSONArray honors = payloadObject.getJSONArray("honors");
-                    for (int j = 0; j < honors.length(); j++) {
-                        JSONObject honor = honors.getJSONObject(j);
-                        String honorRelationship = honor.getString("voterRelationship");
-                        String honorCategory = honor.getString("honorCategory");
-                        String senderPuuid = honor.getString("senderPuuid");
+                    JsonArray honors = payloadObject.get("honors").getAsJsonArray();
+                    for (int j = 0; j < honors.size(); j++) {
+                        JsonObject honor = honors.get(j).getAsJsonObject();
+                        String honorRelationship = honor.get("voterRelationship").getAsString();
+                        String honorCategory = honor.get("honorCategory").getAsString();
+                        String senderPuuid = honor.get("senderPuuid").getAsString();
 
                         String senderName;
                         if (summonersMap.get(senderPuuid) == null) {
-                            JSONObject senderData = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v2/summoners/puuid/"+ senderPuuid));
+                            JsonObject senderData = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v2/summoners/puuid/"+ senderPuuid));
                             summonersMap.put(senderPuuid, senderData);
-                            senderName = senderData.getString("displayName");
+                            senderName = senderData.get("displayName").getAsString();
                         } else {
-                            senderName = summonersMap.get(senderPuuid).getString("displayName");
+                            senderName = summonersMap.get(senderPuuid).get("displayName").getAsString();
                         }
                         log(honorCategory + " from " + senderName , MainInitiator.LOG_LEVEL.INFO);
                     }
@@ -215,71 +220,74 @@ public class BackendMessageHandler {
 
     //For OnJsonApiEvent_lol-loot_v2_player-loot-map; the updated / event Value is the new map;
 
-    private void handle_lol_champ_select_v1_session(JSONObject jsonData) {
-        String uri = jsonData.getString("uri");
-        String type = jsonData.getString("eventType");
-        JSONObject actualData = jsonData.getJSONObject("data");
-        switch (type) {
-            case "Create":
-            case "Update":
-                log(actualData);
-                JSONObject data = mainInitiator.getDataManager().updateFEChampSelectSession(actualData);
-                if (data == null) return;
-                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ChampSelectUpdate", data));
-                break;
-            case "Delete":
-                mainInitiator.getDataManager().resetChampSelectSession();
-                break;
-            default:
-                log("OnJsonApiEvent_lol-champ-select_v1_session - Unkown type: " +type);
-            break;
-        }
+    private void handle_lol_champ_select_v1_session(JsonObject jsonData) {
+        return;
+//        String uri = jsonData.getString("uri");
+//        String type = jsonData.getString("eventType");
+//        JSONObject actualData = jsonData.getJSONObject("data");
+//        switch (type) {
+//            case "Create":
+//            case "Update":
+//                log(actualData);
+//                JSONObject data = mainInitiator.getDataManager().updateFEChampSelectSession(actualData);
+//                if (data == null) return;
+//                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ChampSelectUpdate", data));
+//                break;
+//            case "Delete":
+//                mainInitiator.getDataManager().resetChampSelectSession();
+//                break;
+//            default:
+//                log("OnJsonApiEvent_lol-champ-select_v1_session - Unkown type: " +type);
+//            break;
+//        }
     }
 
-    private void handle_lol_regalia_v2_summoners(JSONObject jsonData) {
-        String uri = jsonData.getString("uri");
-        String summonerIdStr = uri.replaceAll(DataManager.REGALIA_REGEX, "$1");
+//    private void handle_lol_regalia_v2_summoners(JsonObject jsonData) {
+//        String uri = jsonData.get("uri").getAsString();
+//        String summonerIdStr = uri.replaceAll(DataManager.REGALIA_REGEX, "$1");
+//
+//        summonerIdStr  = summonerIdStr .replaceAll("^/+", "").replaceAll("/+$", "");;
+//        BigInteger summonerId = new BigInteger(summonerIdStr);
+//
+//        mainInitiator.getDataManager().updateFERegaliaInfo(summonerId);
+//        JsonObject currentState =  mainInitiator.getDataManager().getCurrentLobbyState();
+//        if (currentState == null) return;
+//        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LobbyUpdate", currentState));
+//    }
 
-        summonerIdStr  = summonerIdStr .replaceAll("^/+", "").replaceAll("/+$", "");;
-        BigInteger summonerId = new BigInteger(summonerIdStr);
+//    private void handle_lol_chat_v1_friends(JsonObject jsonData) {
+//        JsonObject actualData = jsonData.get("data").getAsJsonObject();
+//        JsonObject data = mainInitiator.getDataManager().updateFEFriend(actualData);
+//        if (data == null || data.isEmpty()) return;
+//        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("FriendListUpdate", data));
+//    }
 
-        mainInitiator.getDataManager().updateFERegaliaInfo(summonerId);
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LobbyUpdate", mainInitiator.getDataManager().getCurrentLobbyState()));
+    private void handle_lol_gameflow_v1_gameflow_phase(JsonObject jsonData) {
+//        JSONObject actualData = jsonData.getJSONObject("data");
+//        JSONObject data = mainInitiator.getDataManager().updateFEGameflowStatus(actualData);
+//        if (data == null || data.isEmpty()) return;
+//        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("GameflowPhaseUpdate",data));
     }
 
-    private void handle_lol_chat_v1_friends(JSONObject jsonData) {
-        JSONObject actualData = jsonData.getJSONObject("data");
-        JSONObject data = mainInitiator.getDataManager().updateFEFriend(actualData);
-        if (data == null || data.isEmpty()) return;
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("FriendListUpdate", data));
-    }
-
-    private void handle_lol_gameflow_v1_gameflow_phase(JSONObject jsonData) {
-        JSONObject actualData = jsonData.getJSONObject("data");
-        JSONObject data = mainInitiator.getDataManager().updateFEGameflowStatus(actualData);
-        if (data == null || data.isEmpty()) return;
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("GameflowPhaseUpdate",data));
-    }
-
-    private void handle_lol_lobby_v2_lobby(JSONObject jsonData) {
-        String uri = jsonData.getString("uri");
-        switch (uri) {
-            case "/lol-lobby/v2/lobby":;
-                String eventType = jsonData.getString("eventType");
-                JSONObject data = null;
-                if ("Delete".equals(eventType.trim())) {
-                    data = mainInitiator.getDataManager().updateFELobby(new JSONObject());
-                } else {
-                    JSONObject actualData = jsonData.getJSONObject("data");
-                    data = mainInitiator.getDataManager().updateFELobby(actualData);
-                }
-                if (data == null) return;
-                mainInitiator.getServer().sendToAllSessions(mainInitiator.getDataManager().getEventDataString("LobbyUpdate", data));
-            break;
-            default:
-            break;
-        }
-    }
+//    private void handle_lol_lobby_v2_lobby(JsonObject jsonData) {
+//        String uri = jsonData.get("uri").getAsString();
+//        switch (uri) {
+//            case "/lol-lobby/v2/lobby":;
+//                String eventType = jsonData.get("eventType").getAsString();
+//                JsonObject data = null;
+//                if ("Delete".equals(eventType.trim())) {
+//                    data = mainInitiator.getDataManager().updateFELobby(new JsonObject());
+//                } else {
+//                    JsonObject actualData = jsonData.get("data").getAsJsonObject();
+//                    data = mainInitiator.getDataManager().updateFELobby(actualData);
+//                }
+//                if (data == null) return;
+//                mainInitiator.getServer().sendToAllSessions(mainInitiator.getDataManager().getEventDataString("LobbyUpdate", data));
+//            break;
+//            default:
+//            break;
+//        }
+//    }
 
     private void log(Object o, MainInitiator.LOG_LEVEL level) {
         mainInitiator.log(this.getClass().getSimpleName() +": " + o, level);

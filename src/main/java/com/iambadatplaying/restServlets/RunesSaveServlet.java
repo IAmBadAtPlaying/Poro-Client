@@ -1,9 +1,9 @@
 package com.iambadatplaying.restServlets;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -14,7 +14,7 @@ import java.math.BigInteger;
 public class RunesSaveServlet extends BaseRESTServlet{
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        JSONObject json = getJsonFromRequestBody(req);
+        JsonObject json = getJsonObjectFromRequestBody(req);
         if (json == null || json.isEmpty()) return;
         BigInteger pageId = getCurrentRunePageId();
 
@@ -30,29 +30,28 @@ public class RunesSaveServlet extends BaseRESTServlet{
     }
 
     private BigInteger getValidRunePageId() {
-        JSONArray resp = (JSONArray) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_ARRAY,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/pages"));
+        JsonArray resp = mainInitiator.getConnectionManager().getResponseBodyAsJsonArray(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/pages"));
         if (resp == null) return null;
-        String runeSiteName = "[Unknown]";
         if (resp.isEmpty()) {
             log("No runepages found, creating new one", MainInitiator.LOG_LEVEL.INFO);
             return null;
         }
-        for (int i = resp.length()-1; i >= 0; i--) {
-            JSONObject page = resp.getJSONObject(i);
-            if (!page.getBoolean("isTemporary")) {
-                log("Runepage \""+page.getString("name")+ "\" will be replaced!", MainInitiator.LOG_LEVEL.INFO);
-                return page.getBigInteger("id");
+        for (int i = resp.size()-1; i >= 0; i--) {
+            JsonObject page = resp.get(i).getAsJsonObject();
+            if (!page.get("isTemporary").getAsBoolean()) {
+                log("Runepage \""+page.get("name").getAsString()+ "\" will be replaced!", MainInitiator.LOG_LEVEL.INFO);
+                return page.get("id").getAsBigInteger();
             }
         }
         return null;
     }
 
     private BigInteger getCurrentRunePageId() {
-        JSONObject resp = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/currentpage"));
+        JsonObject resp = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/currentpage"));
         if (resp == null) return null;
         BigInteger result = null;
         try {
-            result = resp.getBigInteger("id");
+            result = resp.get("id").getAsBigInteger();
         } catch (Exception e) {
             log("Current Rune page id not found, usually caused by using the rune presets", MainInitiator.LOG_LEVEL.INFO);
         }
@@ -64,7 +63,7 @@ public class RunesSaveServlet extends BaseRESTServlet{
         mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.DELETE,"/lol-perks/v1/pages/"+pageId));
     }
 
-    private void createNewRunePage(JSONObject body) {
+    private void createNewRunePage(JsonObject body) {
         if (body == null || body.isEmpty()) return;
         mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE,mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-perks/v1/pages", body.toString()));
     }

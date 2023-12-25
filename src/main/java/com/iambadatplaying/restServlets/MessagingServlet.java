@@ -1,15 +1,14 @@
 package com.iambadatplaying.restServlets;
 
+import com.google.gson.JsonObject;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.structs.messaging.Conversation;
-import org.json.JSONObject;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 public class MessagingServlet extends BaseRESTServlet{
@@ -48,7 +47,7 @@ public class MessagingServlet extends BaseRESTServlet{
             if (conversation.getMessages().isEmpty()) {
                 resp.setHeader("Refresh", "1");
             }
-            JSONObject jsonObject = conversation.toJsonObject();
+            JsonObject jsonObject = conversation.toJsonObject();
             resp.getWriter().write(jsonObject.toString());
             resp.setStatus(HttpServletResponse.SC_OK);
             return;
@@ -58,7 +57,7 @@ public class MessagingServlet extends BaseRESTServlet{
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        JSONObject requestJson = getJsonFromRequestBody(req);
+        JsonObject requestJson = getJsonObjectFromRequestBody(req);
         String[] pathParts = sliceAtSlash(req.getPathInfo());
         if (pathParts.length == 0) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -74,16 +73,16 @@ public class MessagingServlet extends BaseRESTServlet{
             if (!conversationId.contains("@")) {
                 conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
             }
-            String body = requestJson.getString("body");
+            String body = requestJson.get("body").getAsString();
             if (body == null || body.isEmpty()) {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 return;
             }
-            JSONObject messageJson = new JSONObject();
-            messageJson.put("body", body);
-            messageJson.put("type", "chat");
+            JsonObject messageJson = new JsonObject();
+            messageJson.addProperty("body", body);
+            messageJson.addProperty("type", "chat");
 
-            JSONObject responseJson = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId + "/messages", messageJson.toString()));
+            JsonObject responseJson = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId + "/messages", messageJson.toString()));
 
             if (responseJson == null) {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -95,15 +94,5 @@ public class MessagingServlet extends BaseRESTServlet{
 
             return;
         }
-    }
-
-
-    private String[] sliceAtSlash(String pathInfo) {
-        if (pathInfo != null && pathInfo.length() > 1) {
-            String path = pathInfo.substring(1); // remove leading slash
-            String[] pathParts = path.split("/");
-            return pathParts;
-        }
-        return new String[0];
     }
 }

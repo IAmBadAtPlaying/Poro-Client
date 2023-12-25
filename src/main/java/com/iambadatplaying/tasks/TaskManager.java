@@ -1,8 +1,9 @@
 package com.iambadatplaying.tasks;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.iambadatplaying.MainInitiator;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,7 +31,7 @@ public class TaskManager {
 
     public void updateAllTasks(String message) {
         try {
-            JSONArray updateArray = new JSONArray(message);
+            JsonArray updateArray = JsonParser.parseString(message).getAsJsonArray();
             for (Task task : runningtaskList.values()) {
                 new Thread(new Runnable() {
                     @Override
@@ -72,11 +73,16 @@ public class TaskManager {
 //        addTask("AutoPickChamp");
 //    }
 
+    private Path getTaskPath() {
+        return Paths.get(mainInitiator.getBasePath().toString() + "/tasks");
+    }
+
     private void loadDefaultTasks() {
         log("Loading default tasks");
         addTaskToMap(new AutoAcceptQueue());
         addTaskToMap(new AutoPickChamp());
         addTaskToMap(new PickReminderTask());
+        addTaskToMap(new SuppressUx());
     }
 
     public void addTaskToMap(Task task) {
@@ -130,6 +136,7 @@ public class TaskManager {
 
     public synchronized void shutdown() {
         running = false;
+        if (runningtaskList == null) return;
         for (Task task : runningtaskList.values()) {
             if (task != null) {
                 task.shutdown();
@@ -138,19 +145,19 @@ public class TaskManager {
         runningtaskList.clear();
     }
 
-    public JSONArray getTaskAndArgs() {
+    public JsonArray getTaskAndArgs() {
 
-        JSONArray taskList = new JSONArray();
+        JsonArray taskList = new JsonArray();
         for (Task task : allTasksMap.values()) {
-            JSONObject taskObject = new JSONObject();
-            taskObject.put("name", task.getClass().getSimpleName());
+            JsonObject taskObject = new JsonObject();
+            taskObject.addProperty("name", task.getClass().getSimpleName());
             if (runningtaskList.get(task.getClass().getSimpleName().toLowerCase()) != null) {
-                taskObject.put("running", task.isRunning());
+                taskObject.addProperty("running", task.isRunning());
             } else {
-                taskObject.put("running", false);
+                taskObject.addProperty("running", false);
             }
-            taskObject.put("args", task.getRequiredArgs());
-            taskList.put(taskObject);
+            taskObject.add("args", task.getRequiredArgs());
+            taskList.add(taskObject);
         }
         return taskList;
     }

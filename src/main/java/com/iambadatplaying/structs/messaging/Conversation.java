@@ -1,7 +1,8 @@
 package com.iambadatplaying.structs.messaging;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 
@@ -9,6 +10,7 @@ public class Conversation {
     public enum SCOPE {
         LOBBY,
         CHAMP_SELECT,
+        CLASH,
         POST_GAME,
         PEER_TO_PEER;
 
@@ -46,6 +48,7 @@ public class Conversation {
     private static final String SCOPE_CHAMP_SELECT = "champ-select";
     private static final String SCOPE_LOBBY = "sec";
     private static final String SCOPE_POST_GAME = "post-game";
+    private static final String SCOPE_CLASH = "clash";
 
 
     public Conversation(String id) {
@@ -53,6 +56,8 @@ public class Conversation {
         this.id = id;
         if (id.contains(SCOPE_CHAMP_SELECT)) {
             this.scope = SCOPE.CHAMP_SELECT;
+        } else if (id.contains(SCOPE_CLASH)) {
+            this.scope = SCOPE.CLASH;
         } else if (id.contains(SCOPE_LOBBY)) {
             this.scope = SCOPE.LOBBY;
         } else if (id.contains(SCOPE_POST_GAME)) {
@@ -80,28 +85,28 @@ public class Conversation {
         } else return null;
     }
 
-    public static Conversation fromJsonObject(JSONObject jsonConversation) {
+    public static Conversation fromJsonObject(JsonObject jsonConversation) {
         if (jsonConversation == null) return null;
         if (!jsonConversation.has(ID)) return null;
-        Conversation conversation = new Conversation(jsonConversation.getString("id"));
-        if (jsonConversation.has(PID)) conversation.setPid(jsonConversation.getString("pid"));
-        if (jsonConversation.has(TYPE)) conversation.setType(jsonConversation.getString("type"));
-        if (jsonConversation.has(UNREAD_MESSAGE_COUNT)) conversation.setUnreadMessageCount(jsonConversation.getInt("unreadMessageCount"));
+        Conversation conversation = new Conversation(jsonConversation.get("id").getAsString());
+        if (jsonConversation.has(PID)) conversation.setPid(jsonConversation.get("pid").getAsString());
+        if (jsonConversation.has(TYPE)) conversation.setType(jsonConversation.get("type").getAsString());
+        if (jsonConversation.has(UNREAD_MESSAGE_COUNT)) conversation.setUnreadMessageCount(jsonConversation.get("unreadMessageCount").getAsInt());
         return conversation;
     }
 
-    public JSONObject toJsonObject() {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put(ID, this.getId());
-        jsonObject.put(PID, this.getPid());
-        jsonObject.put(TYPE, this.getType());
-        jsonObject.put(UNREAD_MESSAGE_COUNT, this.getUnreadMessageCount());
+    public JsonObject toJsonObject() {
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty(ID, this.getId());
+        jsonObject.addProperty(PID, this.getPid());
+        jsonObject.addProperty(TYPE, this.getType());
+        jsonObject.addProperty(UNREAD_MESSAGE_COUNT, this.getUnreadMessageCount());
 
-        JSONArray messages = new JSONArray();
+        JsonArray messages = new JsonArray();
         for (Message message : this.messages) {
-            messages.put(message.toJsonObject());
+            messages.add(message.toJsonObject());
         }
-        jsonObject.put(MESSAGES, messages);
+        jsonObject.add(MESSAGES, messages);
         return jsonObject;
     }
 

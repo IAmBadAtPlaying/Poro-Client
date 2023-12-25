@@ -1,13 +1,13 @@
 package com.iambadatplaying.tasks;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 public class TestTask extends Task {
     private String arg1 = "Unknown";
 
-    public void notify(JSONArray webSocketEvent) {
+    public void notify(JsonArray webSocketEvent) {
         log(webSocketEvent.toString());
     }
 
@@ -18,9 +18,9 @@ public class TestTask extends Task {
 
     }
 
-    public boolean setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JsonObject arguments) {
         try {
-            arg1 = arguments.getString("arg1");
+            arg1 = arguments.get("arg1").getAsString();
             log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
@@ -29,23 +29,23 @@ public class TestTask extends Task {
         return false;
     }
 
-    public JSONObject getTaskArgs() {
-        JSONObject taskArgs = new JSONObject();
-        taskArgs.put("arg1", arg1);
+    public JsonObject getTaskArgs() {
+        JsonObject taskArgs = new JsonObject();
+        taskArgs.addProperty("arg1", arg1);
         return taskArgs;
     }
 
-    public JSONArray getRequiredArgs() {
-        JSONArray requiredArgs = new JSONArray();
+    public JsonArray getRequiredArgs() {
+        JsonArray requiredArgs = new JsonArray();
 
-        JSONObject arg1 = new JSONObject();
-        arg1.put("displayName", "arg1");
-        arg1.put("required", true);
-        arg1.put("type", "String");
-        arg1.put("description", "This is the first argument");
-        arg1.put("backendKey", "arg1");
+        JsonObject arg1 = new JsonObject();
+        arg1.addProperty("displayName", "arg1");
+        arg1.addProperty("required", true);
+        arg1.addProperty("type", "String");
+        arg1.addProperty("description", "This is the first argument");
+        arg1.addProperty("backendKey", "arg1");
 
-        requiredArgs.put(arg1);
+        requiredArgs.add(arg1);
 
         return requiredArgs;
     }

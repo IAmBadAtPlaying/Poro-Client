@@ -40,5 +40,13 @@ public class RESTContextHandler extends ServletContextHandler {
         ServletHolder conversationServletHolder = new ServletHolder(MessagingServlet.class);
         addServlet(conversationServletHolder, "/conversations/*");
 
+        ServletHolder test = new ServletHolder(Userconfig.class);
+        addServlet(test, "/userconfig/*");
+
+        ServletHolder lootServletHolder = new ServletHolder(LootServlet.class);
+        addServlet(lootServletHolder, "/loot/*");
+
+        ServletHolder uploadTest = new ServletHolder(UploadServlet.class);
+        addServlet(uploadTest, "/dynamic/*");
     }
 }

@@ -1,8 +1,8 @@
 package com.iambadatplaying.tasks;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -19,38 +19,38 @@ public class ChatAppearanceOverride extends Task {
 
     private String availability;
 
-    public void notify(JSONArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.length() < 3) {
+    public void notify(JsonArray webSocketEvent) {
+        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
-        JSONObject data = webSocketEvent.getJSONObject(2);
-        String uriTrigger = data.getString("uri");
+        JsonObject data = webSocketEvent.get(2).getAsJsonObject();
+        String uriTrigger = data.get("uri").getAsString();
         if (lol_gameflow_v1_gameflow_phase.equals(uriTrigger)) {
             handleUpdateData(data);
         }
     }
 
-    private JSONObject buildChatAppearanceOverride() {
-        JSONObject chatAppearanceOverride = new JSONObject();
+    private JsonObject buildChatAppearanceOverride() {
+        JsonObject chatAppearanceOverride = new JsonObject();
         try {
-            JSONObject lol = new JSONObject();
+            JsonObject lol = new JsonObject();
             if (challengePoints != null) {
-                lol.put("challengePoints", challengePoints.toString());
+                lol.addProperty("challengePoints", challengePoints.toString());
             }
             if (masteryScore != null) {
-                lol.put("masteryScore", masteryScore.toString());
+                lol.addProperty("masteryScore", masteryScore.toString());
             }
-            lol.put("rankedLeagueQueue", rankedLeagueQueue);
-            lol.put("challengeCrystalLevel", challengeCrystalLevel);
-            lol.put("rankedLeagueTier", rankedLeagueTier);
+            lol.addProperty("rankedLeagueQueue", rankedLeagueQueue);
+            lol.addProperty("challengeCrystalLevel", challengeCrystalLevel);
+            lol.addProperty("rankedLeagueTier", rankedLeagueTier);
 
-            chatAppearanceOverride.put("lol", lol);
+            chatAppearanceOverride.add("lol", lol);
 
             if (iconId != null) {
-                chatAppearanceOverride.put("icon", iconId.intValue());
+                chatAppearanceOverride.addProperty("icon", iconId.intValue());
             }
 
-            chatAppearanceOverride.put("availability", availability);
+            chatAppearanceOverride.addProperty("availability", availability);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -58,16 +58,16 @@ public class ChatAppearanceOverride extends Task {
         return chatAppearanceOverride;
     }
 
-    private void handleUpdateData(JSONObject updateData) {
+    private void handleUpdateData(JsonObject updateData) {
         if (updateData == null || updateData.isEmpty()) return;
-        String newGameflowPhase = updateData.getString("data");
+        String newGameflowPhase = updateData.get("data").getAsString();
         if ("EndOfGame".equals(newGameflowPhase)) {
-            JSONObject body = buildChatAppearanceOverride();
+            JsonObject body = buildChatAppearanceOverride();
             sendChatAppearanceOverride(body);
         }
     }
 
-    private void sendChatAppearanceOverride(JSONObject body) {
+    private void sendChatAppearanceOverride(JsonObject body) {
         try {
             HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/me", body.toString());
             String response = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, con);
@@ -93,37 +93,37 @@ public class ChatAppearanceOverride extends Task {
         availability = null;
     }
 
-    public boolean setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JsonObject arguments) {
         try {
             if (arguments.has("iconId")) {
-                iconId = arguments.getInt("iconId");
+                iconId = arguments.get("iconId").getAsInt();
             }
 
             if (arguments.has("challengePoints")) {
-                challengePoints = arguments.getInt("challengePoints");
+                challengePoints = arguments.get("challengePoints").getAsInt();
             }
 
             if (arguments.has("rankedLeagueQueue")) {
-                rankedLeagueQueue = arguments.getString("rankedLeagueQueue");
+                rankedLeagueQueue = arguments.get("rankedLeagueQueue").getAsString();
             }
 
             if (arguments.has("challengeCrystalLevel")) {
-                challengeCrystalLevel = arguments.getString("challengeCrystalLevel");
+                challengeCrystalLevel = arguments.get("challengeCrystalLevel").getAsString();
             }
 
             if (arguments.has("masteryScore")) {
-                masteryScore = arguments.getInt("masteryScore");
+                masteryScore = arguments.get("masteryScore").getAsInt();
             }
 
             if (arguments.has("availability")) {
-                availability = arguments.getString("availability");
+                availability = arguments.get("availability").getAsString();
             }
 
             if (arguments.has("rankedLeagueTier")) {
-                rankedLeagueTier = arguments.getString("rankedLeagueTier");
+                rankedLeagueTier = arguments.get("rankedLeagueTier").getAsString();
             }
 
-            JSONObject body = buildChatAppearanceOverride();
+            JsonObject body = buildChatAppearanceOverride();
             sendChatAppearanceOverride(body);
             return true;
         } catch (Exception e) {
@@ -132,247 +132,247 @@ public class ChatAppearanceOverride extends Task {
         return false;
     }
 
-    public JSONObject getTaskArgs() {
-        JSONObject taskArgs = new JSONObject();
-        taskArgs.put("iconId", iconId);
-        taskArgs.put("challengePoints", challengePoints);
-        taskArgs.put("rankedLeagueQueue", rankedLeagueQueue);
-        taskArgs.put("challengeCrystalLevel", challengeCrystalLevel);
-        taskArgs.put("masteryScore", masteryScore);
-        taskArgs.put("availability", availability);
-        taskArgs.put("rankedLeagueTier", rankedLeagueTier);
+    public JsonObject getTaskArgs() {
+        JsonObject taskArgs = new JsonObject();
+        taskArgs.addProperty("iconId", iconId);
+        taskArgs.addProperty("challengePoints", challengePoints);
+        taskArgs.addProperty("rankedLeagueQueue", rankedLeagueQueue);
+        taskArgs.addProperty("challengeCrystalLevel", challengeCrystalLevel);
+        taskArgs.addProperty("masteryScore", masteryScore);
+        taskArgs.addProperty("availability", availability);
+        taskArgs.addProperty("rankedLeagueTier", rankedLeagueTier);
 
         return taskArgs;
     }
 
-    private JSONArray getRankedLeagueQueueOptions() {
-        JSONObject rankedSoloDuo = new JSONObject();
-        rankedSoloDuo.put("name", "Ranked Solo/Duo");
-        rankedSoloDuo.put("value", "RANKED_SOLO_5x5");
+    private JsonArray getRankedLeagueQueueOptions() {
+        JsonObject rankedSoloDuo = new JsonObject();
+        rankedSoloDuo.addProperty("name", "Ranked Solo/Duo");
+        rankedSoloDuo.addProperty("value", "RANKED_SOLO_5x5");
 
-        JSONObject rankedFlex = new JSONObject();
-        rankedFlex.put("name", "Ranked Flex");
-        rankedFlex.put("value", "RANKED_FLEX_SR");
+        JsonObject rankedFlex = new JsonObject();
+        rankedFlex.addProperty("name", "Ranked Flex");
+        rankedFlex.addProperty("value", "RANKED_FLEX_SR");
 
-        JSONObject rankedTFT = new JSONObject();
-        rankedTFT.put("name", "Ranked TFT");
-        rankedTFT.put("value", "RANKED_TFT");
+        JsonObject rankedTFT = new JsonObject();
+        rankedTFT.addProperty("name", "Ranked TFT");
+        rankedTFT.addProperty("value", "RANKED_TFT");
 
-        JSONArray rankedLeagueQueueOptions = new JSONArray();
-        rankedLeagueQueueOptions.put(rankedSoloDuo);
-        rankedLeagueQueueOptions.put(rankedFlex);
-        rankedLeagueQueueOptions.put(rankedTFT);
+        JsonArray rankedLeagueQueueOptions = new JsonArray();
+        rankedLeagueQueueOptions.add(rankedSoloDuo);
+        rankedLeagueQueueOptions.add(rankedFlex);
+        rankedLeagueQueueOptions.add(rankedTFT);
         return rankedLeagueQueueOptions;
     }
 
-    private JSONArray getRankedLeagueTierOptions() {
-        JSONObject rankedIron = new JSONObject();
-        rankedIron.put("name", "Iron");
-        rankedIron.put("value", "IRON");
+    private JsonArray getRankedLeagueTierOptions() {
+        JsonObject rankedIron = new JsonObject();
+        rankedIron.addProperty("name", "Iron");
+        rankedIron.addProperty("value", "IRON");
 
-        JSONObject rankedBronze = new JSONObject();
-        rankedBronze.put("name", "Bronze");
-        rankedBronze.put("value", "BRONZE");
+        JsonObject rankedBronze = new JsonObject();
+        rankedBronze.addProperty("name", "Bronze");
+        rankedBronze.addProperty("value", "BRONZE");
 
-        JSONObject rankedSilver = new JSONObject();
-        rankedSilver.put("name", "Silver");
-        rankedSilver.put("value", "SILVER");
+        JsonObject rankedSilver = new JsonObject();
+        rankedSilver.addProperty("name", "Silver");
+        rankedSilver.addProperty("value", "SILVER");
 
-        JSONObject rankedGold = new JSONObject();
-        rankedGold.put("name", "Gold");
-        rankedGold.put("value", "GOLD");
+        JsonObject rankedGold = new JsonObject();
+        rankedGold.addProperty("name", "Gold");
+        rankedGold.addProperty("value", "GOLD");
 
-        JSONObject rankedPlatinum = new JSONObject();
-        rankedPlatinum.put("name", "Platinum");
-        rankedPlatinum.put("value", "PLATINUM");
+        JsonObject rankedPlatinum = new JsonObject();
+        rankedPlatinum.addProperty("name", "Platinum");
+        rankedPlatinum.addProperty("value", "PLATINUM");
 
-        JSONObject rankedEmerald = new JSONObject();
-        rankedEmerald.put("name", "Emerald");
-        rankedEmerald.put("value", "EMERALD");
+        JsonObject rankedEmerald = new JsonObject();
+        rankedEmerald.addProperty("name", "Emerald");
+        rankedEmerald.addProperty("value", "EMERALD");
 
-        JSONObject rankedDiamond = new JSONObject();
-        rankedDiamond.put("name", "Diamond");
-        rankedDiamond.put("value", "DIAMOND");
+        JsonObject rankedDiamond = new JsonObject();
+        rankedDiamond.addProperty("name", "Diamond");
+        rankedDiamond.addProperty("value", "DIAMOND");
 
-        JSONObject rankedMaster = new JSONObject();
-        rankedMaster.put("name", "Master");
-        rankedMaster.put("value", "MASTER");
+        JsonObject rankedMaster = new JsonObject();
+        rankedMaster.addProperty("name", "Master");
+        rankedMaster.addProperty("value", "MASTER");
 
-        JSONObject rankedGrandmaster = new JSONObject();
-        rankedGrandmaster.put("name", "Grandmaster");
-        rankedGrandmaster.put("value", "GRANDMASTER");
+        JsonObject rankedGrandmaster = new JsonObject();
+        rankedGrandmaster.addProperty("name", "Grandmaster");
+        rankedGrandmaster.addProperty("value", "GRANDMASTER");
 
-        JSONObject rankedChallenger = new JSONObject();
-        rankedChallenger.put("name", "Challenger");
-        rankedChallenger.put("value", "CHALLENGER");
+        JsonObject rankedChallenger = new JsonObject();
+        rankedChallenger.addProperty("name", "Challenger");
+        rankedChallenger.addProperty("value", "CHALLENGER");
 
-        JSONArray rankedLeagueQueueOptions = new JSONArray();
-        rankedLeagueQueueOptions.put(rankedIron);
-        rankedLeagueQueueOptions.put(rankedBronze);
-        rankedLeagueQueueOptions.put(rankedSilver);
-        rankedLeagueQueueOptions.put(rankedGold);
-        rankedLeagueQueueOptions.put(rankedPlatinum);
-        rankedLeagueQueueOptions.put(rankedEmerald);
-        rankedLeagueQueueOptions.put(rankedDiamond);
-        rankedLeagueQueueOptions.put(rankedMaster);
-        rankedLeagueQueueOptions.put(rankedGrandmaster);
-        rankedLeagueQueueOptions.put(rankedChallenger);
+        JsonArray rankedLeagueQueueOptions = new JsonArray();
+        rankedLeagueQueueOptions.add(rankedIron);
+        rankedLeagueQueueOptions.add(rankedBronze);
+        rankedLeagueQueueOptions.add(rankedSilver);
+        rankedLeagueQueueOptions.add(rankedGold);
+        rankedLeagueQueueOptions.add(rankedPlatinum);
+        rankedLeagueQueueOptions.add(rankedEmerald);
+        rankedLeagueQueueOptions.add(rankedDiamond);
+        rankedLeagueQueueOptions.add(rankedMaster);
+        rankedLeagueQueueOptions.add(rankedGrandmaster);
+        rankedLeagueQueueOptions.add(rankedChallenger);
         return rankedLeagueQueueOptions;
     }
 
-    private JSONArray getAvailabilityOptions() {
-        JSONObject available = new JSONObject();
-        available.put("name", "Available");
-        available.put("value", "chat");
+    private JsonArray getAvailabilityOptions() {
+        JsonObject available = new JsonObject();
+        available.addProperty("name", "Available");
+        available.addProperty("value", "chat");
 
-        JSONObject busy = new JSONObject();
-        busy.put("name", "Busy");
-        busy.put("value", "dnd");
+        JsonObject busy = new JsonObject();
+        busy.addProperty("name", "Busy");
+        busy.addProperty("value", "dnd");
 
-        JSONObject away = new JSONObject();
-        away.put("name", "Away");
-        away.put("value", "away");
+        JsonObject away = new JsonObject();
+        away.addProperty("name", "Away");
+        away.addProperty("value", "away");
 
-        JSONObject offline = new JSONObject();
-        offline.put("name", "Offline");
-        offline.put("value", "offline");
+        JsonObject offline = new JsonObject();
+        offline.addProperty("name", "Offline");
+        offline.addProperty("value", "offline");
 
-        JSONObject mobile = new JSONObject();
-        mobile.put("name", "Mobile");
-        mobile.put("value", "mobile");
+        JsonObject mobile = new JsonObject();
+        mobile.addProperty("name", "Mobile");
+        mobile.addProperty("value", "mobile");
 
-        JSONArray availabilityOptions = new JSONArray();
-        availabilityOptions.put(available);
-        availabilityOptions.put(busy);
-        availabilityOptions.put(away);
-        availabilityOptions.put(offline);
-        availabilityOptions.put(mobile);
+        JsonArray availabilityOptions = new JsonArray();
+        availabilityOptions.add(available);
+        availabilityOptions.add(busy);
+        availabilityOptions.add(away);
+        availabilityOptions.add(offline);
+        availabilityOptions.add(mobile);
         return availabilityOptions;
     }
 
-    private JSONArray getChallengeCrystalLevelOptions() {
-        JSONObject rankedIron = new JSONObject();
-        rankedIron.put("name", "Iron");
-        rankedIron.put("value", "IRON");
+    private JsonArray getChallengeCrystalLevelOptions() {
+        JsonObject rankedIron = new JsonObject();
+        rankedIron.addProperty("name", "Iron");
+        rankedIron.addProperty("value", "IRON");
 
-        JSONObject rankedBronze = new JSONObject();
-        rankedBronze.put("name", "Bronze");
-        rankedBronze.put("value", "BRONZE");
+        JsonObject rankedBronze = new JsonObject();
+        rankedBronze.addProperty("name", "Bronze");
+        rankedBronze.addProperty("value", "BRONZE");
 
-        JSONObject rankedSilver = new JSONObject();
-        rankedSilver.put("name", "Silver");
-        rankedSilver.put("value", "SILVER");
+        JsonObject rankedSilver = new JsonObject();
+        rankedSilver.addProperty("name", "Silver");
+        rankedSilver.addProperty("value", "SILVER");
 
-        JSONObject rankedGold = new JSONObject();
-        rankedGold.put("name", "Gold");
-        rankedGold.put("value", "GOLD");
+        JsonObject rankedGold = new JsonObject();
+        rankedGold.addProperty("name", "Gold");
+        rankedGold.addProperty("value", "GOLD");
 
-        JSONObject rankedPlatinum = new JSONObject();
-        rankedPlatinum.put("name", "Platinum");
-        rankedPlatinum.put("value", "PLATINUM");
+        JsonObject rankedPlatinum = new JsonObject();
+        rankedPlatinum.addProperty("name", "Platinum");
+        rankedPlatinum.addProperty("value", "PLATINUM");
 
-        JSONObject rankedDiamond = new JSONObject();
-        rankedDiamond.put("name", "Diamond");
-        rankedDiamond.put("value", "DIAMOND");
+        JsonObject rankedDiamond = new JsonObject();
+        rankedDiamond.addProperty("name", "Diamond");
+        rankedDiamond.addProperty("value", "DIAMOND");
 
-        JSONObject rankedMaster = new JSONObject();
-        rankedMaster.put("name", "Master");
-        rankedMaster.put("value", "MASTER");
+        JsonObject rankedMaster = new JsonObject();
+        rankedMaster.addProperty("name", "Master");
+        rankedMaster.addProperty("value", "MASTER");
 
-        JSONObject rankedGrandmaster = new JSONObject();
-        rankedGrandmaster.put("name", "Grandmaster");
-        rankedGrandmaster.put("value", "GRANDMASTER");
+        JsonObject rankedGrandmaster = new JsonObject();
+        rankedGrandmaster.addProperty("name", "Grandmaster");
+        rankedGrandmaster.addProperty("value", "GRANDMASTER");
 
-        JSONObject rankedChallenger = new JSONObject();
-        rankedChallenger.put("name", "Challenger");
-        rankedChallenger.put("value", "CHALLENGER");
+        JsonObject rankedChallenger = new JsonObject();
+        rankedChallenger.addProperty("name", "Challenger");
+        rankedChallenger.addProperty("value", "CHALLENGER");
 
-        JSONArray challengeCrystalLevelOptions = new JSONArray();
-        challengeCrystalLevelOptions.put(rankedIron);
-        challengeCrystalLevelOptions.put(rankedBronze);
-        challengeCrystalLevelOptions.put(rankedSilver);
-        challengeCrystalLevelOptions.put(rankedGold);
-        challengeCrystalLevelOptions.put(rankedPlatinum);
-        challengeCrystalLevelOptions.put(rankedDiamond);
-        challengeCrystalLevelOptions.put(rankedMaster);
-        challengeCrystalLevelOptions.put(rankedGrandmaster);
-        challengeCrystalLevelOptions.put(rankedChallenger);
+        JsonArray challengeCrystalLevelOptions = new JsonArray();
+        challengeCrystalLevelOptions.add(rankedIron);
+        challengeCrystalLevelOptions.add(rankedBronze);
+        challengeCrystalLevelOptions.add(rankedSilver);
+        challengeCrystalLevelOptions.add(rankedGold);
+        challengeCrystalLevelOptions.add(rankedPlatinum);
+        challengeCrystalLevelOptions.add(rankedDiamond);
+        challengeCrystalLevelOptions.add(rankedMaster);
+        challengeCrystalLevelOptions.add(rankedGrandmaster);
+        challengeCrystalLevelOptions.add(rankedChallenger);
         return challengeCrystalLevelOptions;
     }
 
-    private JSONArray buildRequiredArgs() {
-        JSONArray requiredArgs = new JSONArray();
-        JSONObject iconId = new JSONObject();
-        iconId.put("displayName", "Icon ID");
-        iconId.put("backendKey", "iconId");
-        iconId.put("type", INPUT_TYPE.NUMBER.toString());
-        iconId.put("required", false);
-        iconId.put("currentValue", this.iconId);
-        iconId.put("description", "The icon ID to display for other players");
-        requiredArgs.put(iconId);
+    private JsonArray buildRequiredArgs() {
+        JsonArray requiredArgs = new JsonArray();
+        JsonObject iconId = new JsonObject();
+        iconId.addProperty("displayName", "Icon ID");
+        iconId.addProperty("backendKey", "iconId");
+        iconId.addProperty("type", INPUT_TYPE.NUMBER.toString());
+        iconId.addProperty("required", false);
+        iconId.addProperty("currentValue", this.iconId);
+        iconId.addProperty("description", "The icon ID to display for other players");
+        requiredArgs.add(iconId);
 
-        JSONObject challengePoints = new JSONObject();
-        challengePoints.put("displayName", "Challenge Points");
-        challengePoints.put("backendKey", "challengePoints");
-        challengePoints.put("type", INPUT_TYPE.NUMBER.toString());
-        challengePoints.put("required", false);
-        challengePoints.put("currentValue", this.challengePoints);
-        challengePoints.put("description", "The challenge points to display in your Hovercard");
-        requiredArgs.put(challengePoints);
+        JsonObject challengePoints = new JsonObject();
+        challengePoints.addProperty("displayName", "Challenge Points");
+        challengePoints.addProperty("backendKey", "challengePoints");
+        challengePoints.addProperty("type", INPUT_TYPE.NUMBER.toString());
+        challengePoints.addProperty("required", false);
+        challengePoints.addProperty("currentValue", this.challengePoints);
+        challengePoints.addProperty("description", "The challenge points to display in your Hovercard");
+        requiredArgs.add(challengePoints);
 
-        JSONObject rankedLeagueQueue = new JSONObject();
-        rankedLeagueQueue.put("displayName", "Ranked League Queue");
-        rankedLeagueQueue.put("backendKey", "rankedLeagueQueue");
-        rankedLeagueQueue.put("type", INPUT_TYPE.SELECT.toString());
-        rankedLeagueQueue.put("options", getRankedLeagueQueueOptions());
-        rankedLeagueQueue.put("required", false);
-        rankedLeagueQueue.put("currentValue", this.rankedLeagueQueue);
-        rankedLeagueQueue.put("description", "The rank queue Type to display in your Hovercard");
-        requiredArgs.put(rankedLeagueQueue);
+        JsonObject rankedLeagueQueue = new JsonObject();
+        rankedLeagueQueue.addProperty("displayName", "Ranked League Queue");
+        rankedLeagueQueue.addProperty("backendKey", "rankedLeagueQueue");
+        rankedLeagueQueue.addProperty("type", INPUT_TYPE.SELECT.toString());
+        rankedLeagueQueue.add("options", getRankedLeagueQueueOptions());
+        rankedLeagueQueue.addProperty("required", false);
+        rankedLeagueQueue.addProperty("currentValue", this.rankedLeagueQueue);
+        rankedLeagueQueue.addProperty("description", "The rank queue Type to display in your Hovercard");
+        requiredArgs.add(rankedLeagueQueue);
 
-        JSONObject rankedLeagueTier = new JSONObject();
-        rankedLeagueTier.put("displayName", "Ranked League Tier");
-        rankedLeagueTier.put("backendKey", "rankedLeagueTier");
-        rankedLeagueTier.put("type", INPUT_TYPE.SELECT.toString());
-        rankedLeagueTier.put("options", getRankedLeagueTierOptions());
-        rankedLeagueTier.put("required", false);
-        rankedLeagueTier.put("currentValue", this.rankedLeagueTier);
-        rankedLeagueTier.put("description", "The ranked league tier to display in your Hovercard");
-        requiredArgs.put(rankedLeagueTier);
+        JsonObject rankedLeagueTier = new JsonObject();
+        rankedLeagueTier.addProperty("displayName", "Ranked League Tier");
+        rankedLeagueTier.addProperty("backendKey", "rankedLeagueTier");
+        rankedLeagueTier.addProperty("type", INPUT_TYPE.SELECT.toString());
+        rankedLeagueTier.add("options", getRankedLeagueTierOptions());
+        rankedLeagueTier.addProperty("required", false);
+        rankedLeagueTier.addProperty("currentValue", this.rankedLeagueTier);
+        rankedLeagueTier.addProperty("description", "The ranked league tier to display in your Hovercard");
+        requiredArgs.add(rankedLeagueTier);
 
-        JSONObject challengeCrystalLevel = new JSONObject();
-        challengeCrystalLevel.put("displayName", "Challenge Crystal Level");
-        challengeCrystalLevel.put("backendKey", "challengeCrystalLevel");
-        challengeCrystalLevel.put("type", INPUT_TYPE.SELECT.toString());
-        challengeCrystalLevel.put("options", getChallengeCrystalLevelOptions());
-        challengeCrystalLevel.put("required", false);
-        challengeCrystalLevel.put("currentValue", this.challengeCrystalLevel);
-        challengeCrystalLevel.put("description", "The challenge crystal level to display in your Hovercard");
-        requiredArgs.put(challengeCrystalLevel);
+        JsonObject challengeCrystalLevel = new JsonObject();
+        challengeCrystalLevel.addProperty("displayName", "Challenge Crystal Level");
+        challengeCrystalLevel.addProperty("backendKey", "challengeCrystalLevel");
+        challengeCrystalLevel.addProperty("type", INPUT_TYPE.SELECT.toString());
+        challengeCrystalLevel.add("options", getChallengeCrystalLevelOptions());
+        challengeCrystalLevel.addProperty("required", false);
+        challengeCrystalLevel.addProperty("currentValue", this.challengeCrystalLevel);
+        challengeCrystalLevel.addProperty("description", "The challenge crystal level to display in your Hovercard");
+        requiredArgs.add(challengeCrystalLevel);
 
-        JSONObject masteryScore = new JSONObject();
-        masteryScore.put("displayName", "Mastery Score");
-        masteryScore.put("backendKey", "masteryScore");
-        masteryScore.put("type", INPUT_TYPE.NUMBER.toString());
-        masteryScore.put("required", false);
-        masteryScore.put("currentValue", this.masteryScore);
-        masteryScore.put("description", "The mastery score to display in your Hovercard");
-        requiredArgs.put(masteryScore);
+        JsonObject masteryScore = new JsonObject();
+        masteryScore.addProperty("displayName", "Mastery Score");
+        masteryScore.addProperty("backendKey", "masteryScore");
+        masteryScore.addProperty("type", INPUT_TYPE.NUMBER.toString());
+        masteryScore.addProperty("required", false);
+        masteryScore.addProperty("currentValue", this.masteryScore);
+        masteryScore.addProperty("description", "The mastery score to display in your Hovercard");
+        requiredArgs.add(masteryScore);
 
-        JSONObject availability = new JSONObject();
-        availability.put("displayName", "Availability");
-        availability.put("backendKey", "availability");
-        availability.put("type", INPUT_TYPE.SELECT.toString());
-        availability.put("options", getAvailabilityOptions());
-        availability.put("required", false);
-        availability.put("currentValue", this.availability);
-        availability.put("description", "The availability to display in your Hovercard");
-        requiredArgs.put(availability);
+        JsonObject availability = new JsonObject();
+        availability.addProperty("displayName", "Availability");
+        availability.addProperty("backendKey", "availability");
+        availability.addProperty("type", INPUT_TYPE.SELECT.toString());
+        availability.add("options", getAvailabilityOptions());
+        availability.addProperty("required", false);
+        availability.addProperty("currentValue", this.availability);
+        availability.addProperty("description", "The availability to display in your Hovercard");
+        requiredArgs.add(availability);
 
         return requiredArgs;
     }
 
-    public JSONArray getRequiredArgs() {
+    public JsonArray getRequiredArgs() {
         //This approach breaks the current value of the requiredArgsbuildRequiredArgs();
         return buildRequiredArgs();
     }

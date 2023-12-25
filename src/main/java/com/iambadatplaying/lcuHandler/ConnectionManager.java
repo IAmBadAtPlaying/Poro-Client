@@ -1,10 +1,12 @@
 package com.iambadatplaying.lcuHandler;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -54,8 +56,6 @@ public class ConnectionManager {
     public enum responseFormat {
         STRING (0),
         INPUT_STREAM(1),
-        JSON_OBJECT (2),
-        JSON_ARRAY (3),
         RESPONSE_CODE(4);
 
         final Integer id;
@@ -106,6 +106,7 @@ public class ConnectionManager {
             @Override
             public void run() {
                 log("Checking for Process", MainInitiator.LOG_LEVEL.INFO);
+                if (!mainInitiator.isRunning()) return;
                 if (getAuthFromProcess()) {
                     log("Success getting Process Info", MainInitiator.LOG_LEVEL.INFO);
                     leagueAuthDataAvailable = true;
@@ -328,10 +329,6 @@ public class ConnectionManager {
     public Object getResponse(responseFormat respFormat, HttpURLConnection con) {
         if (con == null) return null;
         switch (respFormat) {
-            case JSON_ARRAY:
-                return handleJSONArrayResponse(con);
-            case JSON_OBJECT:
-                return handleJSONObjectResponse(con);
             case INPUT_STREAM:
                 return handleInputStreamResponse(con);
             case RESPONSE_CODE:
@@ -340,6 +337,14 @@ public class ConnectionManager {
             default:
                 return handleStringResponse(con);
         }
+    }
+
+    public JsonObject getResponseBodyAsJsonObject(HttpURLConnection con) {
+        return handleJSONObjectResponse(con);
+    }
+
+    public JsonArray getResponseBodyAsJsonArray(HttpURLConnection con) {
+        return handleJSONArrayResponse(con);
     }
 
     private Integer handleResponseCode (HttpURLConnection con) {
@@ -367,22 +372,22 @@ public class ConnectionManager {
         return is;
     }
 
-    private JSONObject handleJSONObjectResponse (HttpURLConnection con) {
+    private JsonObject handleJSONObjectResponse (HttpURLConnection con) {
         return toJsonObject(handleStringResponse(con));
     }
 
-    private JSONArray handleJSONArrayResponse (HttpURLConnection con) {
+    private JsonArray handleJSONArrayResponse (HttpURLConnection con) {
 
         return toJsonArray(handleStringResponse(con));
     }
 
-    private JSONArray toJsonArray(String s) {
+    private JsonArray toJsonArray(String s) {
         if(s == null) return null;
-        return new JSONArray(s);
+        return JsonParser.parseString(s).getAsJsonArray();
     }
-    private JSONObject toJsonObject(String s) {
+    private JsonObject toJsonObject(String s) {
         if(s == null) return null;
-        return new JSONObject(s);
+        return JsonParser.parseString(s).getAsJsonObject();
     }
 
     public String handleStringResponse(HttpURLConnection conn) {
