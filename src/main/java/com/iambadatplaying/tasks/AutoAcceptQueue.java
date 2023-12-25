@@ -1,9 +1,9 @@
 package com.iambadatplaying.tasks;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.net.HttpURLConnection;
 import java.util.Timer;
@@ -17,15 +17,15 @@ public class AutoAcceptQueue extends Task {
     private Integer delay;
     private Timer timer;
 
-    public void notify(JSONArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.length() < 3) {
+    public void notify(JsonArray webSocketEvent) {
+        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
-        JSONObject data = webSocketEvent.getJSONObject(2);
-        String uriTrigger = data.getString("uri");
+        JsonObject data = webSocketEvent.get(2).getAsJsonObject();
+        String uriTrigger = data.get("uri").getAsString();
         switch (uriTrigger) {
             case gameflow_v1_gameflow_phase:
-                JSONObject updateObject = webSocketEvent.getJSONObject(2);
+                JsonObject updateObject = webSocketEvent.get(2).getAsJsonObject();
                 handleUpdateData(updateObject);
             break;
             default:
@@ -33,10 +33,10 @@ public class AutoAcceptQueue extends Task {
         }
     }
 
-    private void handleUpdateData(JSONObject updateData) {
+    private void handleUpdateData(JsonObject updateData) {
         try {
-            JSONObject data = updateData.getJSONObject("data");
-            String newGameflowPhase = data.getString("phase");
+            JsonObject data = updateData.get("data").getAsJsonObject();
+            String newGameflowPhase = data.get("phase").getAsString();
             if("ReadyCheck".equals(newGameflowPhase)) {
                 Timer timer = new java.util.Timer();
                 timer.schedule(new TimerTask() {
@@ -70,10 +70,10 @@ public class AutoAcceptQueue extends Task {
         timer = null;
     }
 
-    public boolean setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JsonObject arguments) {
         try {
             log(arguments.toString(), MainInitiator.LOG_LEVEL.DEBUG);
-            delay = arguments.getInt("delay");
+            delay = arguments.get("delay").getAsInt();
             log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
@@ -81,24 +81,24 @@ public class AutoAcceptQueue extends Task {
         }
         return false;
     }
-    public JSONObject getTaskArgs() {
-        JSONObject taskArgs = new JSONObject();
-        taskArgs.put("delay", delay);
+    public JsonObject getTaskArgs() {
+        JsonObject taskArgs = new JsonObject();
+        taskArgs.addProperty("delay", delay);
         return taskArgs;
     }
 
-    public JSONArray getRequiredArgs() {
-        JSONArray requiredArgs = new JSONArray();
+    public JsonArray getRequiredArgs() {
+        JsonArray requiredArgs = new JsonArray();
 
-        JSONObject delay = new JSONObject();
-        delay.put("displayName", "Delay");
-        delay.put("description", "Time till Ready-Check gets accepted in ms");
-        delay.put("type", INPUT_TYPE.NUMBER.toString());
-        delay.put("required", true);
-        delay.put("currentValue", this.delay);
-        delay.put("backendKey", "delay");
+        JsonObject delay = new JsonObject();
+        delay.addProperty("displayName", "Delay");
+        delay.addProperty("description", "Time till Ready-Check gets accepted in ms");
+        delay.addProperty("type", INPUT_TYPE.NUMBER.toString());
+        delay.addProperty("required", true);
+        delay.addProperty("currentValue", this.delay);
+        delay.addProperty("backendKey", "delay");
 
-        requiredArgs.put(delay);
+        requiredArgs.add(delay);
 
         return requiredArgs;
     }

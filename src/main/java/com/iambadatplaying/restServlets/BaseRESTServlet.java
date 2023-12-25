@@ -1,7 +1,10 @@
 package com.iambadatplaying.restServlets;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.iambadatplaying.MainInitiator;
-import org.json.JSONObject;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -21,16 +24,38 @@ public abstract class BaseRESTServlet extends HttpServlet {
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
     }
 
-    protected JSONObject getJsonFromRequestBody(HttpServletRequest req) {
+    protected JsonObject getJsonObjectFromRequestBody(HttpServletRequest req) {
         StringBuilder sb = new StringBuilder();
         String line;
-        JSONObject json = new JSONObject();
+        JsonObject json = new JsonObject();
         try {
             req.setCharacterEncoding(StandardCharsets.UTF_8.toString());
             while ((line = req.getReader().readLine() )!= null) {
                 sb.append(line);
             }
-            json = new JSONObject(sb.toString());
+            JsonElement element = new JsonParser().parse(sb.toString());
+            if (element.isJsonObject()) {
+                json = element.getAsJsonObject();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return json;
+    }
+
+    protected JsonArray getJsonArrayFromRequestBody(HttpServletRequest req) {
+        StringBuilder sb = new StringBuilder();
+        String line;
+        JsonArray json = new JsonArray();
+        try {
+            req.setCharacterEncoding(StandardCharsets.UTF_8.toString());
+            while ((line = req.getReader().readLine() )!= null) {
+                sb.append(line);
+            }
+            JsonElement element = new JsonParser().parse(sb.toString());
+            if (element.isJsonArray()) {
+                json = element.getAsJsonArray();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

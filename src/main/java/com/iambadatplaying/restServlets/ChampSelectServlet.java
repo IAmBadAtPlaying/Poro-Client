@@ -1,11 +1,10 @@
 package com.iambadatplaying.restServlets;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.state.ChampSelectData;
 import com.iambadatplaying.data.state.ReworkedChampSelectData;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.servlet.ServletException;
@@ -19,7 +18,7 @@ public class ChampSelectServlet extends BaseRESTServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String actionType = getActionTypeFromPath(req.getPathInfo());
         if (actionType == null || actionType.isEmpty()) return;
-        JSONObject json = getJsonFromRequestBody(req);
+        JsonObject json = getJsonObjectFromRequestBody(req);
 
         switch (actionType) {
             case "pick":
@@ -43,11 +42,11 @@ public class ChampSelectServlet extends BaseRESTServlet {
         return null;
     }
 
-    private void handlePick(HttpServletResponse response, JSONObject json) {
+    private void handlePick(HttpServletResponse response, JsonObject json) {
         if (json == null || json.isEmpty()) return;
         try {
-            Integer championId = json.getInt("championId");
-            boolean isLockIn = json.getBoolean("lockIn");
+            Integer championId = json.get("championId").getAsInt();
+            boolean isLockIn = json.get("lockIn").getAsBoolean();
             int responseCode = pickChampion(championId, isLockIn);
             if (responseCode == -1) responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
             response.setStatus(responseCode);
@@ -57,11 +56,11 @@ public class ChampSelectServlet extends BaseRESTServlet {
         }
     }
 
-    private void handleBan(HttpServletResponse response, JSONObject json) {
+    private void handleBan(HttpServletResponse response, JsonObject json) {
         if (json == null || json.isEmpty()) return;
         try {
-            Integer championId = json.getInt("championId");
-            boolean isLockIn = json.getBoolean("lockIn");
+            Integer championId = json.get("championId").getAsInt();
+            boolean isLockIn = json.get("lockIn").getAsBoolean();
             int responseCode = banChampion(championId, isLockIn);
             if (responseCode == -1) responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
             response.setStatus(responseCode);
@@ -81,9 +80,9 @@ public class ChampSelectServlet extends BaseRESTServlet {
 
 
     private int performChampionAction ( String actionType, Integer championId, boolean lockIn) throws IOException {
-        Optional<JSONObject> optCurrentState = mainInitiator.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class.getSimpleName()).getCurrentState();
+        Optional<JsonObject> optCurrentState = mainInitiator.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class).getCurrentState();
         if (!optCurrentState.isPresent()) return -1;
-        JSONObject currentChampSelectState = optCurrentState.get();
+        JsonObject currentChampSelectState = optCurrentState.get();
         if (currentChampSelectState == null || currentChampSelectState.isEmpty() || championId == null) {
             return -1;
         }
@@ -92,27 +91,27 @@ public class ChampSelectServlet extends BaseRESTServlet {
             return -1;
         }
 
-        Integer localPlayerCellId = currentChampSelectState.getInt("localPlayerCellId");
+        Integer localPlayerCellId = currentChampSelectState.get("localPlayerCellId").getAsInt();
 
-        Optional<JSONArray> optMyTeam = Util.getOptJSONArray(currentChampSelectState, "myTeam");
+        Optional<JsonArray> optMyTeam = Util.getOptJSONArray(currentChampSelectState, "myTeam");
         if (!optMyTeam.isPresent()) return -1;
-        JSONArray myTeam = optMyTeam.get();
+        JsonArray myTeam = optMyTeam.get();
 
-        Optional<JSONObject> optMe = Optional.empty();
-        for (int i = 0, arrayLength = myTeam.length(); i< arrayLength; i++) {
-            JSONObject player = myTeam.getJSONObject(i);
+        Optional<JsonObject> optMe = Optional.empty();
+        for (int i = 0, arrayLength = myTeam.size(); i< arrayLength; i++) {
+            JsonObject player = myTeam.get(i).getAsJsonObject();
             if (player.isEmpty()) continue;
             if (!Util.jsonKeysPresent(player, "cellId", "championId")) continue;
-            if (player.getInt("cellId") == localPlayerCellId) {
+            if (player.get("cellId").getAsInt() == localPlayerCellId) {
                 optMe = Optional.of(player);
                 break;
             }
         }
 
         if (!optMe.isPresent()) return -1;
-        JSONObject me = optMe.get();
+        JsonObject me = optMe.get();
 
-        Optional<JSONObject> specificActions = Optional.empty();
+        Optional<JsonObject> specificActions = Optional.empty();
         switch (actionType) {
             case "pick":
                     specificActions = Util.getOptJSONObject(me, "pickAction");
@@ -125,15 +124,16 @@ public class ChampSelectServlet extends BaseRESTServlet {
         }
 
         if (!specificActions.isPresent()) return -1;
-        JSONObject actions = specificActions.get();
+        JsonObject actions = specificActions.get();
 
 
-        int actionId = actions.getInt("id");
-        JSONObject hoverAction = new JSONObject();
-        hoverAction.put("championId", championId);
+        if (!Util.jsonKeysPresent(actions, "id")) return -1;
+        int actionId = actions.get("id").getAsInt();
+        JsonObject hoverAction = new JsonObject();
+        hoverAction.addProperty("championId", championId);
 
         if (lockIn) {
-            hoverAction.put("completed", true);
+            hoverAction.addProperty("completed", true);
         }
 
         String request = "/lol-champ-select/v1/session/actions/" + actionId;

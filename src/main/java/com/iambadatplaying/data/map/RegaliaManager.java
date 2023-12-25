@@ -81,7 +81,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     }
 
     private void updateChatMe(BigInteger summonerId) {
-        StateDataManager chatMeManager = mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class.getSimpleName());
+        StateDataManager chatMeManager = mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class);
         if (chatMeManager == null) return;
         Optional<JsonObject> optChatMeData = chatMeManager.getCurrentState();
         if (!optChatMeData.isPresent()) return;
@@ -91,12 +91,12 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
         if (!summonerId.equals(chatMeData.get("summonerId").getAsBigInteger())) return;
 
         chatMeData.add("regalia", getRegalia(summonerId));
-        mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class.getSimpleName()).setCurrentState(chatMeData);
-        mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class.getSimpleName()).sendCurrentState();
+        mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class).setCurrentState(chatMeData);
+        mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class).sendCurrentState();
     }
 
     private void updateLobbyMemeberRegalia(BigInteger summonerId) {
-        StateDataManager lobbyManager = mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class.getSimpleName());
+        StateDataManager lobbyManager = mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class);
         if (lobbyManager == null) return;
         Optional<JsonObject> optLobbyData = lobbyManager.getCurrentState();
         if (!optLobbyData.isPresent()) return;
@@ -117,8 +117,8 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
 
         lobbyData.add("members", members);
 
-        mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class.getSimpleName()).setCurrentState(lobbyData);
-        mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class.getSimpleName()).sendCurrentState();
+        mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class).setCurrentState(lobbyData);
+        mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class).sendCurrentState();
     }
 
     public JsonObject updateRegalia(BigInteger summonerId) {

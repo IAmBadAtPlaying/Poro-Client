@@ -1,20 +1,20 @@
 package com.iambadatplaying.restServlets;
 
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONObject;
 
 public class ShutdownServlet extends BaseRESTServlet{
 
     @Override
     public void doPost(javax.servlet.http.HttpServletRequest request, javax.servlet.http.HttpServletResponse response) throws javax.servlet.ServletException, java.io.IOException {
-        JSONObject json = getJsonFromRequestBody(request);
+        JsonObject json = getJsonObjectFromRequestBody(request);
         if (json == null || json.isEmpty()) {
             handleNormalShutdown();
             return;
         }
         if (json.has("type")) {
-            String shutdownType = json.getString("type");
+            String shutdownType = json.get("type").getAsString();
             switch (shutdownType) {
                 case "shutdown-all":
                     handleCombinedShutdown();
@@ -32,10 +32,10 @@ public class ShutdownServlet extends BaseRESTServlet{
         response.setHeader("Content-Type", "application/json");
         response.setHeader("Access-Control-Allow-Origin", "*");
 
-        JSONObject responseJson = new JSONObject();
+        JsonObject responseJson = new JsonObject();
 
-        responseJson.put("message", "Shutting down in one second, bye ^^");
-        responseJson.put("httpStatus", javax.servlet.http.HttpServletResponse.SC_OK);
+        responseJson.addProperty("message", "Shutting down in one second, bye ^^");
+        responseJson.addProperty("httpStatus", javax.servlet.http.HttpServletResponse.SC_OK);
 
         response.getWriter().println(responseJson.toString());
         response.getWriter().flush();

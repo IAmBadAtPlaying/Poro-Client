@@ -1,13 +1,15 @@
 package com.iambadatplaying.frontendHanlder;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.data.state.*;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
 import com.iambadatplaying.tasks.Task;
 import com.iambadatplaying.tasks.TaskManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
@@ -24,18 +26,22 @@ public class FrontendMessageHandler {
      * @param message Message in form of a Stringified JSON array
      */
     public void handleMessage(String message, Socket socket) {
-        JSONArray messageArray = null;
+        JsonArray messageArray = null;
         if (message == null || message.isEmpty()) {
             return;
         }
         try {
-            messageArray = new JSONArray(message);
+            JsonElement messageElement = JsonParser.parseString(message);
+            if (!messageElement.isJsonArray()) {
+                return;
+            }
+            messageArray = messageElement.getAsJsonArray();
         } catch (Exception e) {
             return;
         }
         if (!messageArray.isEmpty()) { //[(Int) opcode, .., (Int) requestId]
-            Integer opcode = messageArray.getInt(0);
-            int len = messageArray.length();
+            Integer opcode = messageArray.get(0).getAsInt();
+            int len = messageArray.size();
             switch (opcode) {
                 case 0: //Handled by Proxy
                     log(messageArray.toString(), MainInitiator.LOG_LEVEL.INFO);
@@ -45,14 +51,14 @@ public class FrontendMessageHandler {
                     if (len < 2) {
                         return;
                     }
-                    JSONArray instructionArray = messageArray.getJSONArray(1);
-                    int instruction = instructionArray.getInt(0);
+                    JsonArray instructionArray = messageArray.get(1).getAsJsonArray();
+                    int instruction = instructionArray.get(0).getAsInt();
                     switch (instruction) {
                         case 5:
-                            mainInitiator.getClient().getSocket().subscribeToEndpoint(instructionArray.getString(1));
+                            mainInitiator.getClient().getSocket().subscribeToEndpoint(instructionArray.get(1).getAsString());
                             break;
                         case 6:
-                            mainInitiator.getClient().getSocket().unsubscribeFromEndpoint(instructionArray.getString(1));
+                            mainInitiator.getClient().getSocket().unsubscribeFromEndpoint(instructionArray.get(1).getAsString());
                             break;
                         default:
                             System.out.println("Error");
@@ -64,55 +70,36 @@ public class FrontendMessageHandler {
                     if (len < 3) {
                         return; // We want this form [2, []]; With [] being the command we want to echo
                     }
-                    JSONArray echoArray = null;
-                    String toSend = null;
-                    try {
-                        echoArray = messageArray.getJSONArray(1);
-                    } catch (Exception e) {
-
-                    }
-                    if (echoArray == null || echoArray.isEmpty()) {
-                        JSONObject echoObject = null;
-                        try {
-                            echoObject = messageArray.getJSONObject(1);
-                        } catch (Exception e) {
-
-                        }
-                        if (echoObject == null || echoObject.isEmpty()) {
-                            return;
-                        } else toSend = echoObject.toString();
-                    } else toSend = echoArray.toString();
-                    try {
-                        mainInitiator.getServer().sendToAllSessions(toSend);
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    JsonElement echoElement = messageArray.get(1);
+                    if (echoElement.isJsonArray() || echoElement.isJsonObject()) {
+                        mainInitiator.getServer().sendToAllSessions(echoElement.toString());
                     }
                     break;
-                case 3: // This will be used to enable and disable Tasks
-                    if (len < 5) {
-                        return;
-                    }
-                    int operation = messageArray.getInt(1);
-                    String taskName = messageArray.getString(2);
-                    JSONObject taskArgs = messageArray.getJSONObject(3);
-                    TaskManager taskManager = mainInitiator.getTaskManager();
-                    switch (operation) {
-                        case 0:  //Delete Task
-                            taskManager.removeTask(taskName);
-                            break;
-                        case 1: //Create Task
-                        case 2: //Modify Task
-                            taskManager.addTask(taskName);
-                            Task task = taskManager.getActiveTaskByName(taskName);
-                            if (task != null) {
-                                System.out.println("Getting active Task: " + task.getClass().getSimpleName());
-                                task.setTaskArgs(taskArgs);
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
+//                case 3: // This will be used to enable and disable Tasks
+//                    if (len < 5) {
+//                        return;
+//                    }
+//                    int operation = messageArray.get(1).getAsInt();
+//                    String taskName = messageArray.get(2).getAsString();
+//                    JsonObject taskArgs = messageArray.get(3).getAsJsonObject();
+//                    TaskManager taskManager = mainInitiator.getTaskManager();
+//                    switch (operation) {
+//                        case 0:  //Delete Task
+//                            taskManager.removeTask(taskName);
+//                            break;
+//                        case 1: //Create Task
+//                        case 2: //Modify Task
+//                            taskManager.addTask(taskName);
+//                            Task task = taskManager.getActiveTaskByName(taskName);
+//                            if (task != null) {
+//                                System.out.println("Getting active Task: " + task.getClass().getSimpleName());
+//                                task.setTaskArgs(taskArgs);
+//                            }
+//                            break;
+//                        default:
+//                            break;
+//                    }
+//                    break;
                 case 4: // Startup Handler
                     if (len < 2) return;
                     sendFriendList(socket);
@@ -130,33 +117,33 @@ public class FrontendMessageHandler {
                     if (len <= 4) {
                         return;
                     }
-                    String requestTypeRiot = messageArray.getString(1);
-                    String endpointRiot = messageArray.getString(2);
-                    String bodyRiot = messageArray.getString(3);
-                    Integer requestIdRiot = messageArray.getInt(4);
+                    String requestTypeRiot = messageArray.get(1).getAsString();
+                    String endpointRiot = messageArray.get(2).getAsString();
+                    String bodyRiot = messageArray.get(3).getAsString();
+                    Integer requestIdRiot = messageArray.get(4).getAsInt();
                     handleForwardRequest(requestTypeRiot, endpointRiot, bodyRiot, requestIdRiot, socket, true);
                     break;
-                case 6: //Disenchant Elements
-                    if (len < 3) {
-                        return;
-                    }
-                    JSONArray disenchantArray = messageArray.getJSONArray(1);
-                    mainInitiator.getDataManager().disenchantElements(disenchantArray);
-                    log("[ENDPOINT] Disenchanted Elements");
-                    break;
-                case 7: //Reroll Skins
-                    if (len < 3) {
-                        return;
-                    }
-                    JSONArray rerollArray = messageArray.getJSONArray(1);
-                    mainInitiator.getDataManager().rerollElements(rerollArray);
-                    log("[ENDPOINT] Rerolled Elements");
-                    break;
+//                case 6: //Disenchant Elements
+//                    if (len < 3) {
+//                        return;
+//                    }
+//                    JsonArray disenchantArray = messageArray.get(1).getAsJsonArray();
+//                    mainInitiator.getDataManager().disenchantElements(disenchantArray);
+//                    log("[ENDPOINT] Disenchanted Elements");
+//                    break;
+//                case 7: //Reroll Skins
+//                    if (len < 3) {
+//                        return;
+//                    }
+//                    JsonArray rerollArray = messageArray.get(1).getAsJsonArray();
+//                    mainInitiator.getDataManager().rerollElements(rerollArray);
+//                    log("[ENDPOINT] Rerolled Elements");
+//                    break;
                 case 10: //End the application
                     if (len < 3) {
                         return;
                     }
-                    String shutdownOption = messageArray.getString(1);
+                    String shutdownOption = messageArray.get(1).getAsString();
                     switch (shutdownOption) {
                         case "shutdown-all":
                             log("[Shutdown] Invoking League Client Shutdown", MainInitiator.LOG_LEVEL.INFO);
@@ -182,22 +169,22 @@ public class FrontendMessageHandler {
     }
 
     private void sendTasks(Socket socket) {
-        JSONArray tasks = mainInitiator.getTaskManager().getTaskAndArgs();
+        JsonArray tasks = mainInitiator.getTaskManager().getTaskAndArgs();
         socket.sendMessage(DataManager.getEventDataString("InitialTaskUpdate", tasks));
     }
 
     private void sendModifiedData(Socket socket) {
-        JSONObject summonerSpells = mainInitiator.getDataManager().getSummonerSpellJson();
+        JsonObject summonerSpells = mainInitiator.getDataManager().getSummonerSpellJson();
         socket.sendMessage(DataManager.getDataTransferString("SummonerSpells", summonerSpells));
-        JSONObject skins = mainInitiator.getDataManager().getChromaSkinId();
+        JsonObject skins = mainInitiator.getDataManager().getChromaSkinId();
         socket.sendMessage(DataManager.getDataTransferString("ChromaSkins", skins));
-        JSONObject champions = mainInitiator.getDataManager().getChampionJson();
+        JsonObject champions = mainInitiator.getDataManager().getChampionJson();
         socket.sendMessage(DataManager.getDataTransferString("Champions", champions));
     }
 
     private void sendLoot(Socket socket) {
-        Optional<JSONObject> feGameflowObject = mainInitiator.getReworkedDataManager().getStateManagers(LootData.class.getSimpleName()).getCurrentState();
-        JSONObject lootObject = new JSONObject();
+        Optional<JsonObject> feGameflowObject = mainInitiator.getReworkedDataManager().getStateManagers(LootData.class).getCurrentState();
+        JsonObject lootObject = new JsonObject();
         if (feGameflowObject.isPresent()) {
             lootObject = feGameflowObject.get();
         }
@@ -205,13 +192,13 @@ public class FrontendMessageHandler {
     }
 
     private void sendAvailableQueues(Socket socket) {
-        JSONObject queues = mainInitiator.getDataManager().getAvailableQueues();
+        JsonObject queues = mainInitiator.getDataManager().getAvailableQueues();
         socket.sendMessage(DataManager.getEventDataString("InitialQueues", queues));
     }
 
     private void sendChampSelect(Socket socket) {
-        Optional<JSONObject> feChampSelectObject = mainInitiator.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class.getSimpleName()).getCurrentState();
-        JSONObject champSelectObject = new JSONObject();
+        Optional<JsonObject> feChampSelectObject = mainInitiator.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class).getCurrentState();
+        JsonObject champSelectObject = new JsonObject();
         if (feChampSelectObject.isPresent()) {
             champSelectObject = feChampSelectObject.get();
         }
@@ -219,14 +206,14 @@ public class FrontendMessageHandler {
     }
 
     private void sendFriendList(Socket socket) {
-        JSONObject feFriendArray = mainInitiator.getDataManager().getFEFriendObject();
+        JsonObject feFriendArray = mainInitiator.getDataManager().getFEFriendObject();
 //            JSONObject feFriendArray = mainInitiator.getReworkedDataManager().getMapManagers(FriendManager.class.getSimpleName()).getMapAsJson();
         socket.sendMessage(DataManager.getEventDataString("InitialFriendListUpdate", feFriendArray));
     }
 
     private void sendGameflowStatus(Socket socket) {
-        Optional<JSONObject> feGameflowObject = mainInitiator.getReworkedDataManager().getStateManagers(GameflowData.class.getSimpleName()).getCurrentState();
-        JSONObject lobbyObject = new JSONObject();
+        Optional<JsonObject> feGameflowObject = mainInitiator.getReworkedDataManager().getStateManagers(GameflowData.class).getCurrentState();
+        JsonObject lobbyObject = new JsonObject();
         if (feGameflowObject.isPresent()) {
             lobbyObject = feGameflowObject.get();
         }
@@ -234,8 +221,8 @@ public class FrontendMessageHandler {
     }
 
     private void sendLobby(Socket socket) {
-        Optional<JSONObject> feLobbyObject = mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class.getSimpleName()).getCurrentState();
-        JSONObject lobbyObject = new JSONObject();
+        Optional<JsonObject> feLobbyObject = mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class).getCurrentState();
+        JsonObject lobbyObject = new JsonObject();
         if (feLobbyObject.isPresent()) {
             lobbyObject = feLobbyObject.get();
         }
@@ -244,8 +231,8 @@ public class FrontendMessageHandler {
     }
 
     private void sendSelfPresence(Socket socket) {
-        Optional<JSONObject> fePresence = mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class.getSimpleName()).getCurrentState();
-        JSONObject presence = new JSONObject();
+        Optional<JsonObject> fePresence = mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class).getCurrentState();
+        JsonObject presence = new JsonObject();
         if (fePresence.isPresent()) {
             presence = fePresence.get();
         }
@@ -253,8 +240,8 @@ public class FrontendMessageHandler {
     }
 
     private void sendPatcher(Socket socket) {
-        Optional<JSONObject> fePatcher = mainInitiator.getReworkedDataManager().getStateManagers(PatcherData.class.getSimpleName()).getCurrentState();
-        JSONObject patcher = new JSONObject();
+        Optional<JsonObject> fePatcher = mainInitiator.getReworkedDataManager().getStateManagers(PatcherData.class).getCurrentState();
+        JsonObject patcher = new JsonObject();
         if (fePatcher.isPresent()) {
             patcher = fePatcher.get();
         }
@@ -272,23 +259,10 @@ public class FrontendMessageHandler {
         if (resp != null && !resp.isEmpty()) {
             resp = resp.trim();
         }
-        JSONObject respObject = null;
-        JSONArray respArrayObj = null;
-        try {
-            respObject = new JSONObject(resp);
-        } catch (Exception e) {
-            try {
-                respArrayObj = new JSONArray(resp);
-            } catch (Exception ex) {
-            }
-        }
-        JSONArray respArray = new JSONArray();
-        respArray.put(requestNum);
-        if (respObject != null) {
-            respArray.put(respObject);
-        } else if (respArrayObj != null) {
-            respArray.put(respArrayObj);
-        } else respArray.put(resp);
+        JsonElement respElement = JsonParser.parseString(resp);
+        JsonArray respArray = new JsonArray();
+        respArray.add(requestNum);
+        respArray.add(respElement);
         socket.sendMessage(respArray.toString());
     }
 

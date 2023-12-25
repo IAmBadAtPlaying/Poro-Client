@@ -5,7 +5,6 @@ import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONObject;
 
 import java.util.Optional;
 

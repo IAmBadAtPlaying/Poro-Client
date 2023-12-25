@@ -1,5 +1,6 @@
 package com.iambadatplaying.frontendHanlder;
 
+import com.google.gson.JsonArray;
 import com.iambadatplaying.MainInitiator;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
@@ -117,7 +118,7 @@ public class Socket {
             @Override
             public void run() {
                 try {
-                    s.getRemote().sendString("[]");
+                    s.getRemote().sendString(new JsonArray().toString());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

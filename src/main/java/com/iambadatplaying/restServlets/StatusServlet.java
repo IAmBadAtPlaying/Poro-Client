@@ -1,6 +1,6 @@
 package com.iambadatplaying.restServlets;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -13,10 +13,10 @@ public class StatusServlet extends BaseRESTServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws javax.servlet.ServletException, java.io.IOException {
         response.setStatus(HttpServletResponse.SC_OK);
         try (PrintWriter out = response.getWriter()) {
-            JSONObject responseJson = new JSONObject();
-            responseJson.put("running", mainInitiator.isRunning());
-            responseJson.put("state", mainInitiator.getState().name());
-            responseJson.put("authAvailable", mainInitiator.getConnectionManager().isLeagueAuthDataAvailable());
+            JsonObject responseJson = new JsonObject();
+            responseJson.addProperty("running", mainInitiator.isRunning());
+            responseJson.addProperty("state", mainInitiator.getState().name());
+            responseJson.addProperty("authAvailable", mainInitiator.getConnectionManager().isLeagueAuthDataAvailable());
             out.println(responseJson.toString());
             out.flush();
         } catch (Exception e) {

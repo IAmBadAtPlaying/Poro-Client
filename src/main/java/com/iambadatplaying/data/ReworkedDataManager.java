@@ -12,10 +12,6 @@ import com.iambadatplaying.data.map.RegaliaManager;
 import java.util.HashMap;
 
 public class ReworkedDataManager {
-
-    private ChampSelectData champSelectData;
-    private LobbyData lobbyData;
-
     private HashMap<String, StateDataManager> stateDataManagers;
     private HashMap<String, MapDataManager> mapDataManagers;
 
@@ -55,11 +51,11 @@ public class ReworkedDataManager {
     }
 
     private void addManager(StateDataManager manager) {
-        stateDataManagers.put(manager.getClass().getSimpleName(), manager);
+        stateDataManagers.put(manager.getClass().getName(), manager);
     }
 
     private void addManager(MapDataManager manager) {
-        mapDataManagers.put(manager.getClass().getSimpleName(), manager);
+        mapDataManagers.put(manager.getClass().getName(), manager);
     }
 
     public void init() {
@@ -114,7 +110,7 @@ public class ReworkedDataManager {
             return;
         }
 
-        if (!data.isJsonArray() || !data.isJsonObject()) {
+        if (!data.isJsonArray() && !data.isJsonObject()) {
             log("Data is not a JsonArray or JsonObject, wont have any effect", MainInitiator.LOG_LEVEL.WARN);
             return;
         }
@@ -142,12 +138,12 @@ public class ReworkedDataManager {
         }
     }
 
-    public StateDataManager getStateManagers(String managerName) {
-        return stateDataManagers.get(managerName);
+    public StateDataManager getStateManagers(Class manager) {
+        return stateDataManagers.get(manager.getName());
     }
 
-    public MapDataManager getMapManagers(String managerName) {
-        return mapDataManagers.get(managerName);
+    public MapDataManager getMapManagers(Class manager) {
+        return mapDataManagers.get(manager.getName());
     }
 
     public static String getEventDataString(String event, JsonObject data) {

@@ -102,13 +102,25 @@ public class LobbyData extends StateDataManager {
             return Optional.empty();
         }
 
+        JsonArray allowablePremadeSizes = frontendGameConfig.get("allowablePremadeSizes").getAsJsonArray();
+        Integer maxLobbySize = 1;
+        for (int i = 0; i < allowablePremadeSizes.size(); i++) {
+            int currentSize = allowablePremadeSizes.get(i).getAsInt();
+            if (currentSize > maxLobbySize) {
+                maxLobbySize = currentSize;
+            }
+        }
+
         JsonArray members = optMembers.get();
         JsonArray frontendMembers = new JsonArray();
+        for (int i = 0; i < maxLobbySize; i++) {
+            frontendMembers.add(new JsonObject());
+        }
         int j = 0;
-        frontendMembers.set(indexToFEIndex(0), frontendLocalMember);
+        frontendMembers.set(indexToFEIndex(0, maxLobbySize), frontendLocalMember);
         j++;
         for (int i = 0; i < members.size(); i++) {
-            int actualIndex = indexToFEIndex(j);
+            int actualIndex = indexToFEIndex(j,maxLobbySize);
             JsonObject currentMember = backendToFrontendLobbyMember(members.get(i).getAsJsonObject());
             if (currentMember.get("puuid").getAsString().equals(frontendLocalMember.get("puuid").getAsString())) {
                 continue;
@@ -116,8 +128,8 @@ public class LobbyData extends StateDataManager {
             frontendMembers.set(actualIndex, currentMember);
             j++;
         }
-        for (; j < 5; j++) {
-            frontendMembers.set(indexToFEIndex(j), new JsonObject());
+        for (; j < maxLobbySize; j++) {
+            frontendMembers.set(indexToFEIndex(j, maxLobbySize), new JsonObject());
         }
 
         frontendData.add("gameConfig", frontendGameConfig);
@@ -126,11 +138,11 @@ public class LobbyData extends StateDataManager {
         return Optional.of(frontendData);
     }
 
-    private int indexToFEIndex(int preParsedIndex) {
+    private int indexToFEIndex(int preParsedIndex, int maxLobbySize) {
         int actualIndex = 0;
         int diff = indexDiff(preParsedIndex);
 
-        actualIndex = MAX_LOBBY_HALFS_INDEX + diff;
+        actualIndex = maxLobbySize/2 + diff;
         return actualIndex;
     }
 
@@ -144,7 +156,7 @@ public class LobbyData extends StateDataManager {
     private JsonObject backendToFrontendLobbyMember(JsonObject member) {
         JsonObject frontendMember = member;
 
-        JsonObject regalia = (JsonObject) mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class.getSimpleName()).get(member.get("summonerId").getAsBigInteger());
+        JsonObject regalia = mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class).get(member.get("summonerId").getAsBigInteger());
         frontendMember.add("regalia", regalia);
 
        return frontendMember;

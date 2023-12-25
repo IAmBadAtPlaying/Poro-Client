@@ -1,8 +1,8 @@
 package com.iambadatplaying.tasks;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -12,24 +12,24 @@ public class SuppressUx extends Task {
     private Timer timer;
 
     @Override
-    public void notify(JSONArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.length() < 3) {
+    public void notify(JsonArray webSocketEvent) {
+        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
-        JSONObject data = webSocketEvent.getJSONObject(2);
-        String uriTrigger = data.getString("uri");
+        JsonObject data = webSocketEvent.get(2).getAsJsonObject();
+        String uriTrigger = data.get("uri").getAsString();
         if (uriTrigger.startsWith("/riotclient/ux-state/request")) {
             handleUpdateData(data);
         }
     }
 
-    private void handleUpdateData(JSONObject jsonData) {
-        String eventType = jsonData.getString("eventType");
-        System.out.println(jsonData);
+    private void handleUpdateData(JsonObject JsonData) {
+        String eventType = JsonData.get("eventType").getAsString();
+        System.out.println(JsonData);
         switch (eventType) {
             case "Create":
             case "Update":
-                JSONObject data = jsonData.getJSONObject("data");
+                JsonObject data = JsonData.get("data").getAsJsonObject();
                 handleUXUpdateJson(data);
                 break;
             case "Delete":
@@ -38,8 +38,8 @@ public class SuppressUx extends Task {
         }
     }
 
-    private void handleUXUpdateJson(JSONObject data) {
-        String state = data.getString("state");
+    private void handleUXUpdateJson(JsonObject data) {
+        String state = data.get("state").getAsString();
         switch (state) {
             case "ShowMain":
                 timer.schedule(new TimerTask() {
@@ -81,17 +81,17 @@ public class SuppressUx extends Task {
     }
 
     @Override
-    public boolean setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JsonObject arguments) {
         return false;
     }
 
     @Override
-    public JSONObject getTaskArgs() {
-        return new JSONObject();
+    public JsonObject getTaskArgs() {
+        return new JsonObject();
     }
 
     @Override
-    public JSONArray getRequiredArgs() {
-        return new JSONArray();
+    public JsonArray getRequiredArgs() {
+        return new JsonArray();
     }
 }

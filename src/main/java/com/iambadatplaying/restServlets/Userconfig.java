@@ -1,6 +1,7 @@
 package com.iambadatplaying.restServlets;
 
-import org.json.JSONObject;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -12,7 +13,7 @@ public class Userconfig extends BaseRESTServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String[] pathParts = sliceAtSlash(req.getPathInfo());
 
-        JSONObject config = mainInitiator.getConfigLoader().getConfig();
+        JsonObject config = mainInitiator.getConfigLoader().getConfig();
         if (config == null) {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             return;
@@ -25,12 +26,12 @@ public class Userconfig extends BaseRESTServlet {
             return;
         }
 
-        JSONObject configPart = config;
+        JsonObject configPart = config;
         for (String part : pathParts) {
             if (configPart.has(part)) {
-                Object o = configPart.get(part);
-                if (o instanceof JSONObject) {
-                    configPart = (JSONObject) o;
+                JsonElement o = configPart.get(part);
+                if (o.isJsonObject()) {
+                    configPart = o.getAsJsonObject();
                 } else {
                     resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                     return;

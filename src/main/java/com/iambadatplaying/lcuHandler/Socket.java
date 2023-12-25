@@ -1,5 +1,6 @@
 package com.iambadatplaying.lcuHandler;
 
+import com.google.gson.JsonArray;
 import com.iambadatplaying.MainInitiator;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
@@ -61,7 +62,7 @@ public class Socket {
             @Override
             public void run() {
                 try {
-                    s.getRemote().sendString("[]");
+                    s.getRemote().sendString("");
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -73,10 +74,11 @@ public class Socket {
 
     public void subscribeToEndpoint(String endpoint) {
         try {
-            log("Subscribing from: " + endpoint);
+            log("Subscribing to: " + endpoint);
             currentSession.getRemote().sendString("[5, \"" + endpoint + "\"]");
         } catch (Exception e) {
-            log("Cannot subscribe to endpoint " + endpoint, MainInitiator.LOG_LEVEL.ERROR);
+            log("Cannot subscribe to endpoint " + endpoint, MainInitiator.LOG_LEVEL.DEBUG);
+            new Thread(() -> subscribeToEndpoint(endpoint)).start();
             e.printStackTrace();
         }
     }

@@ -1,5 +1,6 @@
 package com.iambadatplaying;
 
+import com.google.gson.*;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
 import com.iambadatplaying.frontendHanlder.Socket;
@@ -11,8 +12,6 @@ import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
 import com.iambadatplaying.tasks.TaskManager;
 import org.eclipse.jetty.websocket.api.Session;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.awt.Desktop;
 import java.net.HttpURLConnection;
@@ -318,23 +317,15 @@ public class MainInitiator {
     public void backendMessageReceived(String message) {
         if (message != null && !message.isEmpty()) {
             if (getState() != STATE.RUNNING) return;
-            JSONArray messageArray = null;
-            JSONObject dataPackage = null;
-            String uri = null;
-            String type = null;
-            JSONObject data = null;
-            try {
-                messageArray = new JSONArray(message);
-                dataPackage = messageArray.getJSONObject(2);
-                if (dataPackage == null) return;
-            } catch (Exception e) {
-                log("Failed to parse message: " + message, LOG_LEVEL.ERROR);
-                return;
-            }
-            final JSONObject finalDataPackage = dataPackage;
+            JsonElement messageElement = JsonParser.parseString(message);
+            if (!messageElement.isJsonArray()) return;
+            JsonArray messageArray = messageElement.getAsJsonArray();
+            if (messageArray.isEmpty()) return;
+            JsonObject dataPackage = messageArray.get(2).getAsJsonObject();
 //            new Thread(() -> getReworkedDataManager().update(finalDataPackage)).start();
             new Thread(() -> getBackendMessageHandler().handleMessage(message)).start();
             new Thread(() -> getTaskManager().updateAllTasks(message)).start();
+
         }
     }
 

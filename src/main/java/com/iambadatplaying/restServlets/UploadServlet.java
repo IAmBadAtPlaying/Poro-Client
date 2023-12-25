@@ -1,8 +1,10 @@
 package com.iambadatplaying.restServlets;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.ConfigLoader;
 import com.iambadatplaying.MainInitiator;
-import org.json.JSONObject;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -18,6 +20,8 @@ public class UploadServlet extends BaseRESTServlet {
     public static final String PATH_USERDATA = "userdata";
 
     private static final String PATH_USERDATA_CUSTOM_BACKGROUND = "background";
+
+    private static final Gson gson = new GsonBuilder().create();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -57,17 +61,17 @@ public class UploadServlet extends BaseRESTServlet {
     private void handleGetBackground(HttpServletRequest req, HttpServletResponse resp) {
         Path path = mainInitiator.getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME);
 
-        JSONObject clientProperties = mainInitiator.getConfigLoader().getClientProperties();
+        JsonObject clientProperties = mainInitiator.getConfigLoader().getClientProperties();
 
-        String filename = clientProperties.getString(
+        String filename = clientProperties.get(
                 ConfigLoader.PROPERTY_CLIENT_BACKGROUND
-        );
+        ).getAsString();
 
         path = path.resolve(filename);
 
-        String contentType = clientProperties.getString(
+        String contentType = clientProperties.get(
                 ConfigLoader.PROPERTY_CLIENT_BACKGROUND_CONTENT_TYPE
-        );
+        ).getAsString();
 
         resp.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
         resp.setContentType(contentType);
@@ -140,9 +144,9 @@ public class UploadServlet extends BaseRESTServlet {
     private void handleUploadBackgroundVideo(HttpServletRequest req, HttpServletResponse resp) {
         Path path = mainInitiator.getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME).resolve("backgroundVideo");
 
-        JSONObject clientProperties = mainInitiator.getConfigLoader().getClientProperties();
+        JsonObject clientProperties = mainInitiator.getConfigLoader().getClientProperties();
 
-        clientProperties.put(
+        clientProperties.addProperty(
                 ConfigLoader.PROPERTY_CLIENT_BACKGROUND_TYPE,
                 ConfigLoader.CLIENT_BACKGROUND_TYPE.LOCAL_VIDEO.toString()
         );

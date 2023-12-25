@@ -283,7 +283,7 @@ public class ReworkedChampSelectData extends StateDataManager {
             if (subAction.isEmpty()) continue;
             int subActionLength = subAction.size();
             for (int j = 0; j < subActionLength; j++) {
-                JsonObject actionObject = subAction.get(i).getAsJsonObject();
+                JsonObject actionObject = subAction.get(j).getAsJsonObject();
                 updateSingleAction(actionObject);
             }
         }

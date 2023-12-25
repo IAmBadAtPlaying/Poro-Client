@@ -1,8 +1,8 @@
 package com.iambadatplaying.tasks;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 
 /**
@@ -29,7 +29,7 @@ public abstract class Task {
      *
      * @param webSocketEvent The websocket Event JsonArray emitted by one of the TriggerApiEvents
      */
-    public abstract void notify(JSONArray webSocketEvent);
+    public abstract void notify(JsonArray webSocketEvent);
 
     /**
      *
@@ -86,20 +86,20 @@ public abstract class Task {
      *
      * @param arguments The arguments in json format to be passed and saved
      */
-    public abstract boolean setTaskArgs(JSONObject arguments);
+    public abstract boolean setTaskArgs(JsonObject arguments);
 
 
     /**
      *
-     * @return The current, via {@link #setTaskArgs(JSONObject)} set, arguments
+     * @return The current, via {@link #setTaskArgs(JsonObject)} set, arguments
      */
-    public abstract JSONObject getTaskArgs();
+    public abstract JsonObject getTaskArgs();
 
     /**
      *
      * @return The arguments required and their format
      */
-    public abstract JSONArray getRequiredArgs();
+    public abstract JsonArray getRequiredArgs();
 
 
     /**

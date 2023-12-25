@@ -56,7 +56,7 @@ public class ChatMeManager extends StateDataManager {
         if (!Util.jsonKeysPresent(data,"availability", "name", "icon")) return Optional.empty();
         Util.copyJsonAttributes(data, frontendData, "availability", "statusMessage", "name", "icon", "gameName", "gameTag", "pid" , "id", "puuid", "lol", "summonerId");
 
-        frontendData.add("regalia", mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class.getSimpleName()).get(data.get("summonerId").getAsBigInteger()));
+        frontendData.add("regalia", mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class).get(data.get("summonerId").getAsBigInteger()));
 
         return Optional.of(frontendData);
     }

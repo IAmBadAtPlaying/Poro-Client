@@ -1,6 +1,7 @@
 package com.iambadatplaying;
 
-import org.json.JSONObject;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,7 +41,7 @@ public class ConfigLoader {
     public static final String PROPERTY_QUICK_PLAY_PROFILE_SCHEMA_VERSION = "schemaVersion";
     public static final String PROPERTY_QUICK_PLAY_PROFILE_DATA = "data";
 
-    private JSONObject config;
+    private JsonObject config;
 
     public ConfigLoader(MainInitiator mainInitiator) {
         this.mainInitiator = mainInitiator;
@@ -76,7 +77,7 @@ public class ConfigLoader {
         if (!Files.exists(configPath)) {
             try {
                 Files.createFile(configPath);
-                config = new JSONObject();
+                config = new JsonObject();
                 setupDefaultConfig();
                 return;
             } catch (IOException e) {
@@ -86,18 +87,19 @@ public class ConfigLoader {
             }
         }
         try {
-            config = new JSONObject(new String(Files.readAllBytes(configPath)));
+            JsonElement readConfig = Util.parseJson(new String(Files.readAllBytes(configPath)));
+            config = readConfig.getAsJsonObject();
         } catch (Exception e) {
             e.printStackTrace();
             log("Failed to read config file", MainInitiator.LOG_LEVEL.ERROR);
-            config = new JSONObject();
+            config = new JsonObject();
         }
     }
 
     private void setupDefaultConfig() {
-        config.put(KEY_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
-        config.put(KEY_SECTION_CLIENT_PROPERTIES, new JSONObject());
-        config.put(KEY_SECTION_QUICK_PLAY_PROFILES, new JSONObject());
+        config.addProperty(KEY_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
+        config.add(KEY_SECTION_CLIENT_PROPERTIES, new JsonObject());
+        config.add(KEY_SECTION_QUICK_PLAY_PROFILES, new JsonObject());
     }
 
     public void saveConfig() {
@@ -111,19 +113,23 @@ public class ConfigLoader {
         }
     }
 
-    public JSONObject getClientProperties() {
+    public JsonObject getClientProperties() {
         if (!config.has(KEY_SECTION_CLIENT_PROPERTIES)) {
-            return new JSONObject();
+            return new JsonObject();
         }
-        return config.getJSONObject(KEY_SECTION_CLIENT_PROPERTIES);
+        return config.get(KEY_SECTION_CLIENT_PROPERTIES).getAsJsonObject();
     }
 
-    public void setClientProperties(JSONObject clientProperties) {
-        config.put(KEY_SECTION_CLIENT_PROPERTIES, clientProperties);
+    public void setClientProperties(JsonObject clientProperties) {
+        config.add(KEY_SECTION_CLIENT_PROPERTIES, clientProperties);
     }
 
-    public void setClientProperty(String key, Object value) {
-        config.getJSONObject(KEY_SECTION_CLIENT_PROPERTIES).put(key, value);
+    public void setClientProperty(String key, JsonElement value) {
+        config.get(KEY_SECTION_CLIENT_PROPERTIES).getAsJsonObject().add(key, value);
+    }
+
+    public void setClientProperty(String key, String value) {
+        config.get(KEY_SECTION_CLIENT_PROPERTIES).getAsJsonObject().addProperty(key, value);
     }
 
     private void runOnInitiation() {
@@ -163,7 +169,7 @@ public class ConfigLoader {
         return true;
     }
 
-    public JSONObject getConfig() {
+    public JsonObject getConfig() {
         return config;
     }
 

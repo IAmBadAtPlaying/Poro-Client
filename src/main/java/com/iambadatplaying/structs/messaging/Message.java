@@ -1,7 +1,8 @@
 package com.iambadatplaying.structs.messaging;
+;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 
@@ -43,11 +44,11 @@ public class Message {
         return message;
     }
 
-    public static ArrayList<Message> createMessageList(JSONArray jsonMessages) {
+    public static ArrayList<Message> createMessageList(JsonArray jsonMessages) {
         ArrayList<Message> messages = new ArrayList<>();
         if (jsonMessages == null) return messages;
-        for (int i = 0; i < jsonMessages.length(); i++) {
-            JSONObject jsonMessage = jsonMessages.getJSONObject(i);
+        for (int i = 0; i < jsonMessages.size(); i++) {
+            JsonObject jsonMessage = jsonMessages.get(i).getAsJsonObject();
             Message message = Message.fromJsonObject(jsonMessage);
             if (message == null) continue;
             messages.add(message);
@@ -55,26 +56,26 @@ public class Message {
         return messages;
     }
 
-    public JSONObject toJsonObject() {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put(ID, this.id);
-        jsonObject.put(AUTHOR_PUUID, this.authorPuuid);
-        jsonObject.put(OBFUSCATED_AUTHOR_ID, this.obfuscatedAuthorId);
-        jsonObject.put(BODY, this.body);
-        jsonObject.put(TIMESTAMP, this.timestamp);
-        jsonObject.put(TYPE, this.type);
+    public JsonObject toJsonObject() {
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty(ID, this.id);
+        jsonObject.addProperty(AUTHOR_PUUID, this.authorPuuid);
+        jsonObject.addProperty(OBFUSCATED_AUTHOR_ID, this.obfuscatedAuthorId);
+        jsonObject.addProperty(BODY, this.body);
+        jsonObject.addProperty(TIMESTAMP, this.timestamp);
+        jsonObject.addProperty(TYPE, this.type);
         return jsonObject;
     }
 
-    public static Message fromJsonObject(JSONObject jsonMessage) {
+    public static Message fromJsonObject(JsonObject jsonMessage) {
         if(jsonMessage == null) return null;
         if (jsonMessage.has(ID)) {
-            Message message = new Message(jsonMessage.getString(ID));
-            if(jsonMessage.has(AUTHOR_PUUID)) message.setAuthorPuuid(jsonMessage.getString(AUTHOR_PUUID));
-            if (jsonMessage.has(OBFUSCATED_AUTHOR_ID)) message.setObfuscatedAuthorId(jsonMessage.getString(OBFUSCATED_AUTHOR_ID));
-            if (jsonMessage.has(BODY)) message.setBody(jsonMessage.getString(BODY));
-            if (jsonMessage.has(TIMESTAMP)) message.setTimestamp(jsonMessage.getString(TIMESTAMP));
-            if (jsonMessage.has(TYPE)) message.setType(jsonMessage.getString(TYPE));
+            Message message = new Message(jsonMessage.get(ID).getAsString());
+            if(jsonMessage.has(AUTHOR_PUUID)) message.setAuthorPuuid(jsonMessage.get(AUTHOR_PUUID).getAsString());
+            if (jsonMessage.has(OBFUSCATED_AUTHOR_ID)) message.setObfuscatedAuthorId(jsonMessage.get(OBFUSCATED_AUTHOR_ID).getAsString());
+            if (jsonMessage.has(BODY)) message.setBody(jsonMessage.get(BODY).getAsString());
+            if (jsonMessage.has(TIMESTAMP)) message.setTimestamp(jsonMessage.get(TIMESTAMP).getAsString());
+            if (jsonMessage.has(TYPE)) message.setType(jsonMessage.get(TYPE).getAsString());
             return message;
         } return null;
     }

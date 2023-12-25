@@ -1,10 +1,11 @@
 package com.iambadatplaying.tasks;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
+import java.net.URLDecoder;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -21,49 +22,52 @@ public class PickReminderTask extends Task{
     private String currentChatId;
 
     @Override
-    public void notify(JSONArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.length() < 3) {
+    public void notify(JsonArray webSocketEvent) {
+        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
-        JSONObject data = webSocketEvent.getJSONObject(2);
-        String uriTrigger = data.getString("uri");
+        JsonObject data = webSocketEvent.get(2).getAsJsonObject();
+        String uriTrigger = data.get("uri").getAsString();
         if (uriTrigger.startsWith("/lol-chat/v1/conversations/")) {
             handleUpdateData(data);
         }
     }
 
-    private void handleUpdateData(JSONObject jsonData) {
-        String eventType = jsonData.getString("eventType");
+    private void handleUpdateData(JsonObject JsonData) {
+        String eventType = JsonData.get("eventType").getAsString();
         switch (eventType) {
             case "Create":
             case "Update":
                 if (!alreadyReminded) {
-                    String chatId = getRoomId(jsonData.getString("uri"));
+                    String chatId = getRoomId(JsonData.get("uri").getAsString());
                     if (chatId.isEmpty()) return;
 
-                    currentChatId = chatId;
+                    currentChatId =chatId;
                     StringBuilder sb = new StringBuilder();
                     sb.append("[Poro-Client] You are playing with\n");
 
                     timer.schedule(new TimerTask() {
                         @Override
                         public void run() {
-                            JSONObject participants = (JSONObject) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.JSON_OBJECT, mainInitiator.getConnectionManager().buildRiotConnection(ConnectionManager.conOptions.GET, "/chat/v5/participants/champ-select", ""));
+                            JsonObject participants = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildRiotConnection(ConnectionManager.conOptions.GET, "/chat/v5/participants?cid="+ URLDecoder.decode(chatId),""));
                             if (participants.has("participants")) {
-                                JSONArray participantsArray = participants.getJSONArray("participants");
-                                for (int i = 0; i < participantsArray.length(); i++) {
-                                    JSONObject participant = participantsArray.getJSONObject(i);
+                                JsonArray participantsArray = participants.get("participants").getAsJsonArray();
+                                for (int i = 0; i < participantsArray.size(); i++) {
+                                    JsonObject participant = participantsArray.get(i).getAsJsonObject();
                                     if (participant.has("name")) {
-                                        String gameName = participant.getString("name");
+                                        String gameName = participant.get("game_name").getAsString();
+                                        String gameTag = participant.get("game_tag").getAsString();
                                         sb.append(gameName);
+                                        sb.append("#");
+                                        sb.append(gameTag);
                                         sb.append("\n");
                                     }
                                 }
                             }
 
-                            JSONObject reminderMessage = new JSONObject();
-                            reminderMessage.put("type", "celebration");
-                            reminderMessage.put("body", sb.toString());
+                            JsonObject reminderMessage = new JsonObject();
+                            reminderMessage.addProperty("type", "celebration");
+                            reminderMessage.addProperty("body", sb.toString());
 
                             mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-chat/v1/conversations/" + chatId + "/messages", reminderMessage.toString()));
                         }
@@ -73,7 +77,7 @@ public class PickReminderTask extends Task{
                 }
             break;
             case "Delete":
-                if (getRoomId(jsonData.getString("uri")).equals(currentChatId)) {
+                if (getRoomId(JsonData.get("uri").getAsString()).equals(currentChatId)) {
                     alreadyReminded = false;
                 }
             break;
@@ -106,17 +110,17 @@ public class PickReminderTask extends Task{
     }
 
     @Override
-    public boolean setTaskArgs(JSONObject arguments) {
+    public boolean setTaskArgs(JsonObject arguments) {
         return true;
     }
 
     @Override
-    public JSONObject getTaskArgs() {
-        return new JSONObject();
+    public JsonObject getTaskArgs() {
+        return new JsonObject();
     }
 
     @Override
-    public JSONArray getRequiredArgs() {
-        return new JSONArray();
+    public JsonArray getRequiredArgs() {
+        return new JsonArray();
     }
 }
