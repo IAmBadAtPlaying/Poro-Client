@@ -78,8 +78,14 @@ public class Socket {
             currentSession.getRemote().sendString("[5, \"" + endpoint + "\"]");
         } catch (Exception e) {
             log("Cannot subscribe to endpoint " + endpoint, MainInitiator.LOG_LEVEL.DEBUG);
-            new Thread(() -> subscribeToEndpoint(endpoint)).start();
-            e.printStackTrace();
+            new Thread(() -> {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+                subscribeToEndpoint(endpoint);
+            }).start();
         }
     }
 

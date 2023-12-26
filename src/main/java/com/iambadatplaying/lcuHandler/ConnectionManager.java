@@ -232,7 +232,7 @@ public class ConnectionManager {
     }
 
 
-    public String inputStreamToString(InputStream is) throws IOException {
+    public static String inputStreamToString(InputStream is) throws IOException {
         StringBuilder result = new StringBuilder();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
             String line;
@@ -339,11 +339,11 @@ public class ConnectionManager {
         }
     }
 
-    public JsonObject getResponseBodyAsJsonObject(HttpURLConnection con) {
+    public static JsonObject getResponseBodyAsJsonObject(HttpURLConnection con) {
         return handleJSONObjectResponse(con);
     }
 
-    public JsonArray getResponseBodyAsJsonArray(HttpURLConnection con) {
+    public static JsonArray getResponseBodyAsJsonArray(HttpURLConnection con) {
         return handleJSONArrayResponse(con);
     }
 
@@ -372,25 +372,26 @@ public class ConnectionManager {
         return is;
     }
 
-    private JsonObject handleJSONObjectResponse (HttpURLConnection con) {
+    private static JsonObject handleJSONObjectResponse (HttpURLConnection con) {
         return toJsonObject(handleStringResponse(con));
     }
 
-    private JsonArray handleJSONArrayResponse (HttpURLConnection con) {
+    private static JsonArray handleJSONArrayResponse (HttpURLConnection con) {
 
         return toJsonArray(handleStringResponse(con));
     }
 
-    private JsonArray toJsonArray(String s) {
+    private static JsonArray toJsonArray(String s) {
         if(s == null) return null;
         return JsonParser.parseString(s).getAsJsonArray();
     }
-    private JsonObject toJsonObject(String s) {
+
+    private static JsonObject toJsonObject(String s) {
         if(s == null) return null;
         return JsonParser.parseString(s).getAsJsonObject();
     }
 
-    public String handleStringResponse(HttpURLConnection conn) {
+    public static String handleStringResponse(HttpURLConnection conn) {
         String resp = null;
         try {
             if (100 <= conn.getResponseCode() && conn.getResponseCode() <= 399) {
@@ -400,7 +401,6 @@ public class ConnectionManager {
             }
             conn.disconnect();
         } catch (Exception e) {
-            log(e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
             return null;
         }
         return resp;

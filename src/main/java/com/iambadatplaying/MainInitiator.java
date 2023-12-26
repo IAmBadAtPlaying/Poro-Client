@@ -24,7 +24,7 @@ import java.nio.file.Paths;
 public class MainInitiator {
 
     //FIXME: Change before Production
-    public static final boolean isDev = true;
+    public static final boolean isDev = false;
 
     public enum LOG_LEVEL {
         DEBUG(0),
@@ -92,11 +92,6 @@ public class MainInitiator {
 
     public static String[] requiredEndpoints = {"OnJsonApiEvent"};
 
-    public static void main(String[] args) {
-        MainInitiator mainInit = new MainInitiator();
-        mainInit.init();
-        mainInit.setRunning(true);
-    }
 
     public Path getTaskPath() {
         if (taskDirPath == null) {
@@ -126,103 +121,6 @@ public class MainInitiator {
     }
 
     public void init() {
-        state = STATE.STARTING;
-        if (isRunning()) {
-            return;
-        }
-        log("Initializing");
-        try {
-            //TODO: Change this ugly shit holy fucking god
-            configLoader = new ConfigLoader(this);
-            configLoader.loadConfig();
-            basePath = configLoader.getAppFolderPath();
-            resourceServer = new ResourceServer(this);
-            resourceServer.init();
-            connectionManager = new ConnectionManager(this);
-            dataManager = new DataManager(this);
-            reworkedDataManager = new ReworkedDataManager(this);
-            client = new SocketClient(this);
-            server = new SocketServer(this);
-            backendMessageHandler = new BackendMessageHandler(this);
-            frontendMessageHandler = new FrontendMessageHandler(this);
-            taskManager = new TaskManager(this);
-            connectionManager.init();
-            state = STATE.AWAITING_LCU;
-            while (!connectionManager.isLeagueAuthDataAvailable()) {
-                try {
-                    Thread.sleep(500);
-                } catch (Exception e) {
-                }
-            }
-            while (!feProcessesReady()) {
-                try {
-                    Thread.sleep(500); //League Backend Socket needs time to be able to serve the resources TODO: This is fucking horrible
-                } catch (Exception e) {
-
-                }
-            }
-            if (connectionManager.getAuthString() != null) {
-                client.init();
-                server.init();
-                dataManager.init();
-                reworkedDataManager.init();
-                taskManager.init();
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        while (getClient().getSocket() == null || !getClient().getSocket().isConnected()) {
-                            try {
-                                Thread.sleep(10);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        for (String endpoint : requiredEndpoints) {
-                            getClient().getSocket().subscribeToEndpoint(endpoint);
-                        }
-                    }
-                }).start();
-                setRunning(true);
-                state = STATE.RUNNING;
-            } else {
-                log("League is not running, will not start", LOG_LEVEL.ERROR);
-                System.exit(1);
-            }
-            while (client.getSocket() == null || !client.getSocket().isConnected()) {
-                try {
-                    Thread.sleep(100);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            try {
-                Thread.sleep(1000);
-                showRunningNotification();
-                if (isDev) {
-                    Desktop.getDesktop().browse(new URI("http://localhost:3000"));
-                } else {
-                    Desktop.getDesktop().browse(new URI("http://localhost:35199/static/index.html"));
-                }
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(-1);
-        }
-    }
-
-    private boolean feProcessesReady() {
-        try {
-            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-player-preferences/v1/player-preferences-ready"));
-            boolean isReady = "true".equals(resp.trim());
-            log("FE-Process ready: " + isReady);
-            return isReady;
-        } catch (Exception e) {
-
-        }
-        return false;
     }
 
     public void shutdown() {

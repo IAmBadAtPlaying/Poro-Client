@@ -21,6 +21,10 @@ public class Starter extends MainInitiator {
     public static int ERROR_INVALID_AUTH = 400;
     public static int ERROR_INSUFFICIENT_PERMISSIONS = 401;
 
+    public static final int VERSION_MAJOR = 0;
+    public static final int VERSION_MINOR = 1;
+    public static final int VERSION_PATCH = 4;
+
     private STATE state = STATE.UNINITIALIZED;
 
     private SocketClient client;
@@ -45,6 +49,10 @@ public class Starter extends MainInitiator {
             starter.getConfigLoader().saveConfig();
         }));
         starter.run();
+    }
+
+    public static String getVersion() {
+        return "v"+VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_PATCH;
     }
 
     public void run() {
