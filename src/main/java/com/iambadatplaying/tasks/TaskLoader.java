@@ -1,6 +1,6 @@
 package com.iambadatplaying.tasks;
 
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
@@ -12,11 +12,11 @@ import java.nio.file.Path;
 //TODO: JRE cant compile java files, therefore allow users to upload .class files, no longer .java files
 public class TaskLoader {
 
-    private MainInitiator mainInitiator;
+    private Starter starter;
     private Path taskDirPath;
 
-    public TaskLoader(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public TaskLoader(Starter starter) {
+        this.starter = starter;
     }
 
     public void setTaskDirectory(Path taskDirPath) {
@@ -25,36 +25,36 @@ public class TaskLoader {
 
     public void init() {
         if (taskDirPath == null) {
-            log("Task directory not set.", MainInitiator.LOG_LEVEL.ERROR);
+            log("Task directory not set.", Starter.LOG_LEVEL.ERROR);
             return;
         }
 
         if (!Files.exists(taskDirPath)) {
-            log("Task directory does not exist.", MainInitiator.LOG_LEVEL.ERROR);
+            log("Task directory does not exist.", Starter.LOG_LEVEL.ERROR);
             return;
         }
 
         if (!Files.isDirectory(taskDirPath)) {
-            log("Task directory is not a directory.", MainInitiator.LOG_LEVEL.ERROR);
+            log("Task directory is not a directory.", Starter.LOG_LEVEL.ERROR);
             return;
         }
 
         File[] taskFiles = taskDirPath.toFile().listFiles();
         if (taskFiles == null) {
-            log("Failed to list files in task directory.", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to list files in task directory.", Starter.LOG_LEVEL.ERROR);
             return;
         }
 
         for (File taskFile : taskFiles) {
             if (taskFile.isFile()) {
                 if (taskFile.getName().endsWith(".class")) {
-                    log("Attempting to load task: " + taskFile.getName(), MainInitiator.LOG_LEVEL.INFO);
+                    log("Attempting to load task: " + taskFile.getName(), Starter.LOG_LEVEL.INFO);
                     loadTask(taskFile.toPath());
                 } else if (taskFile.getName().endsWith(".java")) {
-                    log("Skipping: " + taskFile.getName(), MainInitiator.LOG_LEVEL.INFO);
+                    log("Skipping: " + taskFile.getName(), Starter.LOG_LEVEL.INFO);
                     compileAndLoadTask(taskFile.toPath());
                 } else {
-                    log("Ignoring file: " + taskFile.getName(), MainInitiator.LOG_LEVEL.INFO);
+                    log("Ignoring file: " + taskFile.getName(), Starter.LOG_LEVEL.INFO);
                 }
             }
         }
@@ -66,7 +66,7 @@ public class TaskLoader {
 
         int compilationResult = compiler.run(null, null, null, taskJavaPath.toString());
         if (compilationResult != 0) {
-            log("Could not compile task: " + taskJavaPath.toString(), MainInitiator.LOG_LEVEL.ERROR);
+            log("Could not compile task: " + taskJavaPath.toString(), Starter.LOG_LEVEL.ERROR);
         }
     }
 
@@ -77,7 +77,7 @@ public class TaskLoader {
         try {
             taskClass = classLoader.loadClass(classFile);
         } catch (Exception e) {
-            log("Failed to load task class from file: " + classFile.getName(), MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to load task class from file: " + classFile.getName(), Starter.LOG_LEVEL.ERROR);
             return;
         }
 
@@ -85,15 +85,15 @@ public class TaskLoader {
         try {
             taskInstance = taskClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
-            log("Failed to instantiate task class from file: " + classFile.getName(), MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to instantiate task class from file: " + classFile.getName(), Starter.LOG_LEVEL.ERROR);
             return;
         }
 
         if (taskInstance instanceof Task) {
             Task task = (Task) taskInstance;
-            mainInitiator.getTaskManager().addTaskToMap(task);
+            starter.getTaskManager().addTaskToMap(task);
         } else {
-            log("The class in file: " + classFile.getName() + " does not implement Task interface.", MainInitiator.LOG_LEVEL.ERROR);
+            log("The class in file: " + classFile.getName() + " does not implement Task interface.", Starter.LOG_LEVEL.ERROR);
         }
     }
 
@@ -109,16 +109,16 @@ public class TaskLoader {
         try {
             Files.delete(taskJavaPath);
         } catch (IOException e) {
-            log("Failed to delete task java file: " + taskJavaPath.toString(), MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to delete task java file: " + taskJavaPath.toString(), Starter.LOG_LEVEL.ERROR);
         }
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        log(s, MainInitiator.LOG_LEVEL.DEBUG);
+        log(s, Starter.LOG_LEVEL.DEBUG);
     }
 
 

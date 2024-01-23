@@ -3,9 +3,10 @@ package com.iambadatplaying.restServlets;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -113,8 +114,39 @@ public class LootServlet extends BaseRESTServlet {
             }
         }
 
-        for (JsonArray disenchantArray : disenchantCollections) {
-            log(disenchantArray.toString(), MainInitiator.LOG_LEVEL.ERROR);
+        boolean somethingFailed = false;
+        loop: for (JsonArray disenchantArray : disenchantCollections) {
+            HttpsURLConnection connection = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-loot/v1/craft/mass", disenchantArray.toString());
+            if (connection == null) {
+                somethingFailed = true;
+                break;
+            }
+
+            int responseCode = connection.getResponseCode();
+            switch (responseCode) {
+                case 200:
+                    JsonObject responseJson = ConnectionManager.getResponseBodyAsJsonObject(connection);
+
+                    if (responseJson.has("httpStatus") && responseJson.get("httpStatus").getAsInt() != 200) {
+                        somethingFailed = true;
+                        break loop;
+                    }
+                    connection.disconnect();
+                    break;
+                default:
+                    somethingFailed = true;
+                    break loop;
+            }
+        }
+
+        if (somethingFailed) {
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.setHeader("Content-Type", "application/json");
+
+            JsonObject responseJson = new JsonObject();
+            responseJson.addProperty("message","Disenchanting failed");
+            resp.getWriter().write(responseJson.toString());
+            return;
         }
 
         resp.setStatus(HttpServletResponse.SC_OK);
@@ -123,6 +155,7 @@ public class LootServlet extends BaseRESTServlet {
         JsonObject responseJson = new JsonObject();
         responseJson.addProperty("disenchantCount", actualCount);
         responseJson.addProperty("message","Disenchanting successful");
+
         resp.getWriter().write(responseJson.toString());
     }
 

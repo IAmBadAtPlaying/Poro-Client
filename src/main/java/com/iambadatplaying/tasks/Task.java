@@ -2,7 +2,7 @@ package com.iambadatplaying.tasks;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 
 
 /**
@@ -21,7 +21,7 @@ public abstract class Task {
         SELECT;
     }
 
-    protected MainInitiator mainInitiator;
+    protected Starter starter;
 
     protected volatile boolean running = false;
 
@@ -37,8 +37,8 @@ public abstract class Task {
      *
      */
 
-    public void setMainInitiator(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public void setMainInitiator(Starter starter) {
+        this.starter = starter;
     }
 
     /**
@@ -48,7 +48,7 @@ public abstract class Task {
      */
 
     public void init() {
-        if (mainInitiator == null || !mainInitiator.isRunning()) {
+        if (starter == null || !starter.isInitialized()) {
             System.out.println("Task cant initialize, MainInitiator is null or not running");
         }
         doInitialize();
@@ -70,7 +70,7 @@ public abstract class Task {
     public void shutdown() {
         this.running = false;
         doShutdown();
-        this.mainInitiator = null;
+        this.starter = null;
     }
 
     /**

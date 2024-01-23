@@ -1,6 +1,6 @@
 package com.iambadatplaying.ressourceServer;
 
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.lcuHandler.DataManager;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -17,14 +17,14 @@ import java.nio.file.Path;
 
 public class ConfigHandler extends AbstractHandler {
 
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
 
     private final Path taskDir;
 
-    public ConfigHandler(MainInitiator mainInitiator) {
+    public ConfigHandler(Starter starter) {
         super();
-        this.mainInitiator = mainInitiator;
-        this.taskDir = mainInitiator.getTaskPath();
+        this.starter = starter;
+        this.taskDir = starter.getTaskPath();
     }
 
     @Override
@@ -103,11 +103,11 @@ public class ConfigHandler extends AbstractHandler {
         }
         log("File name: " + fileName);
         if (fileName == null) {
-            log("File name is null, was deleted", MainInitiator.LOG_LEVEL.INFO);
+            log("File name is null, was deleted", Starter.LOG_LEVEL.INFO);
             return;
         } else if (!fileName.endsWith(".java")) {
             Files.deleteIfExists(taskDir.resolve(fileName));
-            log("File is not a java file, was deleted", MainInitiator.LOG_LEVEL.INFO);
+            log("File is not a java file, was deleted", Starter.LOG_LEVEL.INFO);
             return;
         }
 
@@ -117,19 +117,19 @@ public class ConfigHandler extends AbstractHandler {
             e.printStackTrace();
         }
 
-        mainInitiator.getTaskManager().loadAtRuntime(fileName);
+        starter.getTaskManager().loadAtRuntime(fileName);
         String actualName = fileName.substring(0, fileName.length() - ".java".length());
-        mainInitiator.getTaskManager().addTask(actualName);
-        log(DataManager.getEventDataString("TaskUpdate", mainInitiator.getTaskManager().getTaskAndArgs()));
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("TaskUpdate", mainInitiator.getTaskManager().getTaskAndArgs()));
+        starter.getTaskManager().addTask(actualName);
+        log(DataManager.getEventDataString("TaskUpdate", starter.getTaskManager().getTaskAndArgs()));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString("TaskUpdate", starter.getTaskManager().getTaskAndArgs()));
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName()+ ": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName()+ ": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getSimpleName() + ": " + s);
+        starter.log(this.getClass().getSimpleName() + ": " + s);
     }
 
 }

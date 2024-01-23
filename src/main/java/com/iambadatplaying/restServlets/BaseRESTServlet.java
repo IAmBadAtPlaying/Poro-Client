@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 public abstract class BaseRESTServlet extends HttpServlet {
-    protected MainInitiator mainInitiator;
+    protected Starter starter;
 
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -74,15 +74,15 @@ public abstract class BaseRESTServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        mainInitiator = (MainInitiator) getServletContext().getAttribute("mainInitiator");
+        starter = (Starter) getServletContext().getAttribute("mainInitiator");
     }
 
-    public void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
+    public void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     @Override
     public void log(String s) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
+        starter.log(this.getClass().getSimpleName() +": " +s);
     }
 }

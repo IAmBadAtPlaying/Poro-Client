@@ -3,7 +3,7 @@ package com.iambadatplaying.data.map;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.state.ChatMeManager;
 import com.iambadatplaying.data.state.LobbyData;
@@ -18,8 +18,8 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
 
     private final static String lolRegaliaV2SummonerPattern = "/lol-regalia/v2/summoners/(.*)/regalia/async";
 
-    public RegaliaManager(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    public RegaliaManager(Starter starter) {
+        super(starter);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     }
 
     private void updateChatMe(BigInteger summonerId) {
-        StateDataManager chatMeManager = mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class);
+        StateDataManager chatMeManager = starter.getReworkedDataManager().getStateManagers(ChatMeManager.class);
         if (chatMeManager == null) return;
         Optional<JsonObject> optChatMeData = chatMeManager.getCurrentState();
         if (!optChatMeData.isPresent()) return;
@@ -91,12 +91,12 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
         if (!summonerId.equals(chatMeData.get("summonerId").getAsBigInteger())) return;
 
         chatMeData.add("regalia", getRegalia(summonerId));
-        mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class).setCurrentState(chatMeData);
-        mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class).sendCurrentState();
+        starter.getReworkedDataManager().getStateManagers(ChatMeManager.class).setCurrentState(chatMeData);
+        starter.getReworkedDataManager().getStateManagers(ChatMeManager.class).sendCurrentState();
     }
 
     private void updateLobbyMemeberRegalia(BigInteger summonerId) {
-        StateDataManager lobbyManager = mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class);
+        StateDataManager lobbyManager = starter.getReworkedDataManager().getStateManagers(LobbyData.class);
         if (lobbyManager == null) return;
         Optional<JsonObject> optLobbyData = lobbyManager.getCurrentState();
         if (!optLobbyData.isPresent()) return;
@@ -117,12 +117,12 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
 
         lobbyData.add("members", members);
 
-        mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class).setCurrentState(lobbyData);
-        mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class).sendCurrentState();
+        starter.getReworkedDataManager().getStateManagers(LobbyData.class).setCurrentState(lobbyData);
+        starter.getReworkedDataManager().getStateManagers(LobbyData.class).sendCurrentState();
     }
 
     public JsonObject updateRegalia(BigInteger summonerId) {
-        JsonObject regalia =  mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-regalia/v3/summoners/"+summonerId.toString()+"/regalia"));
+        JsonObject regalia =  starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-regalia/v3/summoners/"+summonerId.toString()+"/regalia"));
         map.put(summonerId, regalia);
         updateChatMe(summonerId);
         updateLobbyMemeberRegalia(summonerId);

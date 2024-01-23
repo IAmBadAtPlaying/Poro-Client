@@ -1,24 +1,23 @@
 package com.iambadatplaying.data;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 
 public abstract class BasicDataManager {
     protected boolean initialized = false;
-    protected MainInitiator mainInitiator;
+    protected Starter starter;
 
     private BasicDataManager() {}
 
-    protected BasicDataManager(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    protected BasicDataManager(Starter starter) {
+        this.starter = starter;
     }
 
     public void init() {
         if (initialized) return;
         initialized = true;
-        log("Initialized", MainInitiator.LOG_LEVEL.INFO);
         doInitialize();
+        log("Initialized", Starter.LOG_LEVEL.INFO);
     }
 
     protected abstract void doInitialize();
@@ -35,11 +34,11 @@ public abstract class BasicDataManager {
 
     protected abstract void doShutdown();
 
-    protected void log(Object o, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + o, level);
+    protected void log(Object o, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + o, level);
     }
 
     protected void log(Object o) {
-        log(o, MainInitiator.LOG_LEVEL.DEBUG);
+        log(o, Starter.LOG_LEVEL.DEBUG);
     }
 }

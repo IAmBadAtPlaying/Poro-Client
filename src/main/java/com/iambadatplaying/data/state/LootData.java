@@ -2,8 +2,9 @@ package com.iambadatplaying.data.state;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
+import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
 
@@ -13,8 +14,8 @@ public class LootData extends StateDataManager {
 
     private static final String LOOT_URI = "/lol-loot/v2/player-loot-map";
 
-    public LootData(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    public LootData(Starter starter) {
+        super(starter);
     }
 
     @Override
@@ -56,13 +57,13 @@ public class LootData extends StateDataManager {
 
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
-        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v2/player-loot-map"));
+        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v2/player-loot-map"));
         if (!data.has("errorCode")) return backendToFrontendLoot(data);
         return Optional.empty();
     }
 
     @Override
     public void sendCurrentState() {
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LootUpdate", currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_LOOT, currentState));
     }
 }

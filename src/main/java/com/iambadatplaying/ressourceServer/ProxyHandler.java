@@ -1,6 +1,6 @@
 package com.iambadatplaying.ressourceServer;
 
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -18,13 +18,13 @@ import java.util.Map;
 public class ProxyHandler extends AbstractHandler {
     public static String STATIC_PROXY_PREFIX = "/static";
 
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
     private final Map<String, byte[]> resourceCache;
     private final Map<String, Map<String, List<String>>> headerCache;
 
-    public ProxyHandler(MainInitiator mainInitiator) {
+    public ProxyHandler(Starter starter) {
         super();
-        this.mainInitiator = mainInitiator;
+        this.starter = starter;
         this.resourceCache = new HashMap<>();
         this.headerCache = new HashMap<>();
     }
@@ -70,7 +70,7 @@ public class ProxyHandler extends AbstractHandler {
             }
             postBody = requestBodyBuilder.toString();
         } catch (Exception e) {
-            log("Error while reading request body: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+            log("Error while reading request body: " + e.getMessage(), Starter.LOG_LEVEL.ERROR);
         }
 
         try {
@@ -81,16 +81,16 @@ public class ProxyHandler extends AbstractHandler {
                 request.setHandled(true);
                 return;
             }
-            con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.getByString(request.getMethod()), resource, postBody);
+            con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.getByString(request.getMethod()), resource, postBody);
             if (con == null) {
-                log("Cannot establish connection to " + resource + ", League might not be running", MainInitiator.LOG_LEVEL.ERROR);
+                log("Cannot establish connection to " + resource + ", League might not be running", Starter.LOG_LEVEL.ERROR);
                 return;
             }
             httpServletResponse.setContentType(con.getContentType());
-            if (!mainInitiator.getConnectionManager().isLeagueAuthDataAvailable()) {
+            if (!starter.getConnectionManager().isLeagueAuthDataAvailable()) {
                 return;
             }
-            is = (InputStream) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.INPUT_STREAM, con);
+            is = (InputStream) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.INPUT_STREAM, con);
             Map<String, List<String>> headers = con.getHeaderFields();
 
 
@@ -104,7 +104,7 @@ public class ProxyHandler extends AbstractHandler {
             serveResource(httpServletResponse, resourceBytes, headers);
             request.setHandled(true);
         } catch (Exception e) {
-            log("Error while handling request for " + resource + ": " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+            log("Error while handling request for " + resource + ": " + e.getMessage(), Starter.LOG_LEVEL.ERROR);
         } finally {
             if (is != null) {
                 is.close();
@@ -151,11 +151,11 @@ public class ProxyHandler extends AbstractHandler {
         response.getOutputStream().flush();
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
+        starter.log(this.getClass().getSimpleName() +": " +s);
     }
 }

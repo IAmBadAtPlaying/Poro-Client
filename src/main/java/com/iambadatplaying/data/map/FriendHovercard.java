@@ -2,12 +2,12 @@ package com.iambadatplaying.data.map;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 
 public class FriendHovercard extends MapDataManager<String> {
 
-    protected FriendHovercard(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    protected FriendHovercard(Starter starter) {
+        super(starter);
     }
 
     @Override

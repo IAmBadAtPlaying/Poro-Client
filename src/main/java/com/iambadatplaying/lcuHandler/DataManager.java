@@ -2,13 +2,11 @@ package com.iambadatplaying.lcuHandler;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.structs.messaging.Conversation;
 import com.iambadatplaying.structs.messaging.Message;
 
-import javax.net.ssl.HttpsURLConnection;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -117,7 +115,7 @@ public class DataManager {
         }
     }
 
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
 
     private Map<String, JsonObject> synchronizedFriendListMap;
     private Map<BigInteger, JsonObject> regaliaMap;
@@ -148,8 +146,8 @@ public class DataManager {
     private JsonObject championJson;
     private JsonObject summonerSpellJson;
 
-    public DataManager(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public DataManager(Starter starter) {
+        this.starter = starter;
     }
 
     public static String REGALIA_REGEX = "/lol-regalia/v2/summoners/(.*?)/regalia/async";
@@ -212,7 +210,7 @@ public class DataManager {
         log("Setting active conversation to " + conversationId);
         JsonObject activeConversation = new JsonObject();
         activeConversation.addProperty("id", conversationId);
-        Integer respCode = (Integer) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/conversations/active", activeConversation.toString()));
+        Integer respCode = (Integer) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/conversations/active", activeConversation.toString()));
         log("Response code: " + respCode);
     }
 
@@ -221,7 +219,7 @@ public class DataManager {
         JsonObject conversationScope = new JsonObject();
         conversationScope.addProperty("id", conversationId);
         conversationScope.addProperty("type", "chat");
-        Integer respCode = (Integer) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations", conversationScope.toString()));
+        Integer respCode = (Integer) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations", conversationScope.toString()));
         log("[Conversation Scope]: Response code: " + respCode);
     }
 
@@ -239,7 +237,7 @@ public class DataManager {
         if (conversationMap.containsKey(conversationId)) {
             Conversation conversation = conversationMap.get(conversationId);
             if (justLeftRoom(conversationId, message)) {
-                log("Conversation left, clearing messages for " + conversationId, MainInitiator.LOG_LEVEL.INFO);
+                log("Conversation left, clearing messages for " + conversationId, Starter.LOG_LEVEL.INFO);
                 conversationMap.computeIfPresent(conversationId, (k, v) -> {
                     v.getMessages().clear();
                     //This will effectively do conversationMap.remove(conversationId);
@@ -260,7 +258,7 @@ public class DataManager {
             conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
             sendMessageUpdate.addProperty("conversationId", conversationId);
             sendMessageUpdate.add("message", message.toJsonObject());
-            mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(EVENT_MESSAGE_UPDATE, sendMessageUpdate));
+            starter.getServer().sendToAllSessions(DataManager.getEventDataString(EVENT_MESSAGE_UPDATE, sendMessageUpdate));
         } catch (Exception e) {
             return;
         }
@@ -271,13 +269,13 @@ public class DataManager {
         JsonObject sendMessageUpdate = new JsonObject();
         sendMessageUpdate.addProperty("conversationId", conversation.getId());
         Util.copyJsonAttrib("messages", conversation.toJsonObject(), sendMessageUpdate);
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ConversationUpdate", sendMessageUpdate));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString("ConversationUpdate", sendMessageUpdate));
     }
 
     private Conversation fetchConversationRoomInfo(String conversationId) {
         log("[Conversation Fetch] Fetching for " + conversationId);
         String url = "/lol-chat/v1/conversations/" + conversationId;
-        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));
+        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));
         if (data != null) {
             log(data.toString());
             return Conversation.fromJsonObject(data);
@@ -324,7 +322,7 @@ public class DataManager {
         if (conversation == null) return;
         String url = "/lol-chat/v1/conversations/" + conversation.getId() + "/messages";
 
-        JsonArray data =mainInitiator.getConnectionManager().getResponseBodyAsJsonArray( mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));
+        JsonArray data = starter.getConnectionManager().getResponseBodyAsJsonArray( starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, url));
         ArrayList<Message> messages = Message.createMessageList(data);
         conversation.addMessages(messages);
     }
@@ -361,7 +359,7 @@ public class DataManager {
                 } else log("Executor shutdown failed");
             }
         } catch (Exception e) {
-            log("Executor termination failed: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+            log("Executor termination failed: " + e.getMessage(), Starter.LOG_LEVEL.ERROR);
         }
         disenchantExecutor = null;
         if (synchronizedFriendListMap != null) synchronizedFriendListMap.clear();
@@ -387,7 +385,7 @@ public class DataManager {
     }
 
     public void initQueueMap() {
-        JsonArray queueArray = mainInitiator.getConnectionManager().getResponseBodyAsJsonArray(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-queues/v1/queues"));
+        JsonArray queueArray = starter.getConnectionManager().getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-queues/v1/queues"));
         for (int i = 0; i < queueArray.size(); i++) {
             JsonObject currentQueue = queueArray.get(i).getAsJsonObject();
             if ("Available".equals(currentQueue.get("queueAvailability").getAsString())) {
@@ -543,7 +541,7 @@ public class DataManager {
 //    }
 
     private void updateLootMap() {
-        JsonObject preFormattedLoot = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v1/player-loot"));
+        JsonObject preFormattedLoot = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v1/player-loot"));
         lootJsonObject = preFormattedLoot.get("playerLoot").getAsJsonObject();
     }
 
@@ -570,7 +568,7 @@ public class DataManager {
     }
 
     public void updateClientSystemStates() {
-        JsonObject clientSystemStates = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-platform-config/v1/namespaces/ClientSystemStates"));
+        JsonObject clientSystemStates = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-platform-config/v1/namespaces/ClientSystemStates"));
         JsonArray enabledQueueIds = clientSystemStates.get("enabledQueueIdsList").getAsJsonArray();
         if (platformConfigQueues == null) {
             platformConfigQueues = new JsonObject();
@@ -644,7 +642,7 @@ public class DataManager {
         if (synchronizedFriendListMap.isEmpty())
             {
                 try {
-                    JsonArray friendArray = mainInitiator.getConnectionManager().getResponseBodyAsJsonArray(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
+                    JsonArray friendArray = starter.getConnectionManager().getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
                     for (int i = 0; i < friendArray.size(); i++) {
                         JsonObject friendObject = beToFeFriendsInfo(friendArray.get(i).getAsJsonObject());
                         if (friendObject == null || friendObject.isEmpty()) continue;
@@ -669,7 +667,7 @@ public class DataManager {
                 String puuid = backendFriendObject.get(SUMMONER_PUUID).getAsString();
                 if (puuid == null || puuid.isEmpty()) return null;
                 String statusMessage = backendFriendObject.get("statusMessage").getAsString();
-                String name = backendFriendObject.get("name").getAsString();
+                String name = backendFriendObject.get("gameName").getAsString();
                 String id = backendFriendObject.get("id").getAsString();
                 if (name == null || name.isEmpty()) return null;
                 Integer iconId = backendFriendObject.get("icon").getAsInt();
@@ -1202,10 +1200,10 @@ public class DataManager {
         }
 
         private void log (Object o){
-            log(o, MainInitiator.LOG_LEVEL.DEBUG);
+            log(o, Starter.LOG_LEVEL.DEBUG);
         }
 
-        private void log (Object o, MainInitiator.LOG_LEVEL l){
-            mainInitiator.log(this.getClass().getSimpleName() + ": " + o);
+        private void log (Object o, Starter.LOG_LEVEL l){
+            starter.log(this.getClass().getSimpleName() + ": " + o);
         }
     }

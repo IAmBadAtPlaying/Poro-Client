@@ -4,22 +4,20 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.data.state.*;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
-import com.iambadatplaying.tasks.Task;
-import com.iambadatplaying.tasks.TaskManager;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
 
 public class FrontendMessageHandler {
 
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
 
-    public FrontendMessageHandler(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public FrontendMessageHandler(Starter starter) {
+        this.starter = starter;
     }
 
     /**
@@ -44,8 +42,8 @@ public class FrontendMessageHandler {
             int len = messageArray.size();
             switch (opcode) {
                 case 0: //Handled by Proxy
-                    log(messageArray.toString(), MainInitiator.LOG_LEVEL.INFO);
-                    log("Opcode 0 is no longer supported", MainInitiator.LOG_LEVEL.ERROR);
+                    log(messageArray.toString(), Starter.LOG_LEVEL.INFO);
+                    log("Opcode 0 is no longer supported", Starter.LOG_LEVEL.ERROR);
                     break;
                 case 1: //Subscribe / Unsubscribe from LCU endpoints
                     if (len < 2) {
@@ -55,10 +53,10 @@ public class FrontendMessageHandler {
                     int instruction = instructionArray.get(0).getAsInt();
                     switch (instruction) {
                         case 5:
-                            mainInitiator.getClient().getSocket().subscribeToEndpoint(instructionArray.get(1).getAsString());
+                            starter.getClient().getSocket().subscribeToEndpoint(instructionArray.get(1).getAsString());
                             break;
                         case 6:
-                            mainInitiator.getClient().getSocket().unsubscribeFromEndpoint(instructionArray.get(1).getAsString());
+                            starter.getClient().getSocket().unsubscribeFromEndpoint(instructionArray.get(1).getAsString());
                             break;
                         default:
                             System.out.println("Error");
@@ -72,7 +70,7 @@ public class FrontendMessageHandler {
                     }
                     JsonElement echoElement = messageArray.get(1);
                     if (echoElement.isJsonArray() || echoElement.isJsonObject()) {
-                        mainInitiator.getServer().sendToAllSessions(echoElement.toString());
+                        starter.getServer().sendToAllSessions(echoElement.toString());
                     }
                     break;
 //                case 3: // This will be used to enable and disable Tasks
@@ -146,44 +144,44 @@ public class FrontendMessageHandler {
                     String shutdownOption = messageArray.get(1).getAsString();
                     switch (shutdownOption) {
                         case "shutdown-all":
-                            log("[Shutdown] Invoking League Client Shutdown", MainInitiator.LOG_LEVEL.INFO);
-                            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/process-control/v1/process/quit", ""));
-                            log("[Shutdown] Invoking Self-shutdown", MainInitiator.LOG_LEVEL.INFO);
-                            mainInitiator.shutdown();
+                            log("[Shutdown] Invoking League Client Shutdown", Starter.LOG_LEVEL.INFO);
+                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/process-control/v1/process/quit", ""));
+                            log("[Shutdown] Invoking Self-shutdown", Starter.LOG_LEVEL.INFO);
+                            starter.shutdown();
                             break;
                         case "shutdown":
                         default:
                             String discBody = "{\"data\": {\"title\": \"Poro Client disconnected!\", \"details\": \"Poro-Client shutdown successful\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"/fe/lol-settings/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
-                            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", discBody));
+                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", discBody));
                             //Show Riot UX again so the user doesn't end up with league still running and them not noticing
-                            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
-                            log("[Shutdown] Invoking Self-shutdown", MainInitiator.LOG_LEVEL.INFO);
-                            mainInitiator.shutdown();
+                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
+                            log("[Shutdown] Invoking Self-shutdown", Starter.LOG_LEVEL.INFO);
+                            starter.shutdown();
                             break;
                     }
                 default:
-                    log("Unknown Opcode: " + opcode + "; Context: " + messageArray, MainInitiator.LOG_LEVEL.ERROR);
+                    log("Unknown Opcode: " + opcode + "; Context: " + messageArray, Starter.LOG_LEVEL.ERROR);
                     break;
             }
         }
     }
 
     private void sendTasks(Socket socket) {
-        JsonArray tasks = mainInitiator.getTaskManager().getTaskAndArgs();
+        JsonArray tasks = starter.getTaskManager().getTaskAndArgs();
         socket.sendMessage(DataManager.getEventDataString("InitialTaskUpdate", tasks));
     }
 
     private void sendModifiedData(Socket socket) {
-        JsonObject summonerSpells = mainInitiator.getDataManager().getSummonerSpellJson();
+        JsonObject summonerSpells = starter.getDataManager().getSummonerSpellJson();
         socket.sendMessage(DataManager.getDataTransferString("SummonerSpells", summonerSpells));
-        JsonObject skins = mainInitiator.getDataManager().getChromaSkinId();
+        JsonObject skins = starter.getDataManager().getChromaSkinId();
         socket.sendMessage(DataManager.getDataTransferString("ChromaSkins", skins));
-        JsonObject champions = mainInitiator.getDataManager().getChampionJson();
+        JsonObject champions = starter.getDataManager().getChampionJson();
         socket.sendMessage(DataManager.getDataTransferString("Champions", champions));
     }
 
     private void sendLoot(Socket socket) {
-        Optional<JsonObject> feGameflowObject = mainInitiator.getReworkedDataManager().getStateManagers(LootData.class).getCurrentState();
+        Optional<JsonObject> feGameflowObject = starter.getReworkedDataManager().getStateManagers(LootData.class).getCurrentState();
         JsonObject lootObject = new JsonObject();
         if (feGameflowObject.isPresent()) {
             lootObject = feGameflowObject.get();
@@ -192,12 +190,12 @@ public class FrontendMessageHandler {
     }
 
     private void sendAvailableQueues(Socket socket) {
-        JsonObject queues = mainInitiator.getDataManager().getAvailableQueues();
+        JsonObject queues = starter.getDataManager().getAvailableQueues();
         socket.sendMessage(DataManager.getEventDataString("InitialQueues", queues));
     }
 
     private void sendChampSelect(Socket socket) {
-        Optional<JsonObject> feChampSelectObject = mainInitiator.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class).getCurrentState();
+        Optional<JsonObject> feChampSelectObject = starter.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class).getCurrentState();
         JsonObject champSelectObject = new JsonObject();
         if (feChampSelectObject.isPresent()) {
             champSelectObject = feChampSelectObject.get();
@@ -206,13 +204,13 @@ public class FrontendMessageHandler {
     }
 
     private void sendFriendList(Socket socket) {
-        JsonObject feFriendArray = mainInitiator.getDataManager().getFEFriendObject();
+        JsonObject feFriendArray = starter.getDataManager().getFEFriendObject();
 //            JSONObject feFriendArray = mainInitiator.getReworkedDataManager().getMapManagers(FriendManager.class.getSimpleName()).getMapAsJson();
         socket.sendMessage(DataManager.getEventDataString("InitialFriendListUpdate", feFriendArray));
     }
 
     private void sendGameflowStatus(Socket socket) {
-        Optional<JsonObject> feGameflowObject = mainInitiator.getReworkedDataManager().getStateManagers(GameflowData.class).getCurrentState();
+        Optional<JsonObject> feGameflowObject = starter.getReworkedDataManager().getStateManagers(GameflowData.class).getCurrentState();
         JsonObject lobbyObject = new JsonObject();
         if (feGameflowObject.isPresent()) {
             lobbyObject = feGameflowObject.get();
@@ -221,7 +219,7 @@ public class FrontendMessageHandler {
     }
 
     private void sendLobby(Socket socket) {
-        Optional<JsonObject> feLobbyObject = mainInitiator.getReworkedDataManager().getStateManagers(LobbyData.class).getCurrentState();
+        Optional<JsonObject> feLobbyObject = starter.getReworkedDataManager().getStateManagers(LobbyData.class).getCurrentState();
         JsonObject lobbyObject = new JsonObject();
         if (feLobbyObject.isPresent()) {
             lobbyObject = feLobbyObject.get();
@@ -231,7 +229,7 @@ public class FrontendMessageHandler {
     }
 
     private void sendSelfPresence(Socket socket) {
-        Optional<JsonObject> fePresence = mainInitiator.getReworkedDataManager().getStateManagers(ChatMeManager.class).getCurrentState();
+        Optional<JsonObject> fePresence = starter.getReworkedDataManager().getStateManagers(ChatMeManager.class).getCurrentState();
         JsonObject presence = new JsonObject();
         if (fePresence.isPresent()) {
             presence = fePresence.get();
@@ -240,7 +238,7 @@ public class FrontendMessageHandler {
     }
 
     private void sendPatcher(Socket socket) {
-        Optional<JsonObject> fePatcher = mainInitiator.getReworkedDataManager().getStateManagers(PatcherData.class).getCurrentState();
+        Optional<JsonObject> fePatcher = starter.getReworkedDataManager().getStateManagers(PatcherData.class).getCurrentState();
         JsonObject patcher = new JsonObject();
         if (fePatcher.isPresent()) {
             patcher = fePatcher.get();
@@ -252,10 +250,10 @@ public class FrontendMessageHandler {
         ConnectionManager.conOptions type = ConnectionManager.conOptions.getByString(requestType);
         HttpsURLConnection con;
         if (isRiotConnection) {
-            con = mainInitiator.getConnectionManager().buildRiotConnection(type, endpoint, body);
-        } else con = mainInitiator.getConnectionManager().buildConnection(type, endpoint, body);
+            con = starter.getConnectionManager().buildRiotConnection(type, endpoint, body);
+        } else con = starter.getConnectionManager().buildConnection(type, endpoint, body);
 
-        String resp = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, con);
+        String resp = (String) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, con);
         if (resp != null && !resp.isEmpty()) {
             resp = resp.trim();
         }
@@ -266,11 +264,11 @@ public class FrontendMessageHandler {
         socket.sendMessage(respArray.toString());
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() + ": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() + ": " + s, level);
     }
 
     private void log(String s) {
-        log(s, MainInitiator.LOG_LEVEL.DEBUG);
+        log(s, Starter.LOG_LEVEL.DEBUG);
     }
 }

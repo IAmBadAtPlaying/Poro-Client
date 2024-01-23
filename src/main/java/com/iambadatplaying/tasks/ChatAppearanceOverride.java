@@ -20,7 +20,7 @@ public class ChatAppearanceOverride extends Task {
     private String availability;
 
     public void notify(JsonArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
+        if (!running || starter == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
         JsonObject data = webSocketEvent.get(2).getAsJsonObject();
@@ -54,7 +54,7 @@ public class ChatAppearanceOverride extends Task {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        mainInitiator.log(chatAppearanceOverride.toString());
+        starter.log(chatAppearanceOverride.toString());
         return chatAppearanceOverride;
     }
 
@@ -69,9 +69,9 @@ public class ChatAppearanceOverride extends Task {
 
     private void sendChatAppearanceOverride(JsonObject body) {
         try {
-            HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/me", body.toString());
-            String response = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, con);
-            mainInitiator.log(response);
+            HttpsURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/lol-chat/v1/me", body.toString());
+            String response = (String) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, con);
+            starter.log(response);
             con.disconnect();
         } catch (Exception e) {
             e.printStackTrace();
@@ -127,7 +127,7 @@ public class ChatAppearanceOverride extends Task {
             sendChatAppearanceOverride(body);
             return true;
         } catch (Exception e) {
-            mainInitiator.log("Failed to set task arguments");
+            starter.log("Failed to set task arguments");
         }
         return false;
     }

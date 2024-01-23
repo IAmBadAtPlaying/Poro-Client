@@ -1,7 +1,7 @@
 package com.iambadatplaying.frontendHanlder;
 
 import com.google.gson.JsonArray;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
 
@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @WebSocket
 public class Socket {
 
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
 
     private TimerTask timerTask;
 
@@ -28,9 +28,9 @@ public class Socket {
 
     private ConcurrentLinkedQueue<String> messageQueue = new ConcurrentLinkedQueue<>();
 
-    public Socket(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
-        log("Socket created", MainInitiator.LOG_LEVEL.DEBUG);
+    public Socket(Starter starter) {
+        this.starter = starter;
+        log("Socket created", Starter.LOG_LEVEL.DEBUG);
         messageSenderThread = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 if (messageQueue == null || messageQueue.isEmpty() || currentSession == null) {
@@ -57,10 +57,10 @@ public class Socket {
         //FIXME: Upon calling SocketServer.shutdown the server will call externalShutdown,
         //FIXME: Triggering on close on the session, which will try to remo
         if (!shutdownPending ) {
-            mainInitiator.getServer().removeSocket(this);
+            starter.getServer().removeSocket(this);
             externalShutdown();
         }
-        log("Socket shutdown", MainInitiator.LOG_LEVEL.DEBUG);
+        log("Socket shutdown", Starter.LOG_LEVEL.DEBUG);
     }
 
     public void externalShutdown() {
@@ -107,7 +107,7 @@ public class Socket {
         currentSession = session;
         log("Client connected: " + session.getRemoteAddress().getAddress());
         messageSenderThread.start();
-        mainInitiator.getServer().addSocket(this);
+        starter.getServer().addSocket(this);
         messageQueue.add("[]");
         queueNewKeepAlive(session);
     }
@@ -130,7 +130,7 @@ public class Socket {
 
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
-        mainInitiator.frontendMessageReceived(message, this);
+        starter.frontendMessageReceived(message, this);
     }
 
     @OnWebSocketClose
@@ -141,14 +141,14 @@ public class Socket {
 
     @OnWebSocketError
     public void onError(Session session, Throwable throwable) {
-        log("WebSocket error: " + throwable.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+        log("WebSocket error: " + throwable.getMessage(), Starter.LOG_LEVEL.ERROR);
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        log(s, MainInitiator.LOG_LEVEL.DEBUG);
+        log(s, Starter.LOG_LEVEL.DEBUG);
     }
 }

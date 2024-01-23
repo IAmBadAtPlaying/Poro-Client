@@ -1,23 +1,23 @@
 package com.iambadatplaying.ressourceServer;
 
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.restServlets.*;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
 public class RESTContextHandler extends ServletContextHandler {
 
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
 
-    public RESTContextHandler(MainInitiator mainInitiator) {
+    public RESTContextHandler(Starter starter) {
         super(SESSIONS);
-        this.mainInitiator = mainInitiator;
+        this.starter = starter;
         setContextPath("/rest");
         addAllServlets();
     }
 
     private void addAllServlets() {
-        getServletContext().setAttribute("mainInitiator", mainInitiator);
+        getServletContext().setAttribute("mainInitiator", starter);
 
         ServletHolder statusServletHolder = new ServletHolder(StatusServlet.class);
         addServlet(statusServletHolder, "/status");

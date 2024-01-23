@@ -3,8 +3,9 @@ package com.iambadatplaying.data.state;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
+import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
@@ -14,14 +15,12 @@ import java.util.Optional;
 
 public class LobbyData extends StateDataManager {
 
-    private static final String UPDATE_TYPE_LOBBY = "LobbyUpdate";
+    private static final String UPDATE_TYPE_LOBBY = ReworkedDataManager.UPDATE_TYPE_LOBBY;
 
     private static final String LOBBY_URI = "/lol-lobby/v2/lobby";
 
-    private static final int MAX_LOBBY_HALFS_INDEX = 2;
-
-    public LobbyData(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    public LobbyData(Starter starter) {
+        super(starter);
     }
 
     @Override
@@ -31,10 +30,10 @@ public class LobbyData extends StateDataManager {
 
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
-        HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/lobby");
-        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(con);
+        HttpsURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/lobby");
+        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(con);
         if (!data.has("errorCode")) return backendToFrontendLobby(data);
-        log("Cant fetch current state, maybe not in a lobby ?: " + data.get("message").getAsString(), MainInitiator.LOG_LEVEL.WARN);
+        log("Cant fetch current state, maybe not in a lobby ?: " + data.get("message").getAsString(), Starter.LOG_LEVEL.WARN);
         return Optional.empty();
     }
 
@@ -67,7 +66,7 @@ public class LobbyData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
     }
 
     private Optional<JsonObject> backendToFrontendLobby(JsonObject data) {
@@ -77,7 +76,7 @@ public class LobbyData extends StateDataManager {
 
         Optional<JsonObject> optGameConfig = Util.getOptJSONObject(data, "gameConfig");
         if (!optGameConfig.isPresent()) {
-            log("Failed to get gameConfig", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to get gameConfig", Starter.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
@@ -89,7 +88,7 @@ public class LobbyData extends StateDataManager {
         Optional<JsonObject> optLocalMember = Util.getOptJSONObject(data, "localMember");
 
         if (!optLocalMember.isPresent()) {
-            log("Failed to get localMember", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to get localMember", Starter.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
@@ -98,7 +97,7 @@ public class LobbyData extends StateDataManager {
 
         Optional<JsonArray> optMembers = Util.getOptJSONArray(data, "members");
         if (!optMembers.isPresent()) {
-            log("Failed to get members", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to get members", Starter.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
@@ -111,6 +110,7 @@ public class LobbyData extends StateDataManager {
             }
         }
 
+        //Logic breaks in custom games
         JsonArray members = optMembers.get();
         JsonArray frontendMembers = new JsonArray();
         for (int i = 0; i < maxLobbySize; i++) {
@@ -156,7 +156,7 @@ public class LobbyData extends StateDataManager {
     private JsonObject backendToFrontendLobbyMember(JsonObject member) {
         JsonObject frontendMember = member;
 
-        JsonObject regalia = mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class).get(member.get("summonerId").getAsBigInteger());
+        JsonObject regalia = starter.getReworkedDataManager().getMapManagers(RegaliaManager.class).get(member.get("summonerId").getAsBigInteger());
         frontendMember.add("regalia", regalia);
 
        return frontendMember;

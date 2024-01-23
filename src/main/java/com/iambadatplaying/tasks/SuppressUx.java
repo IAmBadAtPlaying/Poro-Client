@@ -13,7 +13,7 @@ public class SuppressUx extends Task {
 
     @Override
     public void notify(JsonArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
+        if (!running || starter == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
         JsonObject data = webSocketEvent.get(2).getAsJsonObject();
@@ -55,16 +55,16 @@ public class SuppressUx extends Task {
     }
 
     private void confirmUXLoad() {
-        mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/riotclient/ux-load-complete", ""));
+        starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.PUT, "/riotclient/ux-load-complete", ""));
     }
 
     private void killUx() {
         System.out.println("Killing UX");
-        System.out.println(mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/kill-ux", "")));
+        System.out.println(starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/kill-ux", "")));
     }
 
     private void showUx() {
-        mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
+        starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
     }
 
     @Override

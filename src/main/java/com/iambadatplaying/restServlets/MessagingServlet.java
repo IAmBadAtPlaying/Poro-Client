@@ -38,7 +38,7 @@ public class MessagingServlet extends BaseRESTServlet{
                 conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
             }
 
-            Conversation conversation = mainInitiator.getDataManager().getConversation(conversationId);
+            Conversation conversation = starter.getDataManager().getConversation(conversationId);
             if (conversation == null) {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 return;
@@ -82,7 +82,7 @@ public class MessagingServlet extends BaseRESTServlet{
             messageJson.addProperty("body", body);
             messageJson.addProperty("type", "chat");
 
-            JsonObject responseJson = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId + "/messages", messageJson.toString()));
+            JsonObject responseJson = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId + "/messages", messageJson.toString()));
 
             if (responseJson == null) {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);

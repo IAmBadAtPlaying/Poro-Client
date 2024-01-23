@@ -12,7 +12,7 @@ public class TaskManagerStatusServlet extends BaseRESTServlet {
         response.setHeader("Content-Type", "application/json");
         JsonObject responseJson = new JsonObject();
 
-        TaskManager taskManager = mainInitiator.getTaskManager();
+        TaskManager taskManager = starter.getTaskManager();
         if (taskManager == null) {
             response.setStatus(javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             responseJson.addProperty("message", "TaskManager not referenced");

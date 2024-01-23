@@ -3,7 +3,7 @@ package com.iambadatplaying.tasks;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -13,7 +13,7 @@ import java.util.HashMap;
 
 public class TaskManager {
 
-    private MainInitiator mainInitiator;
+    private Starter starter;
 
     private HashMap<String, Task> runningtaskList;
 
@@ -25,8 +25,8 @@ public class TaskManager {
 
     private TaskLoader taskLoader;
 
-    public TaskManager(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public TaskManager(Starter starter) {
+        this.starter = starter;
     }
 
     public void updateAllTasks(String message) {
@@ -39,7 +39,7 @@ public class TaskManager {
                         try {
                             task.notify(updateArray);
                         } catch (Exception e) {
-                            log(e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+                            log(e.getMessage(), Starter.LOG_LEVEL.ERROR);
                         }
                     }
                 }).start();
@@ -58,9 +58,9 @@ public class TaskManager {
     public void init() {
         this.runningtaskList = new HashMap<>();
         this.allTasksMap = new HashMap<>();
-        this.taskDirPath = mainInitiator.getTaskPath();
+        this.taskDirPath = starter.getTaskPath();
         loadDefaultTasks();
-        taskLoader = new TaskLoader(mainInitiator);
+        taskLoader = new TaskLoader(starter);
         taskLoader.setTaskDirectory(taskDirPath);
         taskLoader.init();
         running = true;
@@ -74,7 +74,7 @@ public class TaskManager {
 //    }
 
     private Path getTaskPath() {
-        return Paths.get(mainInitiator.getBasePath().toString() + "/tasks");
+        return Paths.get(starter.getBasePath().toString() + "/tasks");
     }
 
     private void loadDefaultTasks() {
@@ -103,7 +103,7 @@ public class TaskManager {
             runningtaskList.computeIfAbsent(taskName, k -> {
                 Task task = allTasksMap.get(k);
                 if (task == null) return null;
-                task.setMainInitiator(mainInitiator);
+                task.setMainInitiator(starter);
                 task.init();
                 log("Added task: " + task.getClass().getSimpleName());
                 return task;
@@ -174,12 +174,12 @@ public class TaskManager {
         return runningtaskList.values();
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
+        starter.log(this.getClass().getSimpleName() +": " +s);
     }
 
 }

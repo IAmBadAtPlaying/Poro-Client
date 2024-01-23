@@ -80,7 +80,7 @@ public class ChampSelectServlet extends BaseRESTServlet {
 
 
     private int performChampionAction ( String actionType, Integer championId, boolean lockIn) throws IOException {
-        Optional<JsonObject> optCurrentState = mainInitiator.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class).getCurrentState();
+        Optional<JsonObject> optCurrentState = starter.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class).getCurrentState();
         if (!optCurrentState.isPresent()) return -1;
         JsonObject currentChampSelectState = optCurrentState.get();
         if (currentChampSelectState == null || currentChampSelectState.isEmpty() || championId == null) {
@@ -137,7 +137,7 @@ public class ChampSelectServlet extends BaseRESTServlet {
         }
 
         String request = "/lol-champ-select/v1/session/actions/" + actionId;
-        HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.PATCH, request, hoverAction.toString());
+        HttpsURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.PATCH, request, hoverAction.toString());
         return con.getResponseCode();
     }
 }

@@ -3,14 +3,14 @@ package com.iambadatplaying.data.map;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 
 public class AvailableQueueManager extends MapDataManager<Integer> {
 
-    public AvailableQueueManager(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    public AvailableQueueManager(Starter starter) {
+        super(starter);
     }
 
 
@@ -28,7 +28,7 @@ public class AvailableQueueManager extends MapDataManager<Integer> {
     }
 
     private void fetchQueues() {
-        JsonArray queueArray = mainInitiator.getConnectionManager().getResponseBodyAsJsonArray(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-queues/v1/queues"));
+        JsonArray queueArray = starter.getConnectionManager().getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-game-queues/v1/queues"));
         for (int i = 0; i < queueArray.size(); i++) {
             JsonObject currentQueue = queueArray.get(i).getAsJsonObject();
             if (QUEUE_AVAILABLE.equals(currentQueue.get(KEY_QUEUE_AVAILABILITY).getAsString())) {

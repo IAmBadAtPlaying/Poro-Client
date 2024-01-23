@@ -8,12 +8,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
 
 public class ConfigLoader {
 
     private static final String LOCAL_FOLDER_PATH = System.getenv("LOCALAPPDATA");
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
 
     private Path APP_FOLDER_PATH;
     private Path USER_DATA_FOLDER_PATH;
@@ -43,8 +42,8 @@ public class ConfigLoader {
 
     private JsonObject config;
 
-    public ConfigLoader(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public ConfigLoader(Starter starter) {
+        this.starter = starter;
         this.runOnInitiation();
     }
 
@@ -82,7 +81,7 @@ public class ConfigLoader {
                 return;
             } catch (IOException e) {
                 e.printStackTrace();
-                log("Failed to create config file", MainInitiator.LOG_LEVEL.ERROR);
+                log("Failed to create config file", Starter.LOG_LEVEL.ERROR);
                 return;
             }
         }
@@ -91,7 +90,7 @@ public class ConfigLoader {
             config = readConfig.getAsJsonObject();
         } catch (Exception e) {
             e.printStackTrace();
-            log("Failed to read config file", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to read config file", Starter.LOG_LEVEL.ERROR);
             config = new JsonObject();
         }
     }
@@ -109,7 +108,7 @@ public class ConfigLoader {
             Files.write(configPath, config.toString().getBytes());
         } catch (IOException e) {
             e.printStackTrace();
-            log("Failed to save config file", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to save config file", Starter.LOG_LEVEL.ERROR);
         }
     }
 
@@ -134,15 +133,15 @@ public class ConfigLoader {
 
     private void runOnInitiation() {
         if (!setupLocalAppdataFolder()) {
-            log("Failed to setup local appdata folder", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to setup local appdata folder", Starter.LOG_LEVEL.ERROR);
         }
         if (!setupUserDataFolder()) {
-            log("Failed to setup user data folder", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to setup user data folder", Starter.LOG_LEVEL.ERROR);
         }
     }
 
     private boolean setupLocalAppdataFolder() {
-        Path path = Paths.get(LOCAL_FOLDER_PATH + File.separator + MainInitiator.getAppDirName());
+        Path path = Paths.get(LOCAL_FOLDER_PATH + File.separator + Starter.getAppDirName());
         if (!Files.exists(path)) {
             try {
                 Files.createDirectory(path);
@@ -177,11 +176,11 @@ public class ConfigLoader {
         return APP_FOLDER_PATH;
     }
 
-    public void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
+    public void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     public void log(String s) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
+        starter.log(this.getClass().getSimpleName() +": " +s);
     }
 }

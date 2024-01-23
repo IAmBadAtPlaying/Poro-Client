@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 
@@ -71,7 +70,7 @@ public class ConnectionManager {
     private String riotAuthString = null;
     private String riotPort = null;
     private WebSocketClient client = null;
-    private MainInitiator mainInitiator = null;
+    private Starter starter = null;
 
     private boolean leagueAuthDataAvailable = false;
 
@@ -81,21 +80,19 @@ public class ConnectionManager {
 
     private HashMap<String, Integer> champHash = new HashMap<>();
 
-    public ConnectionManager(MainInitiator mainInitiator) {
+    public ConnectionManager(Starter starter) {
         this.preUrl = null;
         this.authString = null;
-        this.mainInitiator = mainInitiator;
+        this.starter = starter;
     }
 
 
     public void init() {
-        allowHttpMethods("PATCH");
-        if (!allowUnsecureConnections()) {
-            return;
-        }
+        if (!allowHttpPatchMethod()) System.exit(Starter.ERROR_HTTP_PATCH_SETUP);
+        if (!allowUnsecureConnections()) System.exit(Starter.ERROR_CERTIFICATE_SETUP_FAILED);
         if (!getAuthFromProcess()) {
-            log("Either missing permissions or League is not running", MainInitiator.LOG_LEVEL.INFO);
-            log("Starting Backup Timer", MainInitiator.LOG_LEVEL.INFO);
+            log("Either missing permissions or League is not running", Starter.LOG_LEVEL.INFO);
+            log("Starting Backup Timer", Starter.LOG_LEVEL.INFO);
             timer = new Timer();
             checkForProcess();
         } else leagueAuthDataAvailable = true;
@@ -105,14 +102,14 @@ public class ConnectionManager {
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
-                log("Checking for Process", MainInitiator.LOG_LEVEL.INFO);
-                if (!mainInitiator.isRunning()) return;
+                log("Checking for Process", Starter.LOG_LEVEL.INFO);
+                if (starter.isShutdownPending()) return;
                 if (getAuthFromProcess()) {
-                    log("Success getting Process Info", MainInitiator.LOG_LEVEL.INFO);
+                    log("Success getting Process Info", Starter.LOG_LEVEL.INFO);
                     leagueAuthDataAvailable = true;
                     timer.cancel();
                 } else {
-                    log("No Success", MainInitiator.LOG_LEVEL.INFO);
+                    log("No Success", Starter.LOG_LEVEL.INFO);
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
@@ -131,12 +128,13 @@ public class ConnectionManager {
     }
 
     public boolean getAuthFromProcess() {
+        // For Windows only
         ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe", "/c", "wmic", "process","where","name=\"LeagueClientUx.exe\"","get","commandline");
         try {
             Process leagueUxProcess = processBuilder.start();
             String commandline = inputStreamToString(leagueUxProcess.getInputStream()).trim();
             if ("CommandLine".equals(commandline.trim())) {
-                log("CommandLine returned no arguments -> Missing permissions, will exit", MainInitiator.LOG_LEVEL.ERROR);
+                log("CommandLine returned no arguments -> Missing permissions, will exit", Starter.LOG_LEVEL.ERROR);
                 System.exit(Starter.ERROR_INSUFFICIENT_PERMISSIONS);
                 return false;
             } else {
@@ -149,22 +147,22 @@ public class ConnectionManager {
                 for (int i = 0; i < args.length; i++) {
                     if (args[i].startsWith(portString)) {
                         String port = args[i].substring(portString.length());
-                        log("Port: " +port, MainInitiator.LOG_LEVEL.INFO);
+                        log("Port: " +port, Starter.LOG_LEVEL.INFO);
                         this.preUrl = "https://127.0.0.1:" + port;
                         this.port = port;
                     } else if (args[i].startsWith(authString)) {
                         String auth = args[i].substring(authString.length());
-                        log("Auth: " + auth, MainInitiator.LOG_LEVEL.INFO);
+                        log("Auth: " + auth, Starter.LOG_LEVEL.INFO);
                         this.authString = "Basic " + Base64.getEncoder().encodeToString(("riot:" + auth).trim().getBytes());
-                        log("Auth Header: " +this.authString, MainInitiator.LOG_LEVEL.INFO);
+                        log("Auth Header: " +this.authString, Starter.LOG_LEVEL.INFO);
                     } else if (args[i].startsWith(riotAuthString)) {
                         String riotAuth = args[i].substring(riotAuthString.length());
-                        log("Riot Auth: " + riotAuth, MainInitiator.LOG_LEVEL.INFO);
+                        log("Riot Auth: " + riotAuth, Starter.LOG_LEVEL.INFO);
                         this.riotAuthString = "Basic " + Base64.getEncoder().encodeToString(("riot:"+riotAuth).trim().getBytes());
-                        log("Auth Header: " + this.riotAuthString, MainInitiator.LOG_LEVEL.INFO);
+                        log("Auth Header: " + this.riotAuthString, Starter.LOG_LEVEL.INFO);
                     } else if (args[i].startsWith(riotPortString)) {
                         String riotPort = args[i].substring(riotPortString.length());
-                        log("Riot Port: " + riotPort, MainInitiator.LOG_LEVEL.INFO);
+                        log("Riot Port: " + riotPort, Starter.LOG_LEVEL.INFO);
                         this.riotPort = riotPort;
                     }
                 }
@@ -226,7 +224,7 @@ public class ConnectionManager {
             return true;
         } catch (Exception e) {
             System.out.println(e);
-            log("Unable to allow all Connections!", MainInitiator.LOG_LEVEL.ERROR);
+            log("Unable to allow all Connections!", Starter.LOG_LEVEL.ERROR);
         }
         return false;
     }
@@ -243,36 +241,38 @@ public class ConnectionManager {
         return result.toString();
     }
 
-    private static void allowHttpMethods(String... methods) {
+    private static boolean allowHttpPatchMethod() {
         try {
             Field declaredFieldMethods = HttpURLConnection.class.getDeclaredField("methods");
             Field declaredFieldModifiers = Field.class.getDeclaredField("modifiers");
             declaredFieldModifiers.setAccessible(true);
             declaredFieldModifiers.setInt(declaredFieldMethods, declaredFieldMethods.getModifiers() & ~Modifier.FINAL);
             declaredFieldMethods.setAccessible(true);
-            String[] previous = (String[]) declaredFieldMethods.get(null);
-            Set<String> current = new LinkedHashSet<>(Arrays.asList(previous));
-            current.addAll(Arrays.asList(methods));
-            String[] patched = current.toArray(new String[0]);
+            String[] previousMethods = (String[]) declaredFieldMethods.get(null);
+            Set<String> currentMethods = new LinkedHashSet<>(Arrays.asList(previousMethods));
+            currentMethods.add("PATCH");
+            String[] patched = currentMethods.toArray(new String[0]);
             declaredFieldMethods.set(null, patched);
+            return true;
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new IllegalStateException(e);
+            System.out.println("Failed to allow HTTP PATCH method");
         }
+        return false;
     }
 
     public HttpsURLConnection buildConnection(conOptions options,String path , String post_body) {
         try {
             if (preUrl == null) {
-                log("No preUrl", MainInitiator.LOG_LEVEL.ERROR);
+                log("No preUrl", Starter.LOG_LEVEL.ERROR);
                 return null;
             }
             if (options == null) {
-                log("No HTTP-Method provided", MainInitiator.LOG_LEVEL.ERROR);
+                log("No HTTP-Method provided", Starter.LOG_LEVEL.ERROR);
             }
             URL clientLockfileUrl = new URL(preUrl + path);
             HttpsURLConnection con = (HttpsURLConnection) clientLockfileUrl.openConnection();
             if (con == null) {
-                log(clientLockfileUrl.toString(), MainInitiator.LOG_LEVEL.ERROR);
+                log(clientLockfileUrl.toString(), Starter.LOG_LEVEL.ERROR);
                 return null;
             }
             con.setRequestMethod(options.name);
@@ -300,7 +300,7 @@ public class ConnectionManager {
             URL clientLockfileUrl = new URL("https://127.0.0.1:" + riotPort + path);
             HttpsURLConnection con = (HttpsURLConnection) clientLockfileUrl.openConnection();
             if (con == null) {
-                log(clientLockfileUrl.toString(), MainInitiator.LOG_LEVEL.ERROR);
+                log(clientLockfileUrl.toString(), Starter.LOG_LEVEL.ERROR);
             }
             con.setRequestMethod(options.name);
             con.setRequestProperty("Content-Type", "application/json");
@@ -345,6 +345,14 @@ public class ConnectionManager {
 
     public static JsonArray getResponseBodyAsJsonArray(HttpURLConnection con) {
         return handleJSONArrayResponse(con);
+    }
+
+    public static JsonElement getResponseBodyAsJsonElement(HttpURLConnection con) {
+        return handleJSONElementResponse(con);
+    }
+
+    private static JsonElement handleJSONElementResponse(HttpURLConnection con) {
+        return JsonParser.parseString(handleStringResponse(con));
     }
 
     private Integer handleResponseCode (HttpURLConnection con) {
@@ -437,12 +445,12 @@ public class ConnectionManager {
         return riotPort;
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " +s);
+        starter.log(this.getClass().getSimpleName() +": " +s);
     }
 
     public String getPort() {

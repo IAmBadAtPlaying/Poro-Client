@@ -24,7 +24,7 @@ public class TaskHandlerServlet extends BaseRESTServlet {
 
         String taskName = getTaskNameFromPathInfo(request.getPathInfo());
         if (handledInvalidTaskName(taskName, response)) return;
-        Task task = mainInitiator.getTaskManager().getTaskFromString(taskName);
+        Task task = starter.getTaskManager().getTaskFromString(taskName);
         response.setStatus(HttpServletResponse.SC_OK);
         responseJson.addProperty("httpStatus", HttpServletResponse.SC_OK);
         responseJson.addProperty("name", taskName);
@@ -61,7 +61,7 @@ public class TaskHandlerServlet extends BaseRESTServlet {
             return;
         }
 
-        Task task = mainInitiator.getTaskManager().getTaskFromString(taskName);
+        Task task = starter.getTaskManager().getTaskFromString(taskName);
         if (task == null) {
             responseJson.addProperty("message", "Task not found");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
@@ -70,8 +70,8 @@ public class TaskHandlerServlet extends BaseRESTServlet {
             return;
         }
 
-        mainInitiator.getTaskManager().addTask(taskName);
-        if(!mainInitiator.getTaskManager().getActiveTaskByName(taskName).setTaskArgs(json)) {
+        starter.getTaskManager().addTask(taskName);
+        if(!starter.getTaskManager().getActiveTaskByName(taskName).setTaskArgs(json)) {
             responseJson.addProperty("message", "Task args invalid");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -92,7 +92,7 @@ public class TaskHandlerServlet extends BaseRESTServlet {
 
         String taskName = getTaskNameFromPathInfo(request.getPathInfo());
         if (handledInvalidTaskName(taskName, response)) return;
-        Task task = mainInitiator.getTaskManager().getActiveTaskByName(taskName);
+        Task task = starter.getTaskManager().getActiveTaskByName(taskName);
         if (task == null) {
             responseJson.addProperty("message", "Task not running");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
@@ -100,7 +100,7 @@ public class TaskHandlerServlet extends BaseRESTServlet {
             response.getWriter().println(responseJson.toString());
             return;
         }
-        mainInitiator.getTaskManager().removeTask(taskName);
+        starter.getTaskManager().removeTask(taskName);
 
         response.setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
@@ -108,19 +108,19 @@ public class TaskHandlerServlet extends BaseRESTServlet {
     private boolean handledInvalidTaskName(String taskName, HttpServletResponse response) throws IOException {
         JsonObject responseJson = new JsonObject();
         if (taskName == null || taskName.length() == 0) {
-            JsonArray taskList = mainInitiator.getTaskManager().getTaskAndArgs();
+            JsonArray taskList = starter.getTaskManager().getTaskAndArgs();
             responseJson.add("tasks", taskList);
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_OK);
             response.getWriter().println(responseJson.toString());
             return true;
         }
-        if (mainInitiator.getTaskManager() == null || !mainInitiator.getTaskManager().isRunning()) {
+        if (starter.getTaskManager() == null || !starter.getTaskManager().isRunning()) {
             responseJson.addProperty("message", "TaskManager not running");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().println(responseJson.toString());
             return true;
         }
-        Task task = mainInitiator.getTaskManager().getTaskFromString(taskName);
+        Task task = starter.getTaskManager().getTaskFromString(taskName);
         if (task == null) {
             responseJson.addProperty("message", "Task not found");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_NOT_FOUND);

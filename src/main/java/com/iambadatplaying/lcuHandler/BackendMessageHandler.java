@@ -3,12 +3,11 @@ package com.iambadatplaying.lcuHandler;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.structs.messaging.Conversation;
 import com.iambadatplaying.structs.messaging.Message;
 
-import java.math.BigInteger;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,7 +17,7 @@ import java.util.regex.Pattern;
 
 public class BackendMessageHandler {
 
-    private MainInitiator mainInitiator;
+    private Starter starter;
 
     private final static String lolGameflowV1GameflowPhase = "/lol-gameflow/v1/session";
     private final static String lolLobbyV2Lobby = "/lol-lobby/v2/lobby";
@@ -34,8 +33,8 @@ public class BackendMessageHandler {
 
     private final static HashMap<String, JsonObject> summonersMap = new HashMap<>();
 
-    public BackendMessageHandler(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public BackendMessageHandler(Starter starter) {
+        this.starter = starter;
         initAllPatterns();
     }
 
@@ -86,16 +85,16 @@ public class BackendMessageHandler {
                         }
                 }
         } catch (Exception e) {
-            log("[handleMessage]: " + e + " - "+message, MainInitiator.LOG_LEVEL.ERROR);
+            log("[handleMessage]: " + e + " - "+message, Starter.LOG_LEVEL.ERROR);
             return;
         }
     }
 
     private void handle_lol_loot_v2_player_loot_map(JsonObject jsonData) {
         JsonObject actualData = jsonData.get("data").getAsJsonObject();
-        JsonObject updatedLoot = mainInitiator.getDataManager().updateFELootMap(actualData);
+        JsonObject updatedLoot = starter.getDataManager().updateFELootMap(actualData);
         if (updatedLoot == null) return;
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("LootUpdate", mainInitiator.getDataManager().getLoot()));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString("LootUpdate", starter.getDataManager().getLoot()));
     }
 
     private void messageTest(JsonObject jsonData) {
@@ -112,9 +111,9 @@ public class BackendMessageHandler {
                     }
                 }
 
-                Conversation conversation = mainInitiator.getDataManager().getConversation(conversationId);
+                Conversation conversation = starter.getDataManager().getConversation(conversationId);
                 if (conversation == null) return;
-                log("Conversation: " + conversation.getId(), MainInitiator.LOG_LEVEL.INFO);
+                log("Conversation: " + conversation.getId(), Starter.LOG_LEVEL.INFO);
 
                 JsonArray messages = jsonData.get("data").getAsJsonArray();
 
@@ -123,8 +122,8 @@ public class BackendMessageHandler {
                 conversation.overrideMessages(messageList);
 
                 //TODO: Update Frontend
-                mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString("ConversationUpdate", conversation.toJsonObject()));
-                log("Conversation: " + conversation.getId() + " is now complete", MainInitiator.LOG_LEVEL.INFO);
+                starter.getServer().sendToAllSessions(DataManager.getEventDataString("ConversationUpdate", conversation.toJsonObject()));
+                log("Conversation: " + conversation.getId() + " is now complete", Starter.LOG_LEVEL.INFO);
             } else {
                 String[] messageInfo = extractMessageInfo(uri);
                 if ((messageInfo[0] == null) || (messageInfo[1] == null)) return;
@@ -136,7 +135,7 @@ public class BackendMessageHandler {
                 String type = actualData.get("type").getAsString();
 
 
-                mainInitiator.getDataManager().addConversationMessage(messageInfo[0], actualData);
+                starter.getDataManager().addConversationMessage(messageInfo[0], actualData);
             }
         } catch (Exception e) {
         }
@@ -186,13 +185,13 @@ public class BackendMessageHandler {
 
                     String receiverName;
                     if (summonersMap.get(receiverPuuid) == null) {
-                        JsonObject receiverData = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v2/summoners/puuid/"+ receiverPuuid));
+                        JsonObject receiverData = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v2/summoners/puuid/"+ receiverPuuid));
                         summonersMap.put(receiverPuuid, receiverData);
                         receiverName = receiverData.get("displayName").getAsString();
                     } else {
                         receiverName = summonersMap.get(receiverPuuid).get("displayName").getAsString();
                     }
-                    log(receiverName + " received the following honors:" , MainInitiator.LOG_LEVEL.INFO);
+                    log(receiverName + " received the following honors:" , Starter.LOG_LEVEL.INFO);
                     JsonArray honors = payloadObject.get("honors").getAsJsonArray();
                     for (int j = 0; j < honors.size(); j++) {
                         JsonObject honor = honors.get(j).getAsJsonObject();
@@ -202,15 +201,15 @@ public class BackendMessageHandler {
 
                         String senderName;
                         if (summonersMap.get(senderPuuid) == null) {
-                            JsonObject senderData = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v2/summoners/puuid/"+ senderPuuid));
+                            JsonObject senderData = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-summoner/v2/summoners/puuid/"+ senderPuuid));
                             summonersMap.put(senderPuuid, senderData);
                             senderName = senderData.get("displayName").getAsString();
                         } else {
                             senderName = summonersMap.get(senderPuuid).get("displayName").getAsString();
                         }
-                        log(honorCategory + " from " + senderName , MainInitiator.LOG_LEVEL.INFO);
+                        log(honorCategory + " from " + senderName , Starter.LOG_LEVEL.INFO);
                     }
-                    log("--------------------" , MainInitiator.LOG_LEVEL.INFO);
+                    log("--------------------" , Starter.LOG_LEVEL.INFO);
                 }
             }
         } catch (Exception e) {
@@ -289,11 +288,11 @@ public class BackendMessageHandler {
 //        }
 //    }
 
-    private void log(Object o, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + o, level);
+    private void log(Object o, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + o, level);
     }
 
     private void log(Object o) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " +o);
+        starter.log(this.getClass().getSimpleName() +": " +o);
     }
 }

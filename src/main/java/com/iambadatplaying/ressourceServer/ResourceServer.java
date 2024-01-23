@@ -1,6 +1,6 @@
 package com.iambadatplaying.ressourceServer;
 
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
@@ -15,28 +15,28 @@ import java.io.IOException;
 
 public class ResourceServer {
 
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
 
     private Server server;
 
-    public ResourceServer(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public ResourceServer(Starter starter) {
+        this.starter = starter;
     }
 
     public void init() {
-        server = new Server(MainInitiator.RESSOURCE_SERVER_PORT);
+        server = new Server(Starter.RESSOURCE_SERVER_PORT);
 
-        ProxyHandler proxyHandler = new ProxyHandler(mainInitiator);
+        ProxyHandler proxyHandler = new ProxyHandler(starter);
 
         ResourceHandler resourceHandler = new ResourceHandler();
         resourceHandler.setDirectoriesListed(true);
-        resourceHandler.setResourceBase(MainInitiator.class.getResource("/html").toExternalForm());
+        resourceHandler.setResourceBase(Starter.class.getResource("/html").toExternalForm());
 
         ResourceHandler userDataHandler = new ResourceHandler();
         userDataHandler.setDirectoriesListed(true);
-        userDataHandler.setResourceBase(mainInitiator.getConfigLoader().getAppFolderPath().toAbsolutePath().toString());
+        userDataHandler.setResourceBase(starter.getConfigLoader().getAppFolderPath().toAbsolutePath().toString());
 
-        RESTContextHandler restContext = new RESTContextHandler(mainInitiator);
+        RESTContextHandler restContext = new RESTContextHandler(starter);
         restContext.setContextPath("/rest");
 
 //        ContextHandler configContext = new ContextHandler();
@@ -125,7 +125,7 @@ public class ResourceServer {
         try {
             server.start();
         } catch (Exception e) {
-            mainInitiator.log("Error starting resource server: " + e.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+            starter.log("Error starting resource server: " + e.getMessage(), Starter.LOG_LEVEL.ERROR);
         }
     }
 

@@ -2,7 +2,7 @@ package com.iambadatplaying.tasks;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.net.HttpURLConnection;
@@ -18,7 +18,7 @@ public class AutoAcceptQueue extends Task {
     private Timer timer;
 
     public void notify(JsonArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
+        if (!running || starter == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
         JsonObject data = webSocketEvent.get(2).getAsJsonObject();
@@ -43,7 +43,7 @@ public class AutoAcceptQueue extends Task {
                     @Override
                     public void run() {
                         try {
-                            HttpURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-matchmaking/v1/ready-check/accept","{}");
+                            HttpURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-matchmaking/v1/ready-check/accept","{}");
                             con.getResponseCode();
                             con.disconnect();
                         } catch (Exception e) {
@@ -72,12 +72,12 @@ public class AutoAcceptQueue extends Task {
 
     public boolean setTaskArgs(JsonObject arguments) {
         try {
-            log(arguments.toString(), MainInitiator.LOG_LEVEL.DEBUG);
+            log(arguments.toString(), Starter.LOG_LEVEL.DEBUG);
             delay = arguments.get("delay").getAsInt();
-            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
+            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            mainInitiator.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase().toLowerCase());
+            starter.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase().toLowerCase());
         }
         return false;
     }
@@ -103,12 +103,12 @@ public class AutoAcceptQueue extends Task {
         return requiredArgs;
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        starter.log(this.getClass().getName() +": " +s);
     }
 
 }

@@ -13,7 +13,7 @@ public class Userconfig extends BaseRESTServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String[] pathParts = sliceAtSlash(req.getPathInfo());
 
-        JsonObject config = mainInitiator.getConfigLoader().getConfig();
+        JsonObject config = starter.getConfigLoader().getConfig();
         if (config == null) {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             return;

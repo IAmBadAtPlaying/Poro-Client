@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.ConfigLoader;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -59,9 +59,9 @@ public class UploadServlet extends BaseRESTServlet {
     }
 
     private void handleGetBackground(HttpServletRequest req, HttpServletResponse resp) {
-        Path path = mainInitiator.getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME);
+        Path path = starter.getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME);
 
-        JsonObject clientProperties = mainInitiator.getConfigLoader().getClientProperties();
+        JsonObject clientProperties = starter.getConfigLoader().getClientProperties();
 
         String filename = clientProperties.get(
                 ConfigLoader.PROPERTY_CLIENT_BACKGROUND
@@ -130,21 +130,21 @@ public class UploadServlet extends BaseRESTServlet {
 
 
     private void handleUploadBackground(HttpServletRequest req, HttpServletResponse resp) {
-        Path path = mainInitiator.getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME).resolve("background");
+        Path path = starter.getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME).resolve("background");
 
         try {
             handleFileUpload(req, resp, path);
         } catch (IOException e) {
-            mainInitiator.log("Failed to handle file upload: " + e.getMessage());
+            starter.log("Failed to handle file upload: " + e.getMessage());
         }
 
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 
     private void handleUploadBackgroundVideo(HttpServletRequest req, HttpServletResponse resp) {
-        Path path = mainInitiator.getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME).resolve("backgroundVideo");
+        Path path = starter.getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME).resolve("backgroundVideo");
 
-        JsonObject clientProperties = mainInitiator.getConfigLoader().getClientProperties();
+        JsonObject clientProperties = starter.getConfigLoader().getClientProperties();
 
         clientProperties.addProperty(
                 ConfigLoader.PROPERTY_CLIENT_BACKGROUND_TYPE,
@@ -154,7 +154,7 @@ public class UploadServlet extends BaseRESTServlet {
         try {
             handleFileUpload(req, resp, path);
         } catch (IOException e) {
-            mainInitiator.log("Failed to handle file upload: " + e.getMessage());
+            starter.log("Failed to handle file upload: " + e.getMessage());
         }
 
         resp.setStatus(HttpServletResponse.SC_OK);
@@ -198,7 +198,7 @@ public class UploadServlet extends BaseRESTServlet {
             if (startIndex == -1 || endIndex == -1) {
                 log(""+startIndex);
                 log(""+endIndex);
-                log("Failed to find start or end of file content", MainInitiator.LOG_LEVEL.ERROR);
+                log("Failed to find start or end of file content", Starter.LOG_LEVEL.ERROR);
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 return;
             }
@@ -206,7 +206,7 @@ public class UploadServlet extends BaseRESTServlet {
             byte[] header = Arrays.copyOfRange(requestBody, 0, startIndex);
             String headerString = new String(header);
             String[] headerLines = headerString.split("\r\n");
-            ConfigLoader configLoader = mainInitiator.getConfigLoader();
+            ConfigLoader configLoader = starter.getConfigLoader();
             String fileName = null;
             String extension = null;
             String contentType = null;
@@ -248,7 +248,7 @@ public class UploadServlet extends BaseRESTServlet {
                                 );
                                 break;
                             default:
-                                log("Invalid content type: " + cType, MainInitiator.LOG_LEVEL.ERROR);
+                                log("Invalid content type: " + cType, Starter.LOG_LEVEL.ERROR);
                                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                                 return;
                         }
@@ -257,7 +257,7 @@ public class UploadServlet extends BaseRESTServlet {
             }
 
             if (fileName == null || extension == null || contentType == null) {
-                log("Failed to find file name, extension or content type", MainInitiator.LOG_LEVEL.ERROR);
+                log("Failed to find file name, extension or content type", Starter.LOG_LEVEL.ERROR);
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 return;
             }
