@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.map.GameNameManager;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
@@ -45,11 +46,11 @@ public class LobbyData extends StateDataManager {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 resetState();
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
                 Optional<JsonObject> updatedFEData = backendToFrontendLobby(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
@@ -156,8 +157,24 @@ public class LobbyData extends StateDataManager {
     private JsonObject backendToFrontendLobbyMember(JsonObject member) {
         JsonObject frontendMember = member;
 
-        JsonObject regalia = starter.getReworkedDataManager().getMapManagers(RegaliaManager.class).get(member.get("summonerId").getAsBigInteger());
-        frontendMember.add("regalia", regalia);
+
+        Optional<JsonObject> summonerByPuuid = starter.getReworkedDataManager().getMapManagers(GameNameManager.class).get(member.get("puuid").getAsString());
+        summonerByPuuid.ifPresent(
+                summoner -> {
+                    String gameName = summoner.get("gameName").getAsString();
+                    String tagLine = summoner.get("tagLine").getAsString();
+                    frontendMember.addProperty("gameName", gameName);
+                    frontendMember.addProperty("gameTag", tagLine);
+                }
+        );
+
+        starter
+                .getReworkedDataManager()
+                .getMapManagers(RegaliaManager.class)
+                .get(member.get("summonerId").getAsBigInteger())
+                .ifPresent(
+                    regalia -> frontendMember.add("regalia", regalia)
+                );
 
        return frontendMember;
     }
@@ -165,5 +182,10 @@ public class LobbyData extends StateDataManager {
 
     public void doShutdown() {
 
+    }
+
+    @Override
+    public String getEventName() {
+        return ReworkedDataManager.UPDATE_TYPE_LOBBY;
     }
 }

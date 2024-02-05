@@ -67,7 +67,7 @@ public class MessageManager extends  MapDataManager<String> {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 if (uri.contains("/messages")) return;
                 log("Registered conversation deletion", Starter.LOG_LEVEL.DEBUG);
                 Optional<String> conversationId = extractConversationId(uri);
@@ -76,11 +76,11 @@ public class MessageManager extends  MapDataManager<String> {
                     map.remove(conversationId.get());
                 }
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 //I swear to god riot, why do you have to make this so complicated
                 //Peer to peer messages are updated via single messages, only override happens on init
-                //For some god forsaken reason, group messages are updated via a message array, that replaces the current one AND via single messages
+                //For some godforsaken reason, group messages are updated via a message array, that replaces the current one AND via single messages
                 //I should really look into the RTMP in the lower levels but this is beyond the scope of this project
                 Optional<String> updateConversationId = extractConversationId(uri);
                 if (uri.contains("/participants")) return;
@@ -164,12 +164,9 @@ public class MessageManager extends  MapDataManager<String> {
     }
 
     @Override
-    public JsonObject load(String key) {
+    public Optional<JsonObject> load(String key) {
         Optional<String> conversationId = extractConversationId(key);
-        if (conversationId.isPresent()) {
-            return fetchConversation(conversationId.get());
-        }
-        return new JsonObject();
+        return conversationId.map(this::fetchConversation);
     }
 
     private JsonObject fetchConversation(String conversationId) {

@@ -1,20 +1,23 @@
 package com.iambadatplaying.data;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
-import com.iambadatplaying.data.map.FriendManager;
-import com.iambadatplaying.data.map.MapDataManager;
-import com.iambadatplaying.data.map.MessageManager;
-import com.iambadatplaying.data.map.RegaliaManager;
+import com.iambadatplaying.data.array.ArrayDataManager;
+import com.iambadatplaying.data.array.TickerMessageManager;
+import com.iambadatplaying.data.map.*;
 import com.iambadatplaying.data.state.*;
+import com.iambadatplaying.frontendHanlder.Socket;
+import com.iambadatplaying.lcuHandler.ConnectionManager;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.util.HashMap;
+import java.util.Optional;
 
 public class ReworkedDataManager {
     private HashMap<String, StateDataManager> stateDataManagers;
     private HashMap<String, MapDataManager> mapDataManagers;
+    private HashMap<String, ArrayDataManager> arrayDataManagers;
 
 
     public static final String UPDATE_TYPE_SELF_PRESENCE = "SelfPresenceUpdate";
@@ -25,6 +28,9 @@ public class ReworkedDataManager {
     public static final String UPDATE_TYPE_CHAMP_SELECT = "ChampSelectUpdate";
     public static final String UPDATE_TYPE_FRIENDS = "FriendUpdate";
     public static final String UPDATE_TYPE_CONVERSATION = "ConversationUpdate";
+    public static final String UPDATE_TYPE_HONOR_EOG = "HonorEndOfGameUpdate";
+    public static final String UPDATE_TYPE_TICKER_MESSAGES = "TickerMessageUpdate";
+    public static final String UPDATE_TYPE_STATS_EOG = "StatsEndOfGameUpdate";
 
     private static final String DATA_STRING_EVENT = "event";
 
@@ -32,22 +38,25 @@ public class ReworkedDataManager {
 
     private boolean initialized = false;
 
-    private ReworkedDataManager() {
-        this.starter = null;
-    }
-
     public ReworkedDataManager(Starter starter) {
         this.starter = starter;
         this.stateDataManagers = new HashMap<>();
         this.mapDataManagers = new HashMap<>();
+        this.arrayDataManagers = new HashMap<>();
 
         addStateManagers();
         addMapManagers();
+        addArrayManagers();
+    }
+
+    private void addArrayManagers() {
+        addManager(new TickerMessageManager(starter));
     }
 
     private void addMapManagers() {
         addManager(new RegaliaManager(starter));
         addManager(new FriendManager(starter));
+        addManager(new GameNameManager(starter));
     }
 
     private void addStateManagers() {
@@ -58,6 +67,11 @@ public class ReworkedDataManager {
         addManager(new LootData(starter));
         addManager(new PatcherData(starter));
         addManager(new ReworkedChampSelectData(starter));
+        addManager(new HonorManager(starter));
+    }
+
+    private void addManager(ArrayDataManager manager) {
+        arrayDataManagers.put(manager.getClass().getName(), manager);
     }
 
     private void addManager(StateDataManager manager) {
@@ -81,6 +95,10 @@ public class ReworkedDataManager {
         }
 
         for (MapDataManager manager : mapDataManagers.values()) {
+            manager.init();
+        }
+
+        for (ArrayDataManager manager : arrayDataManagers.values()) {
             manager.init();
         }
 
@@ -109,6 +127,30 @@ public class ReworkedDataManager {
         }
     }
 
+    public void sendInitialData(Socket socket) {
+        for (StateDataManager manager : stateDataManagers.values()) {
+            new Thread(() ->
+                    manager.getCurrentState().ifPresent(
+                            state -> socket.sendMessage(
+                                    ReworkedDataManager.getInitialDataString(manager.getEventName(), state
+                                    )
+                            )
+                    )
+            ).start();
+        }
+
+        for (ArrayDataManager manager : arrayDataManagers.values()) {
+            new Thread(() ->
+                    manager.getCurrentState().ifPresent(
+                        state -> socket.sendMessage(
+                                ReworkedDataManager.getInitialDataString(manager.getEventName(), state)
+                        )
+                    )
+            ).start();
+        }
+    }
+
+
     private void doUpdate(String uri, String type, JsonElement data) {
         if (!initialized) {
             log("Not initialized, wont have any effect", Starter.LOG_LEVEL.WARN);
@@ -136,15 +178,15 @@ public class ReworkedDataManager {
 
         final JsonElement finalData = data;
         for (StateDataManager manager : stateDataManagers.values()) {
-            new Thread(() -> {
-                manager.updateState(uri, type, finalData);
-            }).start();
+            new Thread(() -> manager.update(uri, type, finalData)).start();
         }
 
         for (MapDataManager manager : mapDataManagers.values()) {
-            new Thread(() -> {
-                manager.updateMap(uri, type, finalData);
-            }).start();
+            new Thread(() -> manager.update(uri, type, finalData)).start();
+        }
+
+        for (ArrayDataManager manager : arrayDataManagers.values()) {
+            new Thread(() -> manager.update(uri, type, finalData)).start();
         }
     }
 
@@ -152,21 +194,24 @@ public class ReworkedDataManager {
         return stateDataManagers.get(manager.getName());
     }
 
-    public MapDataManager getMapManagers(Class manager) {
+    public <T> MapDataManager<T> getMapManagers(Class manager) {
         return mapDataManagers.get(manager.getName());
     }
 
+    public ArrayDataManager getArrayManagers(Class manager) {
+        return arrayDataManagers.get(manager.getName());
+    }
 
-    public static String getEventDataString(String event, JsonObject data) {
+    public static String getEventDataString(String event, JsonElement data) {
         JsonObject dataToSend = new JsonObject();
         dataToSend.addProperty(DATA_STRING_EVENT, event);
         dataToSend.add("data", data);
         return dataToSend.toString();
     }
 
-    public static String getEventDataString(String event, JsonArray data) {
+    public static String getInitialDataString(String event, JsonElement data) {
         JsonObject dataToSend = new JsonObject();
-        dataToSend.addProperty(DATA_STRING_EVENT, event);
+        dataToSend.addProperty(DATA_STRING_EVENT, "Initial" + event);
         dataToSend.add("data", data);
         return dataToSend.toString();
     }

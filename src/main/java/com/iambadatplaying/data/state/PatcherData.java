@@ -31,10 +31,10 @@ public class PatcherData extends StateDataManager {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
                 JsonObject updatedState = data.getAsJsonObject();
                 if (Util.equalJsonElements(updatedState, currentState)) return;
@@ -59,5 +59,10 @@ public class PatcherData extends StateDataManager {
     @Override
     public void sendCurrentState() {
         starter.getServer().sendToAllSessions(DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_PATCHER, currentState));
+    }
+
+    @Override
+    public String getEventName() {
+        return ReworkedDataManager.UPDATE_TYPE_PATCHER;
     }
 }

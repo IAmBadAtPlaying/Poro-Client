@@ -107,8 +107,6 @@ function manualRiotRequest() {
 
 function send(jsonArray) {
     let request = jsonArray;
-    pktNr += 1;
-    request.push(pktNr);
     console.log("Sending: " + JSON.stringify(request));
     socket.send(JSON.stringify(request));
 }

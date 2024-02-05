@@ -16,6 +16,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 
 public class Starter {
 
@@ -63,6 +64,7 @@ public class Starter {
     public static void main(String[] args) {
         Starter starter = new Starter();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            starter.updateInternalState(STATE.STOPPING);
             starter.getConfigLoader().saveConfig();
         }));
         starter.run();
@@ -81,6 +83,7 @@ public class Starter {
         STARTING,
         RESTARTING,
         AWAITING_LCU,
+        AWAITING_PROCESS_READY,
         RUNNING,
         STOPPING,
         STOPPED;
@@ -97,22 +100,27 @@ public class Starter {
 
     public void run() {
         if (isShutdownPending()) return;
-        state = STATE.STARTING;
+        updateInternalState(STATE.STARTING);
         initReferences();
         configLoader.loadConfig();
         resourceServer.init();
         connectionManager.init();
+        server.init();
         awaitLCUConnection();
         awaitFrontendProcess();
         if (!validAuthString(connectionManager.getAuthString())) {
             System.exit(ERROR_INVALID_AUTH);
         }
-        state = STATE.RUNNING;
+        updateInternalState(STATE.RUNNING);
         client.init();
-        server.init();
         reworkedDataManager.init();
         dataManager.init();
         taskManager.init();
+        server.getSockets().forEach(
+                socket -> {
+                    frontendMessageHandler.sendInitialData(socket);
+                }
+        );
         subscribeToEndpointsOnConnection();
     }
 
@@ -134,7 +142,12 @@ public class Starter {
     }
 
     private void awaitLCUConnection() {
-        state = STATE.AWAITING_LCU;
+        updateInternalState(STATE.AWAITING_LCU);
+        try {
+            Thread.sleep(5000);
+        } catch (Exception e) {
+
+        }
         while (!connectionManager.isLeagueAuthDataAvailable() && !isShutdownPending()) {
             try {
                 Thread.sleep(500);
@@ -145,6 +158,7 @@ public class Starter {
     }
 
     private void awaitFrontendProcess() {
+        updateInternalState(STATE.AWAITING_PROCESS_READY);
         while (!feProcessesReady() && !isShutdownPending()) {
             try {
                 log("Waiting");
@@ -202,17 +216,18 @@ public class Starter {
     }
 
     public void shutdown() {
-        state = STATE.STOPPING;
+        updateInternalState(STATE.STOPPING);
         configLoader.saveConfig();
         resetAllInternal();
-        state = STATE.STOPPED;
+        updateInternalState(STATE.STOPPED);
         log("Shutting down");
         System.exit(0);
     }
 
     public void handleGracefulReset() {
+        if (isShutdownPending()) return;
         if (isInitialized()) {
-            state = STATE.RESTARTING;
+            updateInternalState(STATE.RESTARTING);
             resetAllInternal();
             run();
         }
@@ -264,6 +279,18 @@ public class Starter {
                 break;
         }
         System.out.println(prefix + ": " + s);
+    }
+
+    private void updateInternalState(STATE newState) {
+        if (newState == null || newState == state) return;
+        this.state = newState;
+        JsonObject stateUpdate = new JsonObject();
+        stateUpdate.addProperty("event", "InternalStateUpdate");
+        JsonObject newStateObject = new JsonObject();
+        newStateObject.addProperty("state", newState.name());
+        stateUpdate.add("data", newStateObject);
+        Optional<SocketServer> optServer = Optional.ofNullable(getServer());
+        optServer.ifPresent(socketServer -> socketServer.sendToAllSessions(stateUpdate.toString()));
     }
 
     public void log(String s) {

@@ -4,6 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 
+import java.util.Optional;
+
 public class FriendHovercard extends MapDataManager<String> {
 
     protected FriendHovercard(Starter starter) {
@@ -31,7 +33,7 @@ public class FriendHovercard extends MapDataManager<String> {
     }
 
     @Override
-    public JsonObject load(String key) {
+    public Optional<JsonObject> load(String key) {
         return null;
     }
 }

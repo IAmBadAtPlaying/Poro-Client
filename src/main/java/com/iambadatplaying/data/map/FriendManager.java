@@ -19,8 +19,8 @@ public class FriendManager extends MapDataManager<String> {
     }
 
     @Override
-    public JsonObject load(String key) {
-        return new JsonObject();
+    public Optional<JsonObject> load(String key) {
+        return Optional.empty();
     }
 
     @Override
@@ -68,15 +68,15 @@ public class FriendManager extends MapDataManager<String> {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 String puuidWith = uri.replaceAll(lolChatV1FriendsPattern, "$1");
                 Integer atBegin = puuidWith.indexOf("@");
                 if (atBegin == -1) return;
                 String puuid = puuidWith.substring(0, atBegin);
                 map.remove(puuid);
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 Optional<JsonObject> updatedFriend = updateFriend(data);
                 if (!updatedFriend.isPresent()) return;
                 JsonObject dataObj = data.getAsJsonObject();

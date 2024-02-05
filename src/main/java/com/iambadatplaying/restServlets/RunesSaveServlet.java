@@ -10,48 +10,57 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.Optional;
 
 public class RunesSaveServlet extends BaseRESTServlet{
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         JsonObject json = getJsonObjectFromRequestBody(req);
         if (json == null || json.isEmpty()) return;
-        BigInteger pageId = getCurrentRunePageId();
+        Optional<BigInteger> pageId = getCurrentRunePageId();
 
-        if (pageId == null) {
+        if (!pageId.isPresent()) {
             pageId = getValidRunePageId();
         }
 
-        deleteRunePage(pageId);
+        pageId.ifPresent(this::deleteRunePage);
         createNewRunePage(json);
 
 
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 
-    private BigInteger getValidRunePageId() {
+    private Optional<BigInteger> getValidRunePageId() {
         JsonArray resp = starter.getConnectionManager().getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/pages"));
-        if (resp == null) return null;
+        if (resp == null) return Optional.empty();
         if (resp.isEmpty()) {
             log("No runepages found, creating new one", Starter.LOG_LEVEL.INFO);
-            return null;
+            return Optional.empty();
         }
-        for (int i = resp.size()-1; i >= 0; i--) {
+        JsonObject lastPage = null;
+        for (int i = 0; i < resp.size(); i++) {
             JsonObject page = resp.get(i).getAsJsonObject();
             if (!page.get("isTemporary").getAsBoolean()) {
-                log("Runepage \""+page.get("name").getAsString()+ "\" will be replaced!", Starter.LOG_LEVEL.INFO);
-                return page.get("id").getAsBigInteger();
+                lastPage = page;
+                if (page.get("name").getAsString().startsWith("Poro-Client")) {
+                    log("Runepage \""+page.get("name").getAsString()+ "\" will be replaced!", Starter.LOG_LEVEL.INFO);
+                    return Optional.of(page.get("id").getAsBigInteger());
+                }
             }
         }
-        return null;
+        if (lastPage != null) {
+            log("Runepage \""+lastPage.get("name").getAsString()+ "\" will be replaced!", Starter.LOG_LEVEL.INFO);
+            return Optional.of(lastPage.get("id").getAsBigInteger());
+        }
+        return Optional.empty();
     }
 
-    private BigInteger getCurrentRunePageId() {
+    private Optional<BigInteger> getCurrentRunePageId() {
         JsonObject resp = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/currentpage"));
-        if (resp == null) return null;
-        BigInteger result = null;
+        if (resp == null) return Optional.empty();
+        Optional<BigInteger> result = Optional.empty();
         try {
-            result = resp.get("id").getAsBigInteger();
+            result = Optional.of(resp.get("id").getAsBigInteger());
         } catch (Exception e) {
             log("Current Rune page id not found, usually caused by using the rune presets", Starter.LOG_LEVEL.INFO);
         }

@@ -34,15 +34,6 @@ public abstract class StateDataManager extends BasicDataManager {
 
     public abstract void sendCurrentState();
 
-    public void updateState(String uri, String type, JsonElement data) {
-        if (!initialized) {
-            log("Not initialized, wont have any effect", Starter.LOG_LEVEL.WARN);
-            return;
-        }
-        if (!isRelevantURI(uri)) return;
-        doUpdateAndSend(uri, type, data);
-    }
-
     public void resetState() {
         if (!initialized) {
             log("Not initialized, wont have any effect", Starter.LOG_LEVEL.WARN);
@@ -50,4 +41,6 @@ public abstract class StateDataManager extends BasicDataManager {
         }
         currentState = new JsonObject();
     }
+
+    public abstract String getEventName();
 }

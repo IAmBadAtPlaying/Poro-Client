@@ -138,8 +138,8 @@ public class ReworkedChampSelectData extends StateDataManager {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
                 Optional<JsonObject> updatedFEData = backendToFrontendChampSelectSession(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
@@ -148,7 +148,7 @@ public class ReworkedChampSelectData extends StateDataManager {
                 currentState = updatedState;
                 sendCurrentState();
                 break;
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 resetSession();
                 break;
             default:
@@ -161,7 +161,7 @@ public class ReworkedChampSelectData extends StateDataManager {
         boolean isCustomGame = Util.getBoolean(data, "isCustomGame", false);
         JsonObject frontendChampSelect = new JsonObject();
 
-        Util.copyJsonAttributes(data, frontendChampSelect, JSON_KEY_LOCAL_PLAYER_CELL_ID, "gameId", "hasSimultaneousBans", "skipChampionSelect", "benchEnabled", "rerollsRemaining");
+        Util.copyJsonAttributes(data, frontendChampSelect, JSON_KEY_LOCAL_PLAYER_CELL_ID, "gameId", "hasSimultaneousBans", "skipChampionSelect", "benchEnabled", "benchChampions", "rerollsRemaining");
 
         Optional<JsonArray> optActions = Util.getOptJSONArray(data, "actions");
         if (!optActions.isPresent()) {
@@ -393,5 +393,10 @@ public class ReworkedChampSelectData extends StateDataManager {
     @Override
     public void sendCurrentState() {
         starter.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString(UPDATE_TYPE_CHAMP_SELECT, currentState));
+    }
+
+    @Override
+    public String getEventName() {
+        return UPDATE_TYPE_CHAMP_SELECT;
     }
 }

@@ -1,6 +1,7 @@
 package com.iambadatplaying.frontendHanlder;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
@@ -19,8 +20,6 @@ public class Socket {
     private Timer timer = new java.util.Timer();
 
     private Thread messageSenderThread;
-
-    private final Socket socket = this;
 
     private Session currentSession = null;
 
@@ -92,7 +91,7 @@ public class Socket {
     }
 
     public void sendMessage(String message) {
-        if (messageQueue != null) messageQueue.add(message);
+        if (messageQueue != null) messageQueue.offer(message);
     }
 
     @OnWebSocketConnect
@@ -108,7 +107,12 @@ public class Socket {
         log("Client connected: " + session.getRemoteAddress().getAddress());
         messageSenderThread.start();
         starter.getServer().addSocket(this);
-        messageQueue.add("[]");
+        JsonObject stateUpdate = new JsonObject();
+        stateUpdate.addProperty("event", "InitialInternalStateUpdate");
+        JsonObject newStateObject = new JsonObject();
+        newStateObject.addProperty("state", starter.getState().name());
+        stateUpdate.add("data", newStateObject);
+        sendMessage(stateUpdate.toString());
         queueNewKeepAlive(session);
     }
 

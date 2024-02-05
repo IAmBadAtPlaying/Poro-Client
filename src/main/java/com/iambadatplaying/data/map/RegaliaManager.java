@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
+import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.data.state.ChatMeManager;
 import com.iambadatplaying.data.state.LobbyData;
 import com.iambadatplaying.data.state.StateDataManager;
@@ -23,8 +24,8 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     }
 
     @Override
-    public JsonObject load(BigInteger key) {
-        return updateRegalia(key);
+    public Optional<JsonObject> load(BigInteger key) {
+        return Optional.ofNullable(updateRegalia(key));
     }
 
     @Override
@@ -38,10 +39,10 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 String summonerIdStr = uri.replaceAll(lolRegaliaV2SummonerPattern, "$1");
                 BigInteger summonerId = new BigInteger(summonerIdStr);
                 updateRegalia(summonerId);
@@ -128,4 +129,5 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
         updateLobbyMemeberRegalia(summonerId);
         return regalia;
     }
+
 }

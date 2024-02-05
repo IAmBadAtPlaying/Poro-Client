@@ -31,10 +31,10 @@ public class LootData extends StateDataManager {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
                 Optional<JsonObject> updatedFEData = backendToFrontendLoot(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
@@ -65,5 +65,10 @@ public class LootData extends StateDataManager {
     @Override
     public void sendCurrentState() {
         starter.getServer().sendToAllSessions(DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_LOOT, currentState));
+    }
+
+    @Override
+    public String getEventName() {
+        return ReworkedDataManager.UPDATE_TYPE_LOOT;
     }
 }

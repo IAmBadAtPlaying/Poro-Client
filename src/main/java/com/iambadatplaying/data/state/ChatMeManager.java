@@ -34,11 +34,11 @@ public class ChatMeManager extends StateDataManager {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 resetState();
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
                 Optional<JsonObject> updatedFEData = backendToFrontendChatMe(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
@@ -54,10 +54,15 @@ public class ChatMeManager extends StateDataManager {
     private Optional<JsonObject> backendToFrontendChatMe(JsonObject data) {
         JsonObject frontendData = new JsonObject();
 
-        if (!Util.jsonKeysPresent(data,"availability", "name", "icon")) return Optional.empty();
-        Util.copyJsonAttributes(data, frontendData, "availability", "statusMessage", "name", "icon", "gameName", "gameTag", "pid" , "id", "puuid", "lol", "summonerId");
+        if (!Util.jsonKeysPresent(data, "availability", "name", "icon")) return Optional.empty();
+        Util.copyJsonAttributes(data, frontendData, "availability", "statusMessage", "name", "icon", "gameName", "gameTag", "pid", "id", "puuid", "lol", "summonerId");
 
-        frontendData.add("regalia", starter.getReworkedDataManager().getMapManagers(RegaliaManager.class).get(data.get("summonerId").getAsBigInteger()));
+        starter.getReworkedDataManager()
+                .getMapManagers(RegaliaManager.class)
+                .get(data.get("summonerId").getAsBigInteger())
+                .ifPresent(
+                        regalia -> frontendData.add("regalia", regalia)
+                );
 
         return Optional.of(frontendData);
     }
@@ -77,5 +82,10 @@ public class ChatMeManager extends StateDataManager {
     @Override
     public void sendCurrentState() {
         starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_SELF_PRESENCE, currentState));
+    }
+
+    @Override
+    public String getEventName() {
+        return ReworkedDataManager.UPDATE_TYPE_SELF_PRESENCE;
     }
 }

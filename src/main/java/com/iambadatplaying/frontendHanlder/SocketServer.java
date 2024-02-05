@@ -77,6 +77,9 @@ public class SocketServer {
         }
     }
 
+    public List<Socket> getSockets() {
+        return sockets;
+    }
 
     private void log(String s, Starter.LOG_LEVEL level) {
         starter.log(this.getClass().getSimpleName() +": " + s, level);

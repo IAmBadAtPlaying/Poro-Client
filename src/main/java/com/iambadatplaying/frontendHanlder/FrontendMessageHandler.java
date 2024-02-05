@@ -41,31 +41,8 @@ public class FrontendMessageHandler {
             Integer opcode = messageArray.get(0).getAsInt();
             int len = messageArray.size();
             switch (opcode) {
-                case 0: //Handled by Proxy
-                    log(messageArray.toString(), Starter.LOG_LEVEL.INFO);
-                    log("Opcode 0 is no longer supported", Starter.LOG_LEVEL.ERROR);
-                    break;
-                case 1: //Subscribe / Unsubscribe from LCU endpoints
-                    if (len < 2) {
-                        return;
-                    }
-                    JsonArray instructionArray = messageArray.get(1).getAsJsonArray();
-                    int instruction = instructionArray.get(0).getAsInt();
-                    switch (instruction) {
-                        case 5:
-                            starter.getClient().getSocket().subscribeToEndpoint(instructionArray.get(1).getAsString());
-                            break;
-                        case 6:
-                            starter.getClient().getSocket().unsubscribeFromEndpoint(instructionArray.get(1).getAsString());
-                            break;
-                        default:
-                            System.out.println("Error");
-                            break;
-                    }
-
-                    break;
                 case 2: //We will use this as a kind of echo, so we can emulate backend update Calls
-                    if (len < 3) {
+                    if (len < 2) {
                         return; // We want this form [2, []]; With [] being the command we want to echo
                     }
                     JsonElement echoElement = messageArray.get(1);
@@ -73,46 +50,12 @@ public class FrontendMessageHandler {
                         starter.getServer().sendToAllSessions(echoElement.toString());
                     }
                     break;
-//                case 3: // This will be used to enable and disable Tasks
-//                    if (len < 5) {
-//                        return;
-//                    }
-//                    int operation = messageArray.get(1).getAsInt();
-//                    String taskName = messageArray.get(2).getAsString();
-//                    JsonObject taskArgs = messageArray.get(3).getAsJsonObject();
-//                    TaskManager taskManager = mainInitiator.getTaskManager();
-//                    switch (operation) {
-//                        case 0:  //Delete Task
-//                            taskManager.removeTask(taskName);
-//                            break;
-//                        case 1: //Create Task
-//                        case 2: //Modify Task
-//                            taskManager.addTask(taskName);
-//                            Task task = taskManager.getActiveTaskByName(taskName);
-//                            if (task != null) {
-//                                System.out.println("Getting active Task: " + task.getClass().getSimpleName());
-//                                task.setTaskArgs(taskArgs);
-//                            }
-//                            break;
-//                        default:
-//                            break;
-//                    }
-//                    break;
                 case 4: // Startup Handler
-                    if (len < 2) return;
-                    sendFriendList(socket);
-                    sendGameflowStatus(socket);
-                    sendLobby(socket);
-                    sendAvailableQueues(socket);
-                    sendChampSelect(socket);
-                    sendTasks(socket);
-                    sendLoot(socket);
-                    sendSelfPresence(socket);
-                    sendPatcher(socket);
-                    sendModifiedData(socket);
+                    if (len < 1) return;
+                    sendInitialData(socket);
                     break;
                 case 5: // Proxy the request to Riot-Client (NOT league client)
-                    if (len <= 4) {
+                    if (len <= 3) {
                         return;
                     }
                     String requestTypeRiot = messageArray.get(1).getAsString();
@@ -121,49 +64,20 @@ public class FrontendMessageHandler {
                     Integer requestIdRiot = messageArray.get(4).getAsInt();
                     handleForwardRequest(requestTypeRiot, endpointRiot, bodyRiot, requestIdRiot, socket, true);
                     break;
-//                case 6: //Disenchant Elements
-//                    if (len < 3) {
-//                        return;
-//                    }
-//                    JsonArray disenchantArray = messageArray.get(1).getAsJsonArray();
-//                    mainInitiator.getDataManager().disenchantElements(disenchantArray);
-//                    log("[ENDPOINT] Disenchanted Elements");
-//                    break;
-//                case 7: //Reroll Skins
-//                    if (len < 3) {
-//                        return;
-//                    }
-//                    JsonArray rerollArray = messageArray.get(1).getAsJsonArray();
-//                    mainInitiator.getDataManager().rerollElements(rerollArray);
-//                    log("[ENDPOINT] Rerolled Elements");
-//                    break;
-                case 10: //End the application
-                    if (len < 3) {
-                        return;
-                    }
-                    String shutdownOption = messageArray.get(1).getAsString();
-                    switch (shutdownOption) {
-                        case "shutdown-all":
-                            log("[Shutdown] Invoking League Client Shutdown", Starter.LOG_LEVEL.INFO);
-                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/process-control/v1/process/quit", ""));
-                            log("[Shutdown] Invoking Self-shutdown", Starter.LOG_LEVEL.INFO);
-                            starter.shutdown();
-                            break;
-                        case "shutdown":
-                        default:
-                            String discBody = "{\"data\": {\"title\": \"Poro Client disconnected!\", \"details\": \"Poro-Client shutdown successful\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"/fe/lol-settings/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
-                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", discBody));
-                            //Show Riot UX again so the user doesn't end up with league still running and them not noticing
-                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
-                            log("[Shutdown] Invoking Self-shutdown", Starter.LOG_LEVEL.INFO);
-                            starter.shutdown();
-                            break;
-                    }
                 default:
                     log("Unknown Opcode: " + opcode + "; Context: " + messageArray, Starter.LOG_LEVEL.ERROR);
                     break;
             }
         }
+    }
+
+    public void sendInitialData(Socket socket) {
+        sendFriendList(socket);
+        starter.getReworkedDataManager().sendInitialData(socket);
+        sendAvailableQueues(socket);
+        sendTasks(socket);
+        sendLoot(socket);
+        sendModifiedData(socket);
     }
 
     private void sendTasks(Socket socket) {
