@@ -1,5 +1,6 @@
 package com.iambadatplaying.ressourceServer;
 
+import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import org.eclipse.jetty.server.Request;
@@ -10,9 +11,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 public class ProxyHandler extends AbstractHandler {
@@ -31,16 +30,16 @@ public class ProxyHandler extends AbstractHandler {
 
     @Override
     public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
-            httpServletResponse.setHeader("Access-Control-Allow-Origin", "*");
-            httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
-            httpServletResponse.setHeader("Access-Control-Allow-Headers", "Content-Type");
-            if (s == null) return;
+        httpServletResponse.setHeader("Access-Control-Allow-Origin", "*");
+        httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
+        httpServletResponse.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        if (s == null) return;
 
-            String requestedCURResource = s.trim();
-            if (requestedCURResource.startsWith(STATIC_PROXY_PREFIX)) {
-                requestedCURResource = requestedCURResource.substring(STATIC_PROXY_PREFIX.length()).trim();
-                handleStatic(requestedCURResource, request, httpServletRequest, httpServletResponse);
-            } else handleNormal(requestedCURResource, request, httpServletRequest, httpServletResponse, false);
+        String requestedCURResource = s.trim();
+        if (requestedCURResource.startsWith(STATIC_PROXY_PREFIX)) {
+            requestedCURResource = requestedCURResource.substring(STATIC_PROXY_PREFIX.length()).trim();
+            handleStatic(requestedCURResource, request, httpServletRequest, httpServletResponse);
+        } else handleNormal(requestedCURResource, request, httpServletRequest, httpServletResponse, false);
     }
 
     public void handleStatic(String resource, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException {
@@ -56,6 +55,27 @@ public class ProxyHandler extends AbstractHandler {
 
     public void handleNormal(String resource, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, boolean putToMap) throws IOException {
         InputStream is = null;
+
+
+        //Stop easy access to bearer tokens
+        if (isAccessingProtectedResource(resource)) {
+            JsonObject response = new JsonObject();
+            response.addProperty("error", "Access to protected resource denied");
+            response.addProperty("message",
+                    "This resource is protected and cannot be accessed through the proxy. " +
+                            "This is an intentional security measure to stop easy access to your bearer token. " +
+                            "If you need to access this resource, please do so directly.");
+            httpServletResponse.setContentType("application/json");
+            httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            httpServletResponse.getWriter().write(
+                    response.toString()
+            );
+            request.setHandled(true);
+            return;
+        }
+
+        Optional<String> queryParameters = queryParametersToAppendString(httpServletRequest.getParameterMap());
+
         HttpURLConnection con = null;
 
         String postBody = "";
@@ -74,6 +94,7 @@ public class ProxyHandler extends AbstractHandler {
         }
 
         try {
+            //Handle CORS preflight
             if ("OPTIONS".equals(request.getMethod())) {
                 httpServletResponse.setStatus(200);
                 httpServletResponse.setHeader("Access-Control-Allow-Origin", "*");
@@ -81,6 +102,11 @@ public class ProxyHandler extends AbstractHandler {
                 request.setHandled(true);
                 return;
             }
+
+            if (queryParameters.isPresent()) {
+                resource += "?" + queryParameters.get();
+            }
+
             con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.getByString(request.getMethod()), resource, postBody);
             if (con == null) {
                 log("Cannot establish connection to " + resource + ", League might not be running", Starter.LOG_LEVEL.ERROR);
@@ -115,6 +141,31 @@ public class ProxyHandler extends AbstractHandler {
         }
     }
 
+    private boolean isAccessingProtectedResource(String resource) {
+        return resource.contains("/lol-league-session/v1/league-session-token")
+                || resource.contains("/entitlements/v1/token")
+                || resource.contains("/lol-login/v2/league-session-init-token")
+                || resource.contains("/lol-rso-auth/v1/authorization")
+                || resource.contains("/lol-lobby/v2/comms/token");
+    }
+
+    private Optional<String> queryParametersToAppendString(Map<String, String[]> params) {
+        if (params == null || params.isEmpty()) return Optional.empty();
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String[]> entry : params.entrySet()) {
+            String key = entry.getKey();
+            String[] value = entry.getValue();
+            for (String s : value) {
+                sb.append(key).append("=").append(s).append("&");
+            }
+        }
+
+        //Remove last "&"
+        sb.replace(sb.length() - 1, sb.length(), "");
+
+        return Optional.of(sb.toString());
+    }
+
     private byte[] readBytesFromStream(InputStream inputStream) throws IOException {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         int bytesRead;
@@ -140,7 +191,7 @@ public class ProxyHandler extends AbstractHandler {
                             for (String s : value) {
                                 response.setHeader(key, s);
                             }
-                        break;
+                            break;
                     }
                 }
             }
@@ -152,10 +203,10 @@ public class ProxyHandler extends AbstractHandler {
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getSimpleName() +": " + s, level);
+        starter.log(this.getClass().getSimpleName() + ": " + s, level);
     }
 
     private void log(String s) {
-        starter.log(this.getClass().getSimpleName() +": " +s);
+        starter.log(this.getClass().getSimpleName() + ": " + s);
     }
 }

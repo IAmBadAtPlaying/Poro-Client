@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.data.array.ArrayDataManager;
+import com.iambadatplaying.data.array.InvitationManager;
 import com.iambadatplaying.data.array.TickerMessageManager;
 import com.iambadatplaying.data.map.*;
 import com.iambadatplaying.data.state.*;
@@ -31,6 +32,8 @@ public class ReworkedDataManager {
     public static final String UPDATE_TYPE_HONOR_EOG = "HonorEndOfGameUpdate";
     public static final String UPDATE_TYPE_TICKER_MESSAGES = "TickerMessageUpdate";
     public static final String UPDATE_TYPE_STATS_EOG = "StatsEndOfGameUpdate";
+    public static final String UPDATE_TYPE_INVITATIONS = "InvitationsUpdate";
+    public static final String UPDATE_TYPE_MATCHMAKING_SEARCH_STATE = "MatchmakingSearchStateUpdate";
 
     private static final String DATA_STRING_EVENT = "event";
 
@@ -51,16 +54,17 @@ public class ReworkedDataManager {
 
     private void addArrayManagers() {
         addManager(new TickerMessageManager(starter));
+        addManager(new InvitationManager(starter));
     }
 
     private void addMapManagers() {
         addManager(new RegaliaManager(starter));
         addManager(new FriendManager(starter));
         addManager(new GameNameManager(starter));
+        addManager(new MessageManager(starter));
     }
 
     private void addStateManagers() {
-        addManager(new MessageManager(starter));
         addManager(new LobbyData(starter));
         addManager(new GameflowData(starter));
         addManager(new ChatMeManager(starter));
@@ -68,6 +72,7 @@ public class ReworkedDataManager {
         addManager(new PatcherData(starter));
         addManager(new ReworkedChampSelectData(starter));
         addManager(new HonorManager(starter));
+        addManager(new MatchmakingSearchManager(starter));
     }
 
     private void addManager(ArrayDataManager manager) {
@@ -127,6 +132,7 @@ public class ReworkedDataManager {
         }
     }
 
+    //This only sends the initial data, if the there is a current state.
     public void sendInitialData(Socket socket) {
         for (StateDataManager manager : stateDataManagers.values()) {
             new Thread(() ->
@@ -178,15 +184,15 @@ public class ReworkedDataManager {
 
         final JsonElement finalData = data;
         for (StateDataManager manager : stateDataManagers.values()) {
-            new Thread(() -> manager.update(uri, type, finalData)).start();
+            manager.update(uri, type, finalData);
         }
 
         for (MapDataManager manager : mapDataManagers.values()) {
-            new Thread(() -> manager.update(uri, type, finalData)).start();
+            manager.update(uri, type, finalData);
         }
 
         for (ArrayDataManager manager : arrayDataManagers.values()) {
-            new Thread(() -> manager.update(uri, type, finalData)).start();
+            manager.update(uri, type, finalData);
         }
     }
 

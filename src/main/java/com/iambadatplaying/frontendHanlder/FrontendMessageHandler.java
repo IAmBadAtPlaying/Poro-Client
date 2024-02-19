@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.data.state.*;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
@@ -77,7 +78,12 @@ public class FrontendMessageHandler {
         sendAvailableQueues(socket);
         sendTasks(socket);
         sendLoot(socket);
-        sendModifiedData(socket);
+    }
+
+    public void sendCurrentState(Socket socket) {
+        JsonObject newStateObject = new JsonObject();
+        newStateObject.addProperty("state", starter.getState().name());
+        socket.sendMessage(ReworkedDataManager.getInitialDataString("InternalStateUpdate", newStateObject));
     }
 
     private void sendTasks(Socket socket) {

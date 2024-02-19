@@ -107,12 +107,7 @@ public class Socket {
         log("Client connected: " + session.getRemoteAddress().getAddress());
         messageSenderThread.start();
         starter.getServer().addSocket(this);
-        JsonObject stateUpdate = new JsonObject();
-        stateUpdate.addProperty("event", "InitialInternalStateUpdate");
-        JsonObject newStateObject = new JsonObject();
-        newStateObject.addProperty("state", starter.getState().name());
-        stateUpdate.add("data", newStateObject);
-        sendMessage(stateUpdate.toString());
+        starter.getFrontendMessageHandler().sendCurrentState(this);
         queueNewKeepAlive(session);
     }
 

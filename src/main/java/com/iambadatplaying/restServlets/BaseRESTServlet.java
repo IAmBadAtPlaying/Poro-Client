@@ -22,6 +22,7 @@ public abstract class BaseRESTServlet extends HttpServlet {
         resp.setHeader("Access-Control-Allow-Origin", "*");
         resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        resp.setHeader("Content-Type", "application/json");
     }
 
     protected JsonObject getJsonObjectFromRequestBody(HttpServletRequest req) {
@@ -69,6 +70,20 @@ public abstract class BaseRESTServlet extends HttpServlet {
             return pathParts;
         }
         return new String[0];
+    }
+
+
+    protected JsonObject createResponse(String message) {
+        return createResponse(message, null);
+    }
+
+    protected JsonObject createResponse(String message, JsonObject details) {
+        JsonObject responseJson = new JsonObject();
+        responseJson.addProperty("message", message);
+        if (details != null) {
+            responseJson.add("details", details);
+        }
+        return responseJson;
     }
 
     @Override

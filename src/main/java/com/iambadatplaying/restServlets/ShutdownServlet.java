@@ -51,6 +51,7 @@ public class ShutdownServlet extends BaseRESTServlet{
             //Show Riot UX again so the user doesn't end up with league still running and them not noticing
             log("Sending Riot UX request", Starter.LOG_LEVEL.INFO);
             starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
+            starter.prepareShutdown();
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -62,6 +63,7 @@ public class ShutdownServlet extends BaseRESTServlet{
 
     private void handleCombinedShutdown() {
         new Thread(() -> {
+            starter.prepareShutdown();
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {

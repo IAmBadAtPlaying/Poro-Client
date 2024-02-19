@@ -1,6 +1,8 @@
 package com.iambadatplaying.restServlets;
 
 import com.google.gson.JsonObject;
+import com.iambadatplaying.Util;
+import com.iambadatplaying.data.map.MessageManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.structs.messaging.Conversation;
 
@@ -10,8 +12,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
-public class MessagingServlet extends BaseRESTServlet{
+public class MessagingServlet extends BaseRESTServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String[] pathParts = sliceAtSlash(req.getPathInfo());
@@ -38,19 +41,17 @@ public class MessagingServlet extends BaseRESTServlet{
                 conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
             }
 
-            Conversation conversation = starter.getDataManager().getConversation(conversationId);
-            if (conversation == null) {
+            Optional<JsonObject> optCurrentConversation = starter.getReworkedDataManager().getMapManagers(MessageManager.class).get(conversationId);
+            if (!optCurrentConversation.isPresent()) {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 return;
             }
 
-            if (conversation.getMessages().isEmpty()) {
-                resp.setHeader("Refresh", "1");
-            }
-            JsonObject jsonObject = conversation.toJsonObject();
+            JsonObject jsonObject = optCurrentConversation.get();
+
+
             resp.getWriter().write(jsonObject.toString());
             resp.setStatus(HttpServletResponse.SC_OK);
-            return;
         }
 
     }
@@ -58,6 +59,10 @@ public class MessagingServlet extends BaseRESTServlet{
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         JsonObject requestJson = getJsonObjectFromRequestBody(req);
+        if (requestJson == null) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
         String[] pathParts = sliceAtSlash(req.getPathInfo());
         if (pathParts.length == 0) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);

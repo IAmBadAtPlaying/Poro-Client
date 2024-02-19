@@ -153,7 +153,6 @@ public class MessageManager extends  MapDataManager<String> {
     }
 
     private void updateMap(String conversationId, JsonObject conversation) {
-        map.put(conversationId, conversation);
         starter.getServer().sendToAllSessions(DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_CONVERSATION, conversation));
     }
 
@@ -165,14 +164,23 @@ public class MessageManager extends  MapDataManager<String> {
 
     @Override
     public Optional<JsonObject> load(String key) {
-        Optional<String> conversationId = extractConversationId(key);
-        return conversationId.map(this::fetchConversation);
+        log("Load called for " + key, Starter.LOG_LEVEL.DEBUG);
+        try {
+            if (!key.contains("@")) {
+                key = URLDecoder.decode(key, String.valueOf(StandardCharsets.UTF_8));
+            }
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(fetchConversation(key));
     }
 
     private JsonObject fetchConversation(String conversationId) {
+        log("Trying to fetch conversation " + conversationId, Starter.LOG_LEVEL.DEBUG);
         JsonObject initialFetchJson = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/conversations/" + conversationId));
         if (initialFetchJson.has("httpStatus") && initialFetchJson.get("httpStatus").getAsInt() == 404) {
             initialFetchJson = initConversation(conversationId);
+            return initialFetchJson;
         }
         JsonElement messagesElement = ConnectionManager.getResponseBodyAsJsonElement(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/conversations/" + conversationId + "/messages"));
         if (!messagesElement.isJsonArray()) {
@@ -186,7 +194,10 @@ public class MessageManager extends  MapDataManager<String> {
 
     private JsonObject initConversation(String conversationId) {
         log("Conversation " + conversationId + " not found, trying to initialize it", Starter.LOG_LEVEL.INFO);
-        JsonObject initConversationJson = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId));
-        return initConversationJson;
+        JsonObject body = new JsonObject();
+        body.addProperty("id", conversationId);
+        body.addProperty("type", "chat");
+        log(body);
+        return ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations", body.toString()));
     }
 }

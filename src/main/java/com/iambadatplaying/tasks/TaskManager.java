@@ -148,6 +148,7 @@ public class TaskManager {
     public JsonArray getTaskAndArgs() {
 
         JsonArray taskList = new JsonArray();
+        if (!running) return taskList;
         for (Task task : allTasksMap.values()) {
             JsonObject taskObject = new JsonObject();
             taskObject.addProperty("name", task.getClass().getSimpleName());

@@ -75,7 +75,7 @@ public class ChatMeManager extends StateDataManager {
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
         if (currentState != null) return Optional.of(currentState);
-        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolChatV1MePattern));
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolChatV1MePattern));
         return backendToFrontendChatMe(data);
     }
 

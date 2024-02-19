@@ -5,7 +5,6 @@ import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
 import com.iambadatplaying.frontendHanlder.Socket;
 import com.iambadatplaying.frontendHanlder.SocketServer;
-import com.iambadatplaying.lcuHandler.BackendMessageHandler;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
 import com.iambadatplaying.lcuHandler.SocketClient;
@@ -51,7 +50,6 @@ public class Starter {
     private ConnectionManager connectionManager;
     private FrontendMessageHandler frontendMessageHandler;
 
-    private BackendMessageHandler backendMessageHandler;
     private ResourceServer resourceServer;
     private TaskManager taskManager;
 
@@ -132,7 +130,6 @@ public class Starter {
         reworkedDataManager = new ReworkedDataManager(this);
         client = new SocketClient(this);
         server = new SocketServer(this);
-        backendMessageHandler = new BackendMessageHandler(this);
         frontendMessageHandler = new FrontendMessageHandler(this);
         taskManager = new TaskManager(this);
     }
@@ -215,8 +212,11 @@ public class Starter {
         }
     }
 
-    public void shutdown() {
+    public void prepareShutdown() {
         updateInternalState(STATE.STOPPING);
+    }
+
+    public void shutdown() {
         configLoader.saveConfig();
         resetAllInternal();
         updateInternalState(STATE.STOPPED);
@@ -359,10 +359,6 @@ public class Starter {
 
     public FrontendMessageHandler getFrontendMessageHandler() {
         return frontendMessageHandler;
-    }
-
-    public BackendMessageHandler getBackendMessageHandler() {
-        return backendMessageHandler;
     }
 
     public DataManager getDataManager() {
