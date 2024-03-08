@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.URLEncoder;
 import java.util.*;
 
 
@@ -46,7 +47,8 @@ public class ProxyHandler extends AbstractHandler {
         byte[] cachedResource = resourceCache.get(resource);
         if (cachedResource != null) {
             Map<String, List<String>> cachedHeaders = headerCache.get(resource);
-            serveResource(httpServletResponse, cachedResource, cachedHeaders);
+            serveResource(httpServletResponse, cachedResource,
+                    cachedHeaders);
             request.setHandled(true);
             return;
         }
@@ -107,6 +109,7 @@ public class ProxyHandler extends AbstractHandler {
                 resource += "?" + queryParameters.get();
             }
 
+            log("HTTP " + request.getMethod() + " " + resource, Starter.LOG_LEVEL.DEBUG);
             con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.getByString(request.getMethod()), resource, postBody);
             if (con == null) {
                 log("Cannot establish connection to " + resource + ", League might not be running", Starter.LOG_LEVEL.ERROR);
@@ -119,6 +122,9 @@ public class ProxyHandler extends AbstractHandler {
             is = (InputStream) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.INPUT_STREAM, con);
             Map<String, List<String>> headers = con.getHeaderFields();
 
+            if (is == null) {
+                log(""+con.getResponseCode());
+            }
 
             byte[] resourceBytes = readBytesFromStream(is);
 
@@ -131,6 +137,7 @@ public class ProxyHandler extends AbstractHandler {
             request.setHandled(true);
         } catch (Exception e) {
             log("Error while handling request for " + resource + ": " + e.getMessage(), Starter.LOG_LEVEL.ERROR);
+            e.printStackTrace();
         } finally {
             if (is != null) {
                 is.close();
@@ -142,11 +149,7 @@ public class ProxyHandler extends AbstractHandler {
     }
 
     private boolean isAccessingProtectedResource(String resource) {
-        return resource.contains("/lol-league-session/v1/league-session-token")
-                || resource.contains("/entitlements/v1/token")
-                || resource.contains("/lol-login/v2/league-session-init-token")
-                || resource.contains("/lol-rso-auth/v1/authorization")
-                || resource.contains("/lol-lobby/v2/comms/token");
+        return ConnectionManager.isProtectedRessource(resource);
     }
 
     private Optional<String> queryParametersToAppendString(Map<String, String[]> params) {
@@ -156,7 +159,7 @@ public class ProxyHandler extends AbstractHandler {
             String key = entry.getKey();
             String[] value = entry.getValue();
             for (String s : value) {
-                sb.append(key).append("=").append(s).append("&");
+                sb.append(URLEncoder.encode(key)).append("=").append(URLEncoder.encode(s)).append("&");
             }
         }
 
@@ -167,39 +170,43 @@ public class ProxyHandler extends AbstractHandler {
     }
 
     private byte[] readBytesFromStream(InputStream inputStream) throws IOException {
+        if (inputStream == null) return new byte[0];
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         int bytesRead;
-        byte[] data = new byte[4096];
+        byte[] data = new byte[8192];
         while ((bytesRead = inputStream.read(data, 0, data.length)) != -1) {
             buffer.write(data, 0, bytesRead);
         }
-        buffer.flush();
         return buffer.toByteArray();
     }
 
-    private void serveResource(HttpServletResponse response, byte[] resourceBytes, Map<String, List<String>> headers) throws IOException {
-        if (headers != null) {
-            for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
-                String key = entry.getKey();
-                List<String> value = entry.getValue();
-                if (key != null && value != null) {
-                    switch (key) {
-                        case "access-control-allow-origin":
-                        case "Cache-Control":
-                            continue;
-                        default:
-                            for (String s : value) {
-                                response.setHeader(key, s);
-                            }
-                            break;
+    private void serveResource(HttpServletResponse response, byte[] resourceBytes, Map<String, List<String>> headers) {
+        try {
+            if (headers != null) {
+                for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+                    String key = entry.getKey();
+                    List<String> value = entry.getValue();
+                    if (key != null && value != null) {
+                        switch (key) {
+                            case "access-control-allow-origin":
+                            case "Cache-Control":
+                                continue;
+                            default:
+                                for (String s : value) {
+                                    response.setHeader(key, s);
+                                }
+                                break;
+                        }
                     }
                 }
             }
-        }
 
-        response.setHeader("Cache-Control", "immutable max-age=31536000");
-        response.getOutputStream().write(resourceBytes);
-        response.getOutputStream().flush();
+            response.setHeader("Cache-Control", "public, immutable, max-age=604800, must-understand");
+            response.getOutputStream().write(resourceBytes);
+            response.getOutputStream().flush();
+        } catch (Exception e) {
+            log(e.getCause().getMessage(), Starter.LOG_LEVEL.ERROR);
+        }
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {

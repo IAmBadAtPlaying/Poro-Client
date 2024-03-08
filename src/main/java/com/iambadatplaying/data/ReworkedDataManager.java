@@ -163,17 +163,22 @@ public class ReworkedDataManager {
             return;
         }
 
+        if (uri == null || uri.isEmpty()) {
+            log("Uri is empty, or null, parsing error occurred", Starter.LOG_LEVEL.ERROR);
+            return;
+        }
+
+        if (ConnectionManager.isProtectedRessource(uri)) {
+            log("Update from protected Ressource, wont fire update", Starter.LOG_LEVEL.INFO);
+            return;
+        }
+
         if (data == null || data.isJsonNull()) {
             data = new JsonObject();
         }
 
         if (!data.isJsonArray() && !data.isJsonObject()) {
             log("Data is not a JsonArray or JsonObject, wont have any effect", Starter.LOG_LEVEL.WARN);
-            return;
-        }
-
-        if (uri == null || uri.isEmpty()) {
-            log("Uri is empty, or null, parsing error occurred", Starter.LOG_LEVEL.ERROR);
             return;
         }
 

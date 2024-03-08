@@ -39,7 +39,7 @@ public class HonorManager extends StateDataManager {
             case UPDATE_TYPE_CREATE:
             case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
-                Optional<JsonObject> updatedState= backendHonorToFrontendHonor(data.getAsJsonObject());
+                Optional<JsonObject> updatedState = backendHonorToFrontendHonor(data.getAsJsonObject());
                 if (!updatedState.isPresent()) return;
                 JsonObject newState = updatedState.get();
                 if (Util.equalJsonElements(newState, currentState)) return;
@@ -66,7 +66,11 @@ public class HonorManager extends StateDataManager {
                     .getMapManagers(GameNameManager.class)
                     .get(puuid)
                     .ifPresent(
-                            gameName -> fePlayer.addProperty("gameName", gameName.get("gameName").getAsString())
+                            gameName ->
+                                    fePlayer.addProperty(
+                                            "gameName",
+                                            gameName.get("gameName").getAsString()
+                                    )
                     );
             feEligiblePlayers.add(fePlayer);
         }
@@ -83,8 +87,8 @@ public class HonorManager extends StateDataManager {
     protected Optional<JsonObject> fetchCurrentState() {
         HttpsURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-honor-v2/v1/ballot");
         JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(con);
-        if (!data.has("errorCode")) return Optional.of(data);
-        return Optional.empty();
+        if (data.has("errorCode")) return Optional.empty();
+        return backendHonorToFrontendHonor(data);
     }
 
     @Override

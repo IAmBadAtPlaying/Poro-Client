@@ -105,10 +105,10 @@ public class Starter {
         connectionManager.init();
         server.init();
         awaitLCUConnection();
-        awaitFrontendProcess();
         if (!validAuthString(connectionManager.getAuthString())) {
             System.exit(ERROR_INVALID_AUTH);
         }
+        awaitFrontendProcess();
         updateInternalState(STATE.RUNNING);
         client.init();
         reworkedDataManager.init();
@@ -168,12 +168,12 @@ public class Starter {
 
     private boolean feProcessesReady() {
         try {
-            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-player-preferences/v1/player-preferences-ready"));
-            boolean isReady = "true".equals(resp.trim());
-            log("FE-Process ready: " + isReady);
-            return isReady;
+            JsonObject respJson = ConnectionManager.getResponseBodyAsJsonObject(connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/plugin-manager/v1/status"));
+            if (!respJson.has("state")) return false;
+            String pluginState = respJson.get("state").getAsString();
+            return "PluginsInitialized".equals(pluginState);
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
         return false;
     }

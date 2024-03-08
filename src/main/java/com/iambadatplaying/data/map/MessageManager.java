@@ -8,7 +8,6 @@ import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
-import com.iambadatplaying.structs.messaging.Conversation;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;

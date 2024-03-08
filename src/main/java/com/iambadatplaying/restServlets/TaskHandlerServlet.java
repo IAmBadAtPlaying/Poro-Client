@@ -9,6 +9,7 @@ import com.iambadatplaying.tasks.Task;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.function.Function;
 
 public class TaskHandlerServlet extends BaseRESTServlet {
 
@@ -21,6 +22,8 @@ public class TaskHandlerServlet extends BaseRESTServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
         response.setHeader("Content-Type", "application/json");
         JsonObject responseJson = new JsonObject();
+
+
 
         String taskName = getTaskNameFromPathInfo(request.getPathInfo());
         if (handledInvalidTaskName(taskName, response)) return;
@@ -42,6 +45,8 @@ public class TaskHandlerServlet extends BaseRESTServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
         response.setHeader("Content-Type", "application/json");
         JsonObject responseJson = new JsonObject();
+
+        log(request.getPathInfo());
 
         String taskName = getTaskNameFromPathInfo(request.getPathInfo());
         if (handledInvalidTaskName(taskName, response)) return;
@@ -133,8 +138,13 @@ public class TaskHandlerServlet extends BaseRESTServlet {
 
     private String getTaskNameFromPathInfo(String pathInfo) {
         if (pathInfo != null && pathInfo.length() > 1) {
-            String[] pathParts = pathInfo.split("/");
+            String modifiedPathInfo = pathInfo.replaceFirst("/","").trim();
+            String[] pathParts = modifiedPathInfo.split("/");
             String taskName = pathParts[pathParts.length - 1];
+            for (int i = 0; i < pathParts.length; i++) {
+                log(pathParts[i]);
+            }
+
             return taskName;
         }
         return null;

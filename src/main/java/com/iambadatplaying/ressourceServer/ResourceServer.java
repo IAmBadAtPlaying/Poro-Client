@@ -1,8 +1,8 @@
 package com.iambadatplaying.ressourceServer;
 
 import com.iambadatplaying.Starter;
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.http.HttpParser;
+import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
@@ -25,6 +25,14 @@ public class ResourceServer {
 
     public void init() {
         server = new Server(Starter.RESSOURCE_SERVER_PORT);
+        //Set header buffer size
+
+        ServerConnector connector = new ServerConnector(server, new HttpConnectionFactory());
+        connector.setPort(Starter.RESSOURCE_SERVER_PORT);
+
+        int maxHeaderSize = 1_024 * 8;
+        HttpConfiguration httpConfig = connector.getConnectionFactory(HttpConnectionFactory.class).getHttpConfiguration();
+        httpConfig.setRequestHeaderSize(maxHeaderSize);
 
         ProxyHandler proxyHandler = new ProxyHandler(starter);
 

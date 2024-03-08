@@ -78,8 +78,12 @@ public class MessagingServlet extends BaseRESTServlet {
             if (!conversationId.contains("@")) {
                 conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
             }
+            if (!requestJson.has("body")) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                return;
+            }
             String body = requestJson.get("body").getAsString();
-            if (body == null || body.isEmpty()) {
+            if (body.isEmpty()) {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 return;
             }

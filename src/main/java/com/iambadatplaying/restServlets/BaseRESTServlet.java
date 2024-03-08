@@ -23,6 +23,10 @@ public abstract class BaseRESTServlet extends HttpServlet {
         resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
         resp.setHeader("Content-Type", "application/json");
+        if (req.getMethod().equals("OPTIONS")) {
+            resp.setHeader("Cache-Control", "public, immutable, max-age=604800, must-understand");
+            resp.setStatus(HttpServletResponse.SC_OK);
+        }
     }
 
     protected JsonObject getJsonObjectFromRequestBody(HttpServletRequest req) {

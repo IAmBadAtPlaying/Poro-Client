@@ -80,6 +80,17 @@ public class ConnectionManager {
 
     private HashMap<String, Integer> champHash = new HashMap<>();
 
+    public static boolean isProtectedRessource(String requestedRessource) {
+        if (requestedRessource == null) return false;
+
+        return false;
+//        return requestedRessource.contains("/lol-league-session/v1/league-session-token")
+//                || requestedRessource.contains("/entitlements/v1/token")
+//                || requestedRessource.contains("/lol-login/v2/league-session-init-token")
+//                || requestedRessource.contains("/lol-rso-auth/v1/authorization")
+//                || requestedRessource.contains("/lol-lobby/v2/comms/token");
+    }
+
     public ConnectionManager(Starter starter) {
         this.preUrl = null;
         this.authString = null;
@@ -278,6 +289,8 @@ public class ConnectionManager {
             con.setRequestMethod(options.name);
             con.setRequestProperty("Content-Type", "application/json");
             con.setRequestProperty("Authorization", authString);
+            con.setConnectTimeout(1000);
+            con.setReadTimeout(5000);
             switch (options) {
                 case POST:
                 case PUT:

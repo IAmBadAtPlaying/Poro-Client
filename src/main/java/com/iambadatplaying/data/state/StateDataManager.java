@@ -40,6 +40,7 @@ public abstract class StateDataManager extends BasicDataManager {
             return;
         }
         currentState = new JsonObject();
+        sendCurrentState();
     }
 
     public abstract String getEventName();

@@ -121,7 +121,7 @@ public class LobbyData extends StateDataManager {
         frontendMembers.set(indexToFEIndex(0, maxLobbySize), frontendLocalMember);
         j++;
         for (int i = 0; i < members.size(); i++) {
-            int actualIndex = indexToFEIndex(j,maxLobbySize);
+            int actualIndex = indexToFEIndex(j, maxLobbySize);
             JsonObject currentMember = backendToFrontendLobbyMember(members.get(i).getAsJsonObject());
             if (currentMember.get("puuid").getAsString().equals(frontendLocalMember.get("puuid").getAsString())) {
                 continue;
@@ -143,7 +143,7 @@ public class LobbyData extends StateDataManager {
         int actualIndex = 0;
         int diff = indexDiff(preParsedIndex);
 
-        actualIndex = maxLobbySize/2 + diff;
+        actualIndex = maxLobbySize / 2 + diff;
         return actualIndex;
     }
 
@@ -173,10 +173,10 @@ public class LobbyData extends StateDataManager {
                 .getMapManagers(RegaliaManager.class)
                 .get(member.get("summonerId").getAsBigInteger())
                 .ifPresent(
-                    regalia -> frontendMember.add("regalia", regalia)
+                        regalia -> frontendMember.add("regalia", regalia)
                 );
 
-       return frontendMember;
+        return frontendMember;
     }
 
 

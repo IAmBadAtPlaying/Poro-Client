@@ -18,7 +18,7 @@ public class SocketClient {
     //This is caused by the loot, inventory and the friend list.
     //On an alternate account these limits are not reached, on the main account with a lot of skins and friends they are.
     //TODO: This is a workaround, find a better solution as this is not guaranteed to work for everyone
-    private static final int MAXIMUM_TEXT_SIZE = 4000000;
+    private static final int MAXIMUM_TEXT_SIZE = 1_024 * 1024 * 10;
 
     public SocketClient(Starter starter) {
         this.starter = starter;
@@ -36,7 +36,6 @@ public class SocketClient {
         this.client = new WebSocketClient(http);
         client.setStopAtShutdown(true);
         client.getPolicy().setMaxTextMessageSize(MAXIMUM_TEXT_SIZE);
-        client.setMaxTextMessageBufferSize(MAXIMUM_TEXT_SIZE);
         socket = new Socket(starter);
 
         ssl.setSslContext(starter.getConnectionManager().getSslContextGlobal());
