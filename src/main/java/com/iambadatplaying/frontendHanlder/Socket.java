@@ -2,6 +2,7 @@ package com.iambadatplaying.frontendHanlder;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.iambadatplaying.ConnectionStatemachine;
 import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
@@ -25,10 +26,11 @@ public class Socket {
 
     private volatile boolean shutdownPending = false;
 
-    private ConcurrentLinkedQueue<String> messageQueue = new ConcurrentLinkedQueue<>();
+    private ConcurrentLinkedQueue<String> messageQueue;
 
     public Socket(Starter starter) {
         this.starter = starter;
+        this.messageQueue = new ConcurrentLinkedQueue<>();
         log("Socket created", Starter.LOG_LEVEL.DEBUG);
         messageSenderThread = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
@@ -52,9 +54,6 @@ public class Socket {
     }
 
     public void shutdown() {
-        //FIXME: The Issue lies in this line:
-        //FIXME: Upon calling SocketServer.shutdown the server will call externalShutdown,
-        //FIXME: Triggering on close on the session, which will try to remo
         if (!shutdownPending ) {
             starter.getServer().removeSocket(this);
             externalShutdown();
@@ -107,8 +106,11 @@ public class Socket {
         log("Client connected: " + session.getRemoteAddress().getAddress());
         messageSenderThread.start();
         starter.getServer().addSocket(this);
-        starter.getFrontendMessageHandler().sendCurrentState(this);
         queueNewKeepAlive(session);
+        starter.getFrontendMessageHandler().sendCurrentState(this);
+        if (starter.getConnectionStatemachine().getCurrentState() == ConnectionStatemachine.State.CONNECTED) {
+            starter.getFrontendMessageHandler().sendInitialData(this);
+        }
     }
 
 
@@ -129,12 +131,16 @@ public class Socket {
 
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
-        starter.frontendMessageReceived(message, this);
+        if (starter.getConnectionStatemachine().getCurrentState() != ConnectionStatemachine.State.CONNECTED) {
+            return;
+        }
+        new Thread(
+                () -> starter.getFrontendMessageHandler().handleMessage(message, this)
+        ).start();
     }
 
     @OnWebSocketClose
     public void onClose(Session session, int statusCode, String reason) {
-        log("Client closed called " + session.getRemoteAddress().getAddress());
         shutdown();
     }
 

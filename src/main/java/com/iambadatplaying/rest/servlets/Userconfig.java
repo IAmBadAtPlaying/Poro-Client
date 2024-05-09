@@ -1,4 +1,4 @@
-package com.iambadatplaying.restServlets;
+package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -26,16 +26,24 @@ public class Userconfig extends BaseRESTServlet {
             return;
         }
 
-        JsonObject configPart = config;
+        JsonElement configPart = config;
         for (String part : pathParts) {
-            if (configPart.has(part)) {
-                JsonElement o = configPart.get(part);
-                if (o.isJsonObject()) {
-                    configPart = o.getAsJsonObject();
-                } else {
+            if (configPart.isJsonObject() && configPart.getAsJsonObject().has(part)) {
+                configPart = configPart.getAsJsonObject().get(part);
+            } else if (configPart.isJsonArray()) {
+                try {
+                    int index = Integer.parseInt(part);
+                    if (index < 0 || index >= configPart.getAsJsonArray().size()) {
+                        resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                        return;
+                    }
+                    configPart = configPart.getAsJsonArray().get(index);
+                } catch (NumberFormatException e) {
                     resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                     return;
                 }
+            } else if (configPart.isJsonPrimitive()) {
+                continue;
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 return;

@@ -117,14 +117,6 @@ public class DataManager {
 
     private final Starter starter;
 
-    private Map<String, JsonObject> synchronizedFriendListMap;
-    private Map<BigInteger, JsonObject> regaliaMap;
-    private Map<BigInteger, String> nameMap;
-    private Map<Integer, JsonObject> cellIdMemberMap;
-    private Map<Integer, JsonObject> cellIdActionMap;
-
-    ExecutorService disenchantExecutor;
-
     private static final Integer MAX_LOBBY_SIZE = 5;
     private static final Integer MAX_LOBBY_HALFS_INDEX = 2;
 
@@ -153,17 +145,11 @@ public class DataManager {
     public static String REGALIA_REGEX = "/lol-regalia/v2/summoners/(.*?)/regalia/async";
 
     public void init() {
-        this.regaliaMap = Collections.synchronizedMap(new HashMap<BigInteger, JsonObject>());
-        this.cellIdMemberMap = Collections.synchronizedMap(new HashMap<>());
-        this.cellIdActionMap = Collections.synchronizedMap(new HashMap<>());
         this.availableQueueMap = new HashMap<>();
         this.chromaSkinId = new JsonObject();
         this.championJson = new JsonObject();
         this.summonerSpellJson = new JsonObject();
         this.conversationMap = new HashMap<>();
-        this.synchronizedFriendListMap = Collections.synchronizedMap(new HashMap<>());
-
-        this.disenchantExecutor = Executors.newFixedThreadPool(4);
 
         initQueueMap();
         updateClientSystemStates();
@@ -350,33 +336,13 @@ public class DataManager {
     }
 
     public void shutdown() {
-        shutdownInProgress = true;
-        try {
-            if (!disenchantExecutor.isTerminated()) {
-                disenchantExecutor.shutdownNow();
-                if (disenchantExecutor.awaitTermination(3, TimeUnit.SECONDS)) {
-                    log("Executor shutdown successful");
-                } else log("Executor shutdown failed");
-            }
-        } catch (Exception e) {
-            log("Executor termination failed: " + e.getMessage(), Starter.LOG_LEVEL.ERROR);
-        }
-        disenchantExecutor = null;
-        if (synchronizedFriendListMap != null) synchronizedFriendListMap.clear();
-        synchronizedFriendListMap = null;
-        currentLobbyState = null;
-        if (regaliaMap != null) regaliaMap.clear();
-        regaliaMap = null;
-        if (cellIdMemberMap != null) cellIdMemberMap.clear();
-        cellIdMemberMap = null;
-        if (cellIdActionMap != null) cellIdActionMap.clear();
-        cellIdActionMap = null;
         if (availableQueueMap != null) availableQueueMap.clear();
         availableQueueMap = null;
 
         this.championJson = null;
         this.chromaSkinId = null;
         this.summonerSpellJson = null;
+        this.platformConfigQueues = null;
     }
 
     public void updateQueueMap() {
@@ -629,36 +595,6 @@ public class DataManager {
 //        return updatedFEGameflowObject;
 //    }
 
-    public void resetChampSelectSession() {
-        //Maybe change this to null ?!
-        currentChampSelectState = new JsonObject();
-        cellIdMemberMap.clear();
-        cellIdActionMap.clear();
-    }
-
-    public JsonObject getFEFriendObject() {
-        JsonObject feFriendObject = new JsonObject();
-        if (synchronizedFriendListMap == null) synchronizedFriendListMap = Collections.synchronizedMap(new HashMap<>());
-        if (synchronizedFriendListMap.isEmpty())
-            {
-                try {
-                    JsonArray friendArray = starter.getConnectionManager().getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
-                    for (int i = 0; i < friendArray.size(); i++) {
-                        JsonObject friendObject = beToFeFriendsInfo(friendArray.get(i).getAsJsonObject());
-                        if (friendObject == null || friendObject.isEmpty()) continue;
-                        feFriendObject.add(friendObject.get(SUMMONER_PUUID).getAsString(), friendObject);
-                        synchronizedFriendListMap.put(friendObject.get(SUMMONER_PUUID).getAsString(), friendObject);
-                    }
-                } catch (Exception e) {
-                }
-            } else {
-                for (JsonObject json : synchronizedFriendListMap.values()) {
-                    feFriendObject.add(json.get(SUMMONER_PUUID).getAsString(), json);
-                }
-
-            }
-            return feFriendObject;
-        }
 
         private JsonObject beToFeFriendsInfo(JsonObject backendFriendObject) {
             JsonObject data = new JsonObject();

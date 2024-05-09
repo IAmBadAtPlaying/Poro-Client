@@ -3,7 +3,6 @@ package com.iambadatplaying;
 import com.google.gson.*;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
-import com.iambadatplaying.frontendHanlder.Socket;
 import com.iambadatplaying.frontendHanlder.SocketServer;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
@@ -12,12 +11,12 @@ import com.iambadatplaying.ressourceServer.ResourceServer;
 import com.iambadatplaying.tasks.TaskManager;
 
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
 
 public class Starter {
+
+    public static Starter instance = null;
 
     public static final boolean isDev = true;
 
@@ -35,10 +34,10 @@ public class Starter {
 
     private static final String appDirName = "poroclient";
 
+    public static final int DEBUG_FRONTEND_PORT = 3000;
+    public static final int DEBUG_FRONTEND_PORT_V2 = 3001;
     public static final int RESSOURCE_SERVER_PORT = 35199;
-    public static final int FRONTEND_SERVER_PORT = 8887;
-
-    private volatile STATE state = STATE.UNINITIALIZED;
+    public static final int FRONTEND_SOCKET_PORT = 8887;
 
     private Path taskDirPath = null;
 
@@ -55,16 +54,25 @@ public class Starter {
 
     private ConfigLoader configLoader;
 
+    private ConnectionStatemachine connectionStatemachine;
+
     private DataManager dataManager;
     private ReworkedDataManager reworkedDataManager;
 
+    public static Starter getInstance() {
+        if (instance == null) {
+            instance = new Starter();
+        }
+        return instance;
+    }
 
     public static void main(String[] args) {
-        Starter starter = new Starter();
+        Starter starter = Starter.getInstance();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            starter.updateInternalState(STATE.STOPPING);
+
             starter.getConfigLoader().saveConfig();
         }));
+        starter.connectionStatemachine = new ConnectionStatemachine(starter);
         starter.run();
     }
 
@@ -76,48 +84,23 @@ public class Starter {
         ERROR;
     }
 
-    public enum STATE {
-        UNINITIALIZED,
-        STARTING,
-        RESTARTING,
-        AWAITING_LCU,
-        AWAITING_PROCESS_READY,
-        RUNNING,
-        STOPPING,
-        STOPPED;
-
-        public STATE getStateFromString(String s) {
-            for (STATE state : STATE.values()) {
-                if (state.name().equalsIgnoreCase(s)) {
-                    return state;
-                }
-            }
-            return null;
-        }
-    }
-
     public void run() {
         if (isShutdownPending()) return;
-        updateInternalState(STATE.STARTING);
         initReferences();
         configLoader.loadConfig();
         resourceServer.init();
         connectionManager.init();
         server.init();
-        awaitLCUConnection();
-        if (!validAuthString(connectionManager.getAuthString())) {
-            System.exit(ERROR_INVALID_AUTH);
-        }
-        awaitFrontendProcess();
-        updateInternalState(STATE.RUNNING);
+        connectionStatemachine.transition(ConnectionStatemachine.State.AWAITING_LEAGUE_PROCESS);
+    }
+
+    public void leagueProcessReady() {
         client.init();
         reworkedDataManager.init();
         dataManager.init();
         taskManager.init();
         server.getSockets().forEach(
-                socket -> {
-                    frontendMessageHandler.sendInitialData(socket);
-                }
+                socket -> frontendMessageHandler.sendInitialData(socket)
         );
         subscribeToEndpointsOnConnection();
     }
@@ -134,49 +117,6 @@ public class Starter {
         taskManager = new TaskManager(this);
     }
 
-    private boolean validAuthString(String authString) {
-        return authString != null;
-    }
-
-    private void awaitLCUConnection() {
-        updateInternalState(STATE.AWAITING_LCU);
-        try {
-            Thread.sleep(5000);
-        } catch (Exception e) {
-
-        }
-        while (!connectionManager.isLeagueAuthDataAvailable() && !isShutdownPending()) {
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                break;
-            }
-        }
-    }
-
-    private void awaitFrontendProcess() {
-        updateInternalState(STATE.AWAITING_PROCESS_READY);
-        while (!feProcessesReady() && !isShutdownPending()) {
-            try {
-                log("Waiting");
-                Thread.sleep(500); //League Backend Socket needs time to be able to serve the resources TODO: This is fucking horrible
-            } catch (InterruptedException e) {
-                break;
-            }
-        }
-    }
-
-    private boolean feProcessesReady() {
-        try {
-            JsonObject respJson = ConnectionManager.getResponseBodyAsJsonObject(connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/plugin-manager/v1/status"));
-            if (!respJson.has("state")) return false;
-            String pluginState = respJson.get("state").getAsString();
-            return "PluginsInitialized".equals(pluginState);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
 
     private void subscribeToEndpointsOnConnection() {
         new Thread(() -> {
@@ -193,16 +133,9 @@ public class Starter {
         }).start();
     }
 
-    public void frontendMessageReceived(String message, Socket socket) {
-        if (message != null && !message.isEmpty()) {
-            if (this.state != STATE.RUNNING) return;
-            new Thread(() -> getFrontendMessageHandler().handleMessage(message, socket)).start();
-        }
-    }
-
     public void backendMessageReceived(String message) {
         if (message != null && !message.isEmpty()) {
-            if (getState() != STATE.RUNNING) return;
+            if (connectionStatemachine.getCurrentState() != ConnectionStatemachine.State.CONNECTED) return;
             JsonElement messageElement = JsonParser.parseString(message);
             JsonArray messageArray = messageElement.getAsJsonArray();
             if (messageArray.isEmpty()) return;
@@ -212,29 +145,28 @@ public class Starter {
         }
     }
 
-    public void prepareShutdown() {
-        updateInternalState(STATE.STOPPING);
-    }
-
     public void shutdown() {
         configLoader.saveConfig();
         resetAllInternal();
-        updateInternalState(STATE.STOPPED);
         log("Shutting down");
         System.exit(0);
     }
 
-    public void handleGracefulReset() {
-        if (isShutdownPending()) return;
-        if (isInitialized()) {
-            updateInternalState(STATE.RESTARTING);
-            resetAllInternal();
-            run();
-        }
+    public void handleLCUDisconnect() {
+        connectionManager.setLeagueAuthDataAvailable(false);
+        resourceServer.resetCachedData();
+        resetLCUDependentComponents();
+    }
+
+    private void resetLCUDependentComponents() {
+        client.shutdown();
+        reworkedDataManager.shutdown();
+        dataManager.shutdown();
+        taskManager.shutdown();
     }
 
     public void resetAllInternal() {
-        if (state == STATE.RESTARTING || isShutdownPending()) {
+        if (isShutdownPending()) {
             resourceServer.shutdown();
             taskManager.shutdown();
             server.shutdown();
@@ -259,6 +191,7 @@ public class Starter {
                 case DEBUG:
                 case LCU_MESSAGING:
                     break;
+
                 default:
                     return;
             }
@@ -281,18 +214,6 @@ public class Starter {
         System.out.println(prefix + ": " + s);
     }
 
-    private void updateInternalState(STATE newState) {
-        if (newState == null || newState == state) return;
-        this.state = newState;
-        JsonObject stateUpdate = new JsonObject();
-        stateUpdate.addProperty("event", "InternalStateUpdate");
-        JsonObject newStateObject = new JsonObject();
-        newStateObject.addProperty("state", newState.name());
-        stateUpdate.add("data", newStateObject);
-        Optional<SocketServer> optServer = Optional.ofNullable(getServer());
-        optServer.ifPresent(socketServer -> socketServer.sendToAllSessions(stateUpdate.toString()));
-    }
-
     public void log(String s) {
         log(s, LOG_LEVEL.DEBUG);
     }
@@ -303,27 +224,7 @@ public class Starter {
 
     public Path getTaskPath() {
         if (taskDirPath == null) {
-            try {
-                URL location = this.getClass().getProtectionDomain().getCodeSource().getLocation();
-                Path currentDirPath = Paths.get(location.toURI()).getParent();
-                log("Location: " + currentDirPath, LOG_LEVEL.INFO);
-                Path taskDir = Paths.get(currentDirPath.toString() + "/tasks");
-                if (!Files.exists(taskDir)) {
-                    if (taskDir.toFile().mkdir()) {
-                        log("Created tasks directory " + taskDir);
-                        taskDirPath = taskDir;
-                    } else {
-                        log("Failed to create tasks directory " + taskDir, LOG_LEVEL.ERROR);
-                        taskDirPath = null;
-                    }
-                } else {
-                    taskDirPath = taskDir;
-                }
-                return taskDir;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return null;
+            taskDirPath = getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME).resolve(ConfigLoader.TASKS_FOLDER_NAME);
         }
         return taskDirPath;
     }
@@ -373,17 +274,21 @@ public class Starter {
         return configLoader;
     }
 
+    public ConnectionStatemachine getConnectionStatemachine() {
+        return connectionStatemachine;
+    }
+
+    public ResourceServer getResourceServer() {
+        return resourceServer;
+    }
+
     public boolean isShutdownPending() {
-        return state == STATE.STOPPING || state == STATE.STOPPED;
+        if (connectionStatemachine == null) return false;
+        return connectionStatemachine.getCurrentState() == ConnectionStatemachine.State.STOPPING;
     }
 
     public boolean isInitialized() {
-        return state == STATE.RUNNING;
+        if (connectionStatemachine == null) return false;
+        return connectionStatemachine.getCurrentState() == ConnectionStatemachine.State.CONNECTED;
     }
-
-
-    public STATE getState() {
-        return state;
-    }
-
 }

@@ -246,12 +246,7 @@ public class ReworkedChampSelectData extends StateDataManager {
         phaseObject.add(JSON_KEY_PICK_ACTION, pickAction);
 
         ChampSelectState state = ChampSelectState.fromParameters(phaseObject);
-        if (state == null) {
-            log(feMember);
-            log(timer);
-            log("No fitting state found for cellId: " + cellId);
-        } else {
-
+        if (state != null) {
             feMember.addProperty(JSON_KEY_STATE, state.name());
         }
         cellIdMemberMap.put(cellId, feMember);
@@ -384,7 +379,7 @@ public class ReworkedChampSelectData extends StateDataManager {
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
         HttpsURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-champ-select/v1/session");
-        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(con);
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(con);
         if (!data.has("errorCode")) return Optional.of(data);
         log("Error while fetching current state: " + data.get("message").getAsString(), Starter.LOG_LEVEL.ERROR);
         return Optional.empty();

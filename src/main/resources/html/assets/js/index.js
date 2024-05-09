@@ -30,7 +30,6 @@ function connect(host) {
     socket = new WebSocket(host);
     socket.onopen = function (msg) {
         console.log("Connected to " + host);
-        send([4]);
         createKeepAlive();
     }
     socket.onmessage = function (msg) {
@@ -135,11 +134,11 @@ function manualRiotRequest() {
     makeRiotRequest(methodFilter.value, endpoint.value, body.value);
 }
 
-
 function send(jsonArray) {
     let request = jsonArray;
-    console.log("Sending: " + JSON.stringify(request));
-    socket.send(JSON.stringify(request));
+    let jsonRequest = JSON.stringify(request);
+    console.log("Sending: " + jsonRequest);
+    socket.send(jsonRequest);
 }
 
 function backendWebsocketConfig() {

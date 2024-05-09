@@ -11,9 +11,7 @@ import com.iambadatplaying.data.state.*;
 import com.iambadatplaying.frontendHanlder.Socket;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
-import javax.net.ssl.HttpsURLConnection;
 import java.util.HashMap;
-import java.util.Optional;
 
 public class ReworkedDataManager {
     private HashMap<String, StateDataManager> stateDataManagers;
@@ -34,6 +32,8 @@ public class ReworkedDataManager {
     public static final String UPDATE_TYPE_STATS_EOG = "StatsEndOfGameUpdate";
     public static final String UPDATE_TYPE_INVITATIONS = "InvitationsUpdate";
     public static final String UPDATE_TYPE_MATCHMAKING_SEARCH_STATE = "MatchmakingSearchStateUpdate";
+    public static final String UPDATE_TYPE_INTERNAL_STATE = "InternalStateUpdate";
+    public static final String UPDATE_TYPE_CURRENT_SUMMONER = "CurrentSummonerUpdate";
 
     private static final String DATA_STRING_EVENT = "event";
 
@@ -71,8 +71,9 @@ public class ReworkedDataManager {
         addManager(new LootData(starter));
         addManager(new PatcherData(starter));
         addManager(new ReworkedChampSelectData(starter));
-        addManager(new HonorManager(starter));
+        addManager(new EOGHonorManager(starter));
         addManager(new MatchmakingSearchManager(starter));
+        addManager(new CurrentSummonerManager(starter));
     }
 
     private void addManager(ArrayDataManager manager) {

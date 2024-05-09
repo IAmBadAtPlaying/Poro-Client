@@ -1,10 +1,8 @@
-package com.iambadatplaying.restServlets;
+package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonObject;
-import com.iambadatplaying.Util;
 import com.iambadatplaying.data.map.MessageManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.structs.messaging.Conversation;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;

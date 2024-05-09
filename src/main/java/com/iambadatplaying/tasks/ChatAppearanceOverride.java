@@ -127,6 +127,7 @@ public class ChatAppearanceOverride extends Task {
             sendChatAppearanceOverride(body);
             return true;
         } catch (Exception e) {
+            e.printStackTrace();
             starter.log("Failed to set task arguments");
         }
         return false;

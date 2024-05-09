@@ -1,5 +1,6 @@
 package com.iambadatplaying.lcuHandler;
 
+import com.iambadatplaying.ConnectionStatemachine;
 import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
@@ -31,7 +32,7 @@ public class Socket {
         log("Closed: " + reason, Starter.LOG_LEVEL.DEBUG);
         timerTask.cancel();
         this.timerTask = null;
-        starter.handleGracefulReset();
+        starter.getConnectionStatemachine().transition(ConnectionStatemachine.State.DISCONNECTED);
     }
 
     @OnWebSocketError

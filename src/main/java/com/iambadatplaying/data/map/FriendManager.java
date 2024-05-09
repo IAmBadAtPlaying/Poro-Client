@@ -52,10 +52,17 @@ public class FriendManager extends MapDataManager<String> {
         if (optIcon.isPresent()) {
             Integer icon = optIcon.get();
             if (icon < 1) icon = 1;
-            frontendFriend.addProperty("icon", icon);
+            frontendFriend.addProperty("iconId", icon);
         }
 
-        Util.copyJsonAttributes(friend, frontendFriend, "availability", "statusMessage", "name", "id",  "groupId", "lol");
+        Util.copyJsonAttributes(friend, frontendFriend, "availability", "statusMessage", "id",  "groupId", "lol", "summonerId");
+        Optional<JsonObject> optName = starter.getReworkedDataManager().getMapManagers(GameNameManager.class).load(puuid);
+        if (optName.isPresent()) {
+            frontendFriend.add("name", optName.get().get("gameName"));
+        } else {
+            frontendFriend.addProperty("name", puuid);
+        }
+
 
         return Optional.of(frontendFriend);
     }

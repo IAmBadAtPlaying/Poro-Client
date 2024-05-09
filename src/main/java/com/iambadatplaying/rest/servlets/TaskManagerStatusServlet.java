@@ -1,4 +1,4 @@
-package com.iambadatplaying.restServlets;
+package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonObject;
 import com.iambadatplaying.tasks.TaskManager;

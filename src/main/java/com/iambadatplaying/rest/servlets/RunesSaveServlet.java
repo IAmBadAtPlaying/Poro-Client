@@ -1,8 +1,9 @@
-package com.iambadatplaying.restServlets;
+package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.servlet.ServletException;
@@ -59,11 +60,8 @@ public class RunesSaveServlet extends BaseRESTServlet{
         JsonObject resp = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/currentpage"));
         if (resp == null) return Optional.empty();
         Optional<BigInteger> result = Optional.empty();
-        try {
-            result = Optional.of(resp.get("id").getAsBigInteger());
-        } catch (Exception e) {
-            log("Current Rune page id not found, usually caused by using the rune presets", Starter.LOG_LEVEL.INFO);
-        }
+        if (!Util.jsonKeysPresent(resp, "id", "")) return Optional.empty();
+        result = Optional.of(resp.get("id").getAsBigInteger());
         return result;
     }
 

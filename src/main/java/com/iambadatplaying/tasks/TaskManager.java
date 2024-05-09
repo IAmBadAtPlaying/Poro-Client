@@ -33,14 +33,11 @@ public class TaskManager {
         try {
             JsonArray updateArray = JsonParser.parseString(message).getAsJsonArray();
             for (Task task : runningtaskList.values()) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            task.notify(updateArray);
-                        } catch (Exception e) {
-                            log(e.getMessage(), Starter.LOG_LEVEL.ERROR);
-                        }
+                new Thread(() -> {
+                    try {
+                        task.notify(updateArray);
+                    } catch (Exception e) {
+                        log(e.getMessage(), Starter.LOG_LEVEL.ERROR);
                     }
                 }).start();
             }
@@ -164,11 +161,9 @@ public class TaskManager {
     }
 
     public Task getTaskFromString(String name) {
-        if (name != null && !name.isEmpty()) {
-            name = name.toLowerCase();
-            return allTasksMap.get(name);
-        }
-        return null;
+        if (name == null || name.isEmpty()) return null;
+
+        return allTasksMap.get(name.toLowerCase());
     }
 
     public Collection<Task> getRunningTasks() {

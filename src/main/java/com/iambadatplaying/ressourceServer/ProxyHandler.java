@@ -1,6 +1,7 @@
 package com.iambadatplaying.ressourceServer;
 
 import com.google.gson.JsonObject;
+import com.iambadatplaying.ConnectionStatemachine;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import org.eclipse.jetty.server.Request;
@@ -29,11 +30,19 @@ public class ProxyHandler extends AbstractHandler {
         this.headerCache = new HashMap<>();
     }
 
+    public void resetCache() {
+        resourceCache.clear();
+        headerCache.clear();
+    }
+
     @Override
     public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
-        httpServletResponse.setHeader("Access-Control-Allow-Origin", "*");
-        httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
-        httpServletResponse.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        if (starter.getResourceServer().filterRequest(httpServletRequest, httpServletResponse)) {
+            request.setHandled(true);
+            httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         if (s == null) return;
 
         String requestedCURResource = s.trim();
@@ -48,7 +57,7 @@ public class ProxyHandler extends AbstractHandler {
         if (cachedResource != null) {
             Map<String, List<String>> cachedHeaders = headerCache.get(resource);
             serveResource(httpServletResponse, cachedResource,
-                    cachedHeaders);
+                    cachedHeaders, true);
             request.setHandled(true);
             return;
         }
@@ -58,6 +67,20 @@ public class ProxyHandler extends AbstractHandler {
     public void handleNormal(String resource, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, boolean putToMap) throws IOException {
         InputStream is = null;
 
+
+        if (Starter.getInstance().getConnectionStatemachine().getCurrentState() != ConnectionStatemachine.State.CONNECTED) {
+            log("Tried to access ressource while connection is not established", Starter.LOG_LEVEL.ERROR);
+            JsonObject response = new JsonObject();
+            response.addProperty("error", "League of Legends not running");
+
+            httpServletResponse.setContentType("application/json");
+            httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            httpServletResponse.getWriter().write(
+                    response.toString()
+            );
+            request.setHandled(true);
+            return;
+        }
 
         //Stop easy access to bearer tokens
         if (isAccessingProtectedResource(resource)) {
@@ -109,7 +132,6 @@ public class ProxyHandler extends AbstractHandler {
                 resource += "?" + queryParameters.get();
             }
 
-            log("HTTP " + request.getMethod() + " " + resource, Starter.LOG_LEVEL.DEBUG);
             con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.getByString(request.getMethod()), resource, postBody);
             if (con == null) {
                 log("Cannot establish connection to " + resource + ", League might not be running", Starter.LOG_LEVEL.ERROR);
@@ -133,7 +155,7 @@ public class ProxyHandler extends AbstractHandler {
                 resourceCache.put(resource, resourceBytes);
             }
 
-            serveResource(httpServletResponse, resourceBytes, headers);
+            serveResource(httpServletResponse, resourceBytes, headers, false);
             request.setHandled(true);
         } catch (Exception e) {
             log("Error while handling request for " + resource + ": " + e.getMessage(), Starter.LOG_LEVEL.ERROR);
@@ -180,7 +202,7 @@ public class ProxyHandler extends AbstractHandler {
         return buffer.toByteArray();
     }
 
-    private void serveResource(HttpServletResponse response, byte[] resourceBytes, Map<String, List<String>> headers) {
+    private void serveResource(HttpServletResponse response, byte[] resourceBytes, Map<String, List<String>> headers, boolean cached) {
         try {
             if (headers != null) {
                 for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
@@ -201,7 +223,10 @@ public class ProxyHandler extends AbstractHandler {
                 }
             }
 
-            response.setHeader("Cache-Control", "public, immutable, max-age=604800, must-understand");
+            if (cached) {
+                response.setHeader("Cache-Control", "public, immutable, max-age=604800, must-understand");
+            }
+
             response.getOutputStream().write(resourceBytes);
             response.getOutputStream().flush();
         } catch (Exception e) {

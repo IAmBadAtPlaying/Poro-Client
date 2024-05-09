@@ -13,13 +13,13 @@ import com.iambadatplaying.lcuHandler.DataManager;
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
 
-public class HonorManager extends StateDataManager {
+public class EOGHonorManager extends StateDataManager {
 
     private static final String UPDATE_TYPE_HONOR_EOG = ReworkedDataManager.UPDATE_TYPE_HONOR_EOG;
 
     private static final String HONOR_BALLOT_URI = "/lol-honor-v2/v1/ballot";
 
-    public HonorManager(Starter starter) {
+    public EOGHonorManager(Starter starter) {
         super(starter);
     }
 

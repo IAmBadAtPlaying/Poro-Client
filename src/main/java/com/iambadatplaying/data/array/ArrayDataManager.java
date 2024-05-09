@@ -34,6 +34,14 @@ public abstract class ArrayDataManager extends BasicDataManager {
 
     public abstract void sendCurrentState();
 
+    @Override
+    public void shutdown() {
+        if (!initialized) return;
+        initialized = false;
+        array = null;
+        doShutdown();
+    }
+
     public void resetState() {
         if (!initialized) {
             log("Not initialized, wont have any effect", Starter.LOG_LEVEL.WARN);

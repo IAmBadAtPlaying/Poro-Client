@@ -43,14 +43,20 @@ public class SocketServer {
 
         connector.setReuseAddress(true);
         connector.setHost("127.0.0.1");
-        connector.setPort(Starter.FRONTEND_SERVER_PORT);
+        connector.setPort(Starter.FRONTEND_SOCKET_PORT);
 
         server.addConnector(connector);
 
         WebSocketHandler wsHandler = new WebSocketHandler() {
             @Override
             public void configure(WebSocketServletFactory factory) {
-                factory.setCreator((req, resp) -> new Socket(starter));
+                factory.setCreator((req, resp) -> {
+                    if (Starter.getInstance().getResourceServer().filterWebSocketRequest(req, resp)) {
+                        return null;
+                    }
+
+                   return new Socket(starter);
+                });
                 log("[Frontend] Configured socket server");
             }
         };
@@ -86,6 +92,6 @@ public class SocketServer {
     }
 
     private void log(String s) {
-        starter.log(this.getClass().getName() +": " +s);
+        log(s, Starter.LOG_LEVEL.DEBUG);
     }
 }

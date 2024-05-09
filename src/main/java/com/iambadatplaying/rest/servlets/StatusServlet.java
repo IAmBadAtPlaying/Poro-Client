@@ -1,4 +1,4 @@
-package com.iambadatplaying.restServlets;
+package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonObject;
 
@@ -15,7 +15,7 @@ public class StatusServlet extends BaseRESTServlet {
         try (PrintWriter out = response.getWriter()) {
             JsonObject responseJson = new JsonObject();
             responseJson.addProperty("shutting_down", starter.isShutdownPending());
-            responseJson.addProperty("state", starter.getState().name());
+            responseJson.addProperty("state", starter.getConnectionStatemachine().getCurrentState().name());
             responseJson.addProperty("authAvailable", starter.getConnectionManager().isLeagueAuthDataAvailable());
             out.println(responseJson.toString());
             out.flush();
@@ -23,8 +23,4 @@ public class StatusServlet extends BaseRESTServlet {
             e.printStackTrace();
         }
     }
-
-
-
-
 }

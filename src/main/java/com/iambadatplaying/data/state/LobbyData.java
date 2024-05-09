@@ -73,7 +73,7 @@ public class LobbyData extends StateDataManager {
     private Optional<JsonObject> backendToFrontendLobby(JsonObject data) {
         JsonObject frontendData = new JsonObject();
 
-        Util.copyJsonAttributes(data, frontendData, "partyId", "invitations");
+        Util.copyJsonAttributes(data, frontendData, "partyId", "invitations", "gameConfig");
 
         Optional<JsonObject> optGameConfig = Util.getOptJSONObject(data, "gameConfig");
         if (!optGameConfig.isPresent()) {
@@ -82,9 +82,6 @@ public class LobbyData extends StateDataManager {
         }
 
         JsonObject gameConfig = optGameConfig.get();
-        JsonObject frontendGameConfig = new JsonObject();
-
-        Util.copyJsonAttributes(gameConfig, frontendGameConfig, "queueId", "showPositionSelector", "isCustom", "maxLobbySize", "allowablePremadeSizes", "mapId", "gameMode");
 
         Optional<JsonObject> optLocalMember = Util.getOptJSONObject(data, "localMember");
 
@@ -102,7 +99,7 @@ public class LobbyData extends StateDataManager {
             return Optional.empty();
         }
 
-        JsonArray allowablePremadeSizes = frontendGameConfig.get("allowablePremadeSizes").getAsJsonArray();
+        JsonArray allowablePremadeSizes = gameConfig.get("allowablePremadeSizes").getAsJsonArray();
         Integer maxLobbySize = 1;
         for (int i = 0; i < allowablePremadeSizes.size(); i++) {
             int currentSize = allowablePremadeSizes.get(i).getAsInt();
@@ -133,7 +130,6 @@ public class LobbyData extends StateDataManager {
             frontendMembers.set(indexToFEIndex(j, maxLobbySize), new JsonObject());
         }
 
-        frontendData.add("gameConfig", frontendGameConfig);
         frontendData.add("members", frontendMembers);
         frontendData.add("localMember", frontendLocalMember);
         return Optional.of(frontendData);

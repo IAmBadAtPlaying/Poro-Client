@@ -63,22 +63,16 @@ public class ConnectionManager {
         }
     }
 
-    private String[] lockfileContents = null;
     private String authString = null;
     private String preUrl = null;
     private String port = null;
     private String riotAuthString = null;
     private String riotPort = null;
-    private WebSocketClient client = null;
     private Starter starter = null;
 
     private boolean leagueAuthDataAvailable = false;
 
-    private Timer timer = null;
-
     private SSLContext sslContextGlobal = null;
-
-    private HashMap<String, Integer> champHash = new HashMap<>();
 
     public static boolean isProtectedRessource(String requestedRessource) {
         if (requestedRessource == null) return false;
@@ -101,41 +95,6 @@ public class ConnectionManager {
     public void init() {
         if (!allowHttpPatchMethod()) System.exit(Starter.ERROR_HTTP_PATCH_SETUP);
         if (!allowUnsecureConnections()) System.exit(Starter.ERROR_CERTIFICATE_SETUP_FAILED);
-        if (!getAuthFromProcess()) {
-            log("Either missing permissions or League is not running", Starter.LOG_LEVEL.INFO);
-            log("Starting Backup Timer", Starter.LOG_LEVEL.INFO);
-            timer = new Timer();
-            checkForProcess();
-        } else leagueAuthDataAvailable = true;
-    }
-
-    private void checkForProcess() {
-        TimerTask timerTask = new TimerTask() {
-            @Override
-            public void run() {
-                log("Checking for Process", Starter.LOG_LEVEL.INFO);
-                if (starter.isShutdownPending()) return;
-                if (getAuthFromProcess()) {
-                    log("Success getting Process Info", Starter.LOG_LEVEL.INFO);
-                    leagueAuthDataAvailable = true;
-                    timer.cancel();
-                } else {
-                    log("No Success", Starter.LOG_LEVEL.INFO);
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            timer.schedule(new TimerTask() {
-                                @Override
-                                public void run() {
-                                    checkForProcess();
-                                }
-                            }, 2000);
-                        }
-                    }).start();
-                }
-            }
-        };
-        timer.schedule(timerTask, 0);
     }
 
     public boolean getAuthFromProcess() {
@@ -404,12 +363,20 @@ public class ConnectionManager {
 
     private static JsonArray toJsonArray(String s) {
         if(s == null) return null;
-        return JsonParser.parseString(s).getAsJsonArray();
+        try {
+            return JsonParser.parseString(s).getAsJsonArray();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static JsonObject toJsonObject(String s) {
         if(s == null) return null;
-        return JsonParser.parseString(s).getAsJsonObject();
+        try {
+            return JsonParser.parseString(s).getAsJsonObject();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static String handleStringResponse(HttpURLConnection conn) {
@@ -427,27 +394,22 @@ public class ConnectionManager {
         return resp;
     }
 
+    public void setLeagueAuthDataAvailable(boolean leagueAuthDataAvailable) {
+        this.leagueAuthDataAvailable = leagueAuthDataAvailable;
+    }
+
     public boolean isLeagueAuthDataAvailable() {
         return leagueAuthDataAvailable;
     }
 
     public void shutdown() {
-        if (timer != null) {
-            timer.cancel();
-        }
-        if (champHash != null) {
-            champHash.clear();
-        }
-        lockfileContents = null;
         preUrl = null;
-        timer = null;
         leagueAuthDataAvailable = false;
         port = null;
         authString = null;
         riotPort = null;
         riotAuthString = null;
         sslContextGlobal = null;
-        client = null;
     }
 
     public String getRiotAuth() {

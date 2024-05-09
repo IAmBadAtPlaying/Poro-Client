@@ -1,4 +1,4 @@
-package com.iambadatplaying.restServlets;
+package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -9,7 +9,6 @@ import com.iambadatplaying.tasks.Task;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.function.Function;
 
 public class TaskHandlerServlet extends BaseRESTServlet {
 

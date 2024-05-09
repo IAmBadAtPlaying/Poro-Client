@@ -30,7 +30,7 @@ public class TaskLoader {
         }
 
         if (!Files.exists(taskDirPath)) {
-            log("Task directory does not exist.", Starter.LOG_LEVEL.ERROR);
+            log(taskDirPath.toString() + " does not exist.", Starter.LOG_LEVEL.ERROR);
             return;
         }
 
@@ -52,7 +52,6 @@ public class TaskLoader {
                     loadTask(taskFile.toPath());
                 } else if (taskFile.getName().endsWith(".java")) {
                     log("Skipping: " + taskFile.getName(), Starter.LOG_LEVEL.INFO);
-                    compileAndLoadTask(taskFile.toPath());
                 } else {
                     log("Ignoring file: " + taskFile.getName(), Starter.LOG_LEVEL.INFO);
                 }

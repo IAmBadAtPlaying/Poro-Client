@@ -4,8 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.iambadatplaying.ConnectionStatemachine;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.map.FriendManager;
 import com.iambadatplaying.data.state.*;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
@@ -51,10 +53,6 @@ public class FrontendMessageHandler {
                         starter.getServer().sendToAllSessions(echoElement.toString());
                     }
                     break;
-                case 4: // Startup Handler
-                    if (len < 1) return;
-                    sendInitialData(socket);
-                    break;
                 case 5: // Proxy the request to Riot-Client (NOT league client)
                     if (len <= 3) {
                         return;
@@ -81,8 +79,9 @@ public class FrontendMessageHandler {
     }
 
     public void sendCurrentState(Socket socket) {
+        ConnectionStatemachine csm = starter.getConnectionStatemachine();
         JsonObject newStateObject = new JsonObject();
-        newStateObject.addProperty("state", starter.getState().name());
+        newStateObject.addProperty("state", csm.getCurrentState().name());
         socket.sendMessage(ReworkedDataManager.getInitialDataString("InternalStateUpdate", newStateObject));
     }
 
@@ -124,9 +123,9 @@ public class FrontendMessageHandler {
     }
 
     private void sendFriendList(Socket socket) {
-        JsonObject feFriendArray = starter.getDataManager().getFEFriendObject();
+        JsonObject feFriendArray = starter.getReworkedDataManager().getMapManagers(FriendManager.class).getMapAsJson();
 //            JSONObject feFriendArray = mainInitiator.getReworkedDataManager().getMapManagers(FriendManager.class.getSimpleName()).getMapAsJson();
-        socket.sendMessage(DataManager.getEventDataString("InitialFriendListUpdate", feFriendArray));
+        socket.sendMessage(DataManager.getEventDataString("InitialFriendUpdate", feFriendArray));
     }
 
     private void sendGameflowStatus(Socket socket) {
