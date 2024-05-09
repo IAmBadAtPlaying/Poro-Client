@@ -3,8 +3,10 @@ package com.iambadatplaying.data.state;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
+import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.map.GameNameManager;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
@@ -14,14 +16,12 @@ import java.util.Optional;
 
 public class LobbyData extends StateDataManager {
 
-    private static final String UPDATE_TYPE_LOBBY = "LobbyUpdate";
+    private static final String UPDATE_TYPE_LOBBY = ReworkedDataManager.UPDATE_TYPE_LOBBY;
 
     private static final String LOBBY_URI = "/lol-lobby/v2/lobby";
 
-    private static final int MAX_LOBBY_HALFS_INDEX = 2;
-
-    public LobbyData(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    public LobbyData(Starter starter) {
+        super(starter);
     }
 
     @Override
@@ -31,10 +31,10 @@ public class LobbyData extends StateDataManager {
 
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
-        HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/lobby");
-        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(con);
+        HttpsURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/lobby");
+        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(con);
         if (!data.has("errorCode")) return backendToFrontendLobby(data);
-        log("Cant fetch current state, maybe not in a lobby ?: " + data.get("message").getAsString(), MainInitiator.LOG_LEVEL.WARN);
+        log("Cant fetch current state, maybe not in a lobby ?: " + data.get("message").getAsString(), Starter.LOG_LEVEL.WARN);
         return Optional.empty();
     }
 
@@ -46,11 +46,11 @@ public class LobbyData extends StateDataManager {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 resetState();
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
                 Optional<JsonObject> updatedFEData = backendToFrontendLobby(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
@@ -67,29 +67,26 @@ public class LobbyData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        mainInitiator.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
     }
 
     private Optional<JsonObject> backendToFrontendLobby(JsonObject data) {
         JsonObject frontendData = new JsonObject();
 
-        Util.copyJsonAttributes(data, frontendData, "partyId", "invitations");
+        Util.copyJsonAttributes(data, frontendData, "partyId", "invitations", "gameConfig");
 
         Optional<JsonObject> optGameConfig = Util.getOptJSONObject(data, "gameConfig");
         if (!optGameConfig.isPresent()) {
-            log("Failed to get gameConfig", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to get gameConfig", Starter.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
         JsonObject gameConfig = optGameConfig.get();
-        JsonObject frontendGameConfig = new JsonObject();
-
-        Util.copyJsonAttributes(gameConfig, frontendGameConfig, "queueId", "showPositionSelector", "isCustom", "maxLobbySize", "allowablePremadeSizes", "mapId", "gameMode");
 
         Optional<JsonObject> optLocalMember = Util.getOptJSONObject(data, "localMember");
 
         if (!optLocalMember.isPresent()) {
-            log("Failed to get localMember", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to get localMember", Starter.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
@@ -98,11 +95,11 @@ public class LobbyData extends StateDataManager {
 
         Optional<JsonArray> optMembers = Util.getOptJSONArray(data, "members");
         if (!optMembers.isPresent()) {
-            log("Failed to get members", MainInitiator.LOG_LEVEL.ERROR);
+            log("Failed to get members", Starter.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
 
-        JsonArray allowablePremadeSizes = frontendGameConfig.get("allowablePremadeSizes").getAsJsonArray();
+        JsonArray allowablePremadeSizes = gameConfig.get("allowablePremadeSizes").getAsJsonArray();
         Integer maxLobbySize = 1;
         for (int i = 0; i < allowablePremadeSizes.size(); i++) {
             int currentSize = allowablePremadeSizes.get(i).getAsInt();
@@ -111,6 +108,7 @@ public class LobbyData extends StateDataManager {
             }
         }
 
+        //Logic breaks in custom games
         JsonArray members = optMembers.get();
         JsonArray frontendMembers = new JsonArray();
         for (int i = 0; i < maxLobbySize; i++) {
@@ -120,7 +118,7 @@ public class LobbyData extends StateDataManager {
         frontendMembers.set(indexToFEIndex(0, maxLobbySize), frontendLocalMember);
         j++;
         for (int i = 0; i < members.size(); i++) {
-            int actualIndex = indexToFEIndex(j,maxLobbySize);
+            int actualIndex = indexToFEIndex(j, maxLobbySize);
             JsonObject currentMember = backendToFrontendLobbyMember(members.get(i).getAsJsonObject());
             if (currentMember.get("puuid").getAsString().equals(frontendLocalMember.get("puuid").getAsString())) {
                 continue;
@@ -132,7 +130,6 @@ public class LobbyData extends StateDataManager {
             frontendMembers.set(indexToFEIndex(j, maxLobbySize), new JsonObject());
         }
 
-        frontendData.add("gameConfig", frontendGameConfig);
         frontendData.add("members", frontendMembers);
         frontendData.add("localMember", frontendLocalMember);
         return Optional.of(frontendData);
@@ -142,7 +139,7 @@ public class LobbyData extends StateDataManager {
         int actualIndex = 0;
         int diff = indexDiff(preParsedIndex);
 
-        actualIndex = maxLobbySize/2 + diff;
+        actualIndex = maxLobbySize / 2 + diff;
         return actualIndex;
     }
 
@@ -156,14 +153,35 @@ public class LobbyData extends StateDataManager {
     private JsonObject backendToFrontendLobbyMember(JsonObject member) {
         JsonObject frontendMember = member;
 
-        JsonObject regalia = mainInitiator.getReworkedDataManager().getMapManagers(RegaliaManager.class).get(member.get("summonerId").getAsBigInteger());
-        frontendMember.add("regalia", regalia);
 
-       return frontendMember;
+        Optional<JsonObject> summonerByPuuid = starter.getReworkedDataManager().getMapManagers(GameNameManager.class).get(member.get("puuid").getAsString());
+        summonerByPuuid.ifPresent(
+                summoner -> {
+                    String gameName = summoner.get("gameName").getAsString();
+                    String tagLine = summoner.get("tagLine").getAsString();
+                    frontendMember.addProperty("gameName", gameName);
+                    frontendMember.addProperty("gameTag", tagLine);
+                }
+        );
+
+        starter
+                .getReworkedDataManager()
+                .getMapManagers(RegaliaManager.class)
+                .get(member.get("summonerId").getAsBigInteger())
+                .ifPresent(
+                        regalia -> frontendMember.add("regalia", regalia)
+                );
+
+        return frontendMember;
     }
 
 
     public void doShutdown() {
 
+    }
+
+    @Override
+    public String getEventName() {
+        return ReworkedDataManager.UPDATE_TYPE_LOBBY;
     }
 }

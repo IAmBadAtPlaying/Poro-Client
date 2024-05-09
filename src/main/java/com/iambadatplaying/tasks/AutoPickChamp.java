@@ -2,7 +2,7 @@ package com.iambadatplaying.tasks;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.state.ReworkedChampSelectData;
 import com.iambadatplaying.data.state.StateDataManager;
@@ -24,7 +24,7 @@ public class AutoPickChamp extends Task {
     private Timer timer;
 
     public void notify(JsonArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
+        if (!running || starter == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
         JsonObject data = webSocketEvent.get(2).getAsJsonObject();
@@ -42,7 +42,7 @@ public class AutoPickChamp extends Task {
                 return;
             }
             if (alreadyPicked) return;
-            StateDataManager champSelectManager = mainInitiator.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class);
+            StateDataManager champSelectManager = starter.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class);
             if (champSelectManager == null) return;
             Optional<JsonObject> currentInternalState = champSelectManager.getCurrentState();
             if (!currentInternalState.isPresent()) return;
@@ -79,11 +79,11 @@ public class AutoPickChamp extends Task {
                 @Override
                 public void run() {
                     try {
-                        log("Trying to invoke champion Pick", MainInitiator.LOG_LEVEL.DEBUG);
+                        log("Trying to invoke champion Pick", Starter.LOG_LEVEL.DEBUG);
                         JsonObject action = new JsonObject();
                         action.addProperty("championId", championId);
                         action.addProperty("lockIn", true);
-                        HttpURLConnection proxyCon = (HttpURLConnection) new URL("http://localhost:"+ MainInitiator.RESSOURCE_SERVER_PORT +"/rest/champSelect/pick").openConnection();
+                        HttpURLConnection proxyCon = (HttpURLConnection) new URL("http://localhost:"+ Starter.RESSOURCE_SERVER_PORT +"/rest/champSelect/pick").openConnection();
                         proxyCon.setRequestMethod("POST");
                         proxyCon.setDoOutput(true);
                         proxyCon.getOutputStream().write(action.toString().getBytes());
@@ -97,7 +97,7 @@ public class AutoPickChamp extends Task {
     }
 
     private void resetChampSelectVariables() {
-        log("Resetting Champ-Select", MainInitiator.LOG_LEVEL.DEBUG);
+        log("Resetting Champ-Select", Starter.LOG_LEVEL.DEBUG);
         alreadyPicked = false;
     }
 
@@ -117,10 +117,10 @@ public class AutoPickChamp extends Task {
         try {
             delay = arguments.get("delay").getAsInt();
             championId = arguments.get("championId").getAsInt();
-            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
+            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            mainInitiator.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase());
+            starter.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase());
         }
         return false;
     }
@@ -156,12 +156,12 @@ public class AutoPickChamp extends Task {
         return requiredArgs;
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        starter.log(this.getClass().getName() +": " +s);
     }
 
 }

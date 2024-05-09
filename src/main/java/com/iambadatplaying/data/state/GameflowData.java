@@ -2,18 +2,20 @@ package com.iambadatplaying.data.state;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
+import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.Optional;
 
 public class GameflowData extends StateDataManager {
 
+
     private static final String lolGameflowV1SessionPattern = "/lol-gameflow/v1/session";
 
-    public GameflowData(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    public GameflowData(Starter starter) {
+        super(starter);
     }
 
     @Override
@@ -28,11 +30,11 @@ public class GameflowData extends StateDataManager {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 resetState();
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
                 Optional<JsonObject> updatedFEData = backendToFrontendGameflow(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
@@ -63,9 +65,9 @@ public class GameflowData extends StateDataManager {
 
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
-        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolGameflowV1SessionPattern));
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolGameflowV1SessionPattern));
         if (!data.has("errorCode")) return backendToFrontendGameflow(data);
-        String phase = (String) mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-gameflow/v1/gameflow-phase"));
+        String phase = (String) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-gameflow/v1/gameflow-phase"));
         if (phase == null) return Optional.empty();
         JsonObject fallbackData = new JsonObject();
         fallbackData.addProperty("phase", phase.trim().replace("\"", ""));
@@ -74,6 +76,11 @@ public class GameflowData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        mainInitiator.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString("GameflowPhaseUpdate", currentState));
+        starter.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_GAMEFLOW_PHASE, currentState));
+    }
+
+    @Override
+    public String getEventName() {
+        return ReworkedDataManager.UPDATE_TYPE_GAMEFLOW_PHASE;
     }
 }

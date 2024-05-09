@@ -1,7 +1,7 @@
 package com.iambadatplaying.lcuHandler;
 
-import com.google.gson.JsonArray;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.ConnectionStatemachine;
+import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
 
@@ -10,10 +10,10 @@ import java.util.TimerTask;
 @WebSocket
 public class Socket {
 
-    MainInitiator mainInitiator;
+    Starter starter;
 
-    public Socket(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public Socket(Starter starter) {
+        this.starter = starter;
     }
 
     private TimerTask timerTask;
@@ -29,22 +29,22 @@ public class Socket {
     @OnWebSocketClose
     public void onClose(int statusCode, String reason) {
         this.connected = false;
-        log("Closed: " + reason, MainInitiator.LOG_LEVEL.DEBUG);
+        log("Closed: " + reason, Starter.LOG_LEVEL.DEBUG);
         timerTask.cancel();
         this.timerTask = null;
-        mainInitiator.handleGracefulReset();
+        starter.getConnectionStatemachine().transition(ConnectionStatemachine.State.DISCONNECTED);
     }
 
     @OnWebSocketError
     public void onError(Throwable t) {
         if ((t.getMessage() != null) && !t.getMessage().equals("null")) {
-            log(t.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+            log(t.getMessage(), Starter.LOG_LEVEL.ERROR);
         }
     }
 
     @OnWebSocketConnect
     public void onConnect(Session session) {
-        log("Connect: " + session.getRemoteAddress().getAddress(), MainInitiator.LOG_LEVEL.INFO);
+        log("Connect: " + session.getRemoteAddress().getAddress(), Starter.LOG_LEVEL.INFO);
         this.currentSession = session;
         this.connected = true;
         subscribeToEndpoint("OnJsonApiEvent");
@@ -53,11 +53,11 @@ public class Socket {
 
     @OnWebSocketMessage
     public void onMessage(String message) {
-        mainInitiator.backendMessageReceived(message);
+        starter.backendMessageReceived(message);
     }
 
     private void createNewKeepAlive(Session s) {
-        log("Created new Keep alive!", MainInitiator.LOG_LEVEL.DEBUG);
+        log("Created new Keep alive!", Starter.LOG_LEVEL.DEBUG);
         this.timerTask = new TimerTask() {
             @Override
             public void run() {
@@ -77,9 +77,15 @@ public class Socket {
             log("Subscribing to: " + endpoint);
             currentSession.getRemote().sendString("[5, \"" + endpoint + "\"]");
         } catch (Exception e) {
-            log("Cannot subscribe to endpoint " + endpoint, MainInitiator.LOG_LEVEL.DEBUG);
-            new Thread(() -> subscribeToEndpoint(endpoint)).start();
-            e.printStackTrace();
+            log("Cannot subscribe to endpoint " + endpoint, Starter.LOG_LEVEL.DEBUG);
+            new Thread(() -> {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+                subscribeToEndpoint(endpoint);
+            }).start();
         }
     }
 
@@ -88,16 +94,16 @@ public class Socket {
             log("Unsubscribing from: " + endpoint);
             currentSession.getRemote().sendString("[6, \"" + endpoint + "\"]");
         } catch (Exception e) {
-            log("Cannot unsubscribe from endpoint " + endpoint, MainInitiator.LOG_LEVEL.ERROR);
+            log("Cannot unsubscribe from endpoint " + endpoint, Starter.LOG_LEVEL.ERROR);
             e.printStackTrace();
         }
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName()+ ": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName()+ ": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getSimpleName() + ": " + s);
+        starter.log(this.getClass().getSimpleName() + ": " + s);
     }
 }

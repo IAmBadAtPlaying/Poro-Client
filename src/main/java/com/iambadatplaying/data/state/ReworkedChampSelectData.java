@@ -3,7 +3,7 @@ package com.iambadatplaying.data.state;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
@@ -15,8 +15,6 @@ import java.util.Map;
 import java.util.Optional;
 
 public class ReworkedChampSelectData extends StateDataManager {
-    public static final String INSTRUCTION_PLAY_SOUND = ReworkedDataManager.INSTRUCTION_PREFIX + "PlaySound";
-
     private static final String JSON_KEY_PHASE = "phase";
     private static final String JSON_KEY_BAN_ACTION = "banAction";
     private static final String JSON_KEY_PICK_ACTION = "pickAction";
@@ -25,12 +23,12 @@ public class ReworkedChampSelectData extends StateDataManager {
     private static final String JSON_KEY_LOCAL_PLAYER_CELL_ID = "localPlayerCellId";
     private static final String JSON_KEY_STATE = "state";
 
-    private static final String UPDATE_TYPE_CHAMP_SELECT = "ChampSelectUpdate";
+    private static final String UPDATE_TYPE_CHAMP_SELECT = ReworkedDataManager.UPDATE_TYPE_CHAMP_SELECT;
 
     private static final String CHAMP_SELECT_SESSION_URI = "/lol-champ-select/v1/session";
 
-    public ReworkedChampSelectData(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    public ReworkedChampSelectData(Starter starter) {
+        super(starter);
     }
 
     private enum ChampSelectState {
@@ -140,8 +138,8 @@ public class ReworkedChampSelectData extends StateDataManager {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 if (!data.isJsonObject()) return;
                 Optional<JsonObject> updatedFEData = backendToFrontendChampSelectSession(data.getAsJsonObject());
                 if (!updatedFEData.isPresent()) return;
@@ -150,11 +148,11 @@ public class ReworkedChampSelectData extends StateDataManager {
                 currentState = updatedState;
                 sendCurrentState();
                 break;
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 resetSession();
                 break;
             default:
-                log("Unknown event type: " + type, MainInitiator.LOG_LEVEL.ERROR);
+                log("Unknown event type: " + type, Starter.LOG_LEVEL.ERROR);
                 break;
         }
     }
@@ -163,11 +161,11 @@ public class ReworkedChampSelectData extends StateDataManager {
         boolean isCustomGame = Util.getBoolean(data, "isCustomGame", false);
         JsonObject frontendChampSelect = new JsonObject();
 
-        Util.copyJsonAttributes(data, frontendChampSelect, JSON_KEY_LOCAL_PLAYER_CELL_ID, "gameId", "hasSimultaneousBans", "skipChampionSelect", "benchEnabled", "rerollsRemaining");
+        Util.copyJsonAttributes(data, frontendChampSelect, JSON_KEY_LOCAL_PLAYER_CELL_ID, "gameId", "hasSimultaneousBans", "skipChampionSelect", "benchEnabled", "benchChampions", "rerollsRemaining");
 
         Optional<JsonArray> optActions = Util.getOptJSONArray(data, "actions");
         if (!optActions.isPresent()) {
-            log("No actions found in champ select session", MainInitiator.LOG_LEVEL.DEBUG);
+            log("No actions found in champ select session", Starter.LOG_LEVEL.DEBUG);
             return Optional.empty();
         }
 
@@ -180,19 +178,19 @@ public class ReworkedChampSelectData extends StateDataManager {
 
         Optional<JsonObject> optTimer = Util.getOptJSONObject(data, "timer");
         if (!optTimer.isPresent()) {
-            log("No timer found in champ select session", MainInitiator.LOG_LEVEL.DEBUG);
+            log("No timer found in champ select session", Starter.LOG_LEVEL.DEBUG);
             return Optional.empty();
         }
 
         Optional<JsonArray> optMyTeam = Util.getOptJSONArray(data, "myTeam");
         if (!optMyTeam.isPresent()) {
-            log("No myTeam found in champ select session", MainInitiator.LOG_LEVEL.DEBUG);
+            log("No myTeam found in champ select session", Starter.LOG_LEVEL.DEBUG);
             return Optional.empty();
         }
 
         Optional<JsonArray> optTheirTeam = Util.getOptJSONArray(data, "theirTeam");
         if (!optTheirTeam.isPresent()) {
-            log("No theirTeam found in champ select session", MainInitiator.LOG_LEVEL.DEBUG);
+            log("No theirTeam found in champ select session", Starter.LOG_LEVEL.DEBUG);
             return Optional.empty();
         }
 
@@ -248,12 +246,7 @@ public class ReworkedChampSelectData extends StateDataManager {
         phaseObject.add(JSON_KEY_PICK_ACTION, pickAction);
 
         ChampSelectState state = ChampSelectState.fromParameters(phaseObject);
-        if (state == null) {
-            log(feMember);
-            log(timer);
-            log("No fitting state found for cellId: " + cellId);
-        } else {
-
+        if (state != null) {
             feMember.addProperty(JSON_KEY_STATE, state.name());
         }
         cellIdMemberMap.put(cellId, feMember);
@@ -265,7 +258,7 @@ public class ReworkedChampSelectData extends StateDataManager {
         //Actions are only added (at least ban/pick wise) when they actually happen
         Optional<JsonObject> optBans = Util.getOptJSONObject(data, "bans");
         if (!optBans.isPresent()) {
-            log("No bans found in champ select session", MainInitiator.LOG_LEVEL.DEBUG);
+            log("No bans found in champ select session", Starter.LOG_LEVEL.DEBUG);
             return;
         }
 
@@ -309,7 +302,7 @@ public class ReworkedChampSelectData extends StateDataManager {
                 break;
             default:
                 //Might be TENS_BAN_REVEAL
-                log("Unknown action type: " + type, MainInitiator.LOG_LEVEL.DEBUG);
+                log("Unknown action type: " + type, Starter.LOG_LEVEL.DEBUG);
                 break;
         }
     }
@@ -385,15 +378,20 @@ public class ReworkedChampSelectData extends StateDataManager {
 
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
-        HttpsURLConnection con = mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-champ-select/v1/session");
-        JsonObject data = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(con);
+        HttpsURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-champ-select/v1/session");
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(con);
         if (!data.has("errorCode")) return Optional.of(data);
-        log("Error while fetching current state: " + data.get("message").getAsString(), MainInitiator.LOG_LEVEL.ERROR);
+        log("Error while fetching current state: " + data.get("message").getAsString(), Starter.LOG_LEVEL.ERROR);
         return Optional.empty();
     }
 
     @Override
     public void sendCurrentState() {
-        mainInitiator.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString(UPDATE_TYPE_CHAMP_SELECT, currentState));
+        starter.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString(UPDATE_TYPE_CHAMP_SELECT, currentState));
+    }
+
+    @Override
+    public String getEventName() {
+        return UPDATE_TYPE_CHAMP_SELECT;
     }
 }

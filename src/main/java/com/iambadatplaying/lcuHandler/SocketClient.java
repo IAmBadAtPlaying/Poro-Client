@@ -1,6 +1,6 @@
 package com.iambadatplaying.lcuHandler;
 
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
@@ -10,7 +10,7 @@ import java.net.URI;
 
 public class SocketClient {
 
-    private MainInitiator mainInitiator = null;
+    private Starter starter = null;
     private WebSocketClient client = null;
     private Socket socket = null;
 
@@ -18,14 +18,14 @@ public class SocketClient {
     //This is caused by the loot, inventory and the friend list.
     //On an alternate account these limits are not reached, on the main account with a lot of skins and friends they are.
     //TODO: This is a workaround, find a better solution as this is not guaranteed to work for everyone
-    private static final int MAXIMUM_TEXT_SIZE = 4000000;
+    private static final int MAXIMUM_TEXT_SIZE = 1_024 * 1024 * 10;
 
-    public SocketClient(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
+    public SocketClient(Starter starter) {
+        this.starter = starter;
     }
 
     public void init() {
-        ConnectionManager cm = mainInitiator.getConnectionManager();
+        ConnectionManager cm = starter.getConnectionManager();
         if(cm.getAuthString() == null) {
             return;
         }
@@ -34,11 +34,11 @@ public class SocketClient {
         HttpClient http = new HttpClient(ssl);
         String sUri = "wss://127.0.0.1:"+cm.getPort()+"/";
         this.client = new WebSocketClient(http);
+        client.setStopAtShutdown(true);
         client.getPolicy().setMaxTextMessageSize(MAXIMUM_TEXT_SIZE);
-        client.setMaxTextMessageBufferSize(MAXIMUM_TEXT_SIZE);
-        socket = new Socket(mainInitiator);
+        socket = new Socket(starter);
 
-        ssl.setSslContext(mainInitiator.getConnectionManager().getSslContextGlobal());
+        ssl.setSslContext(starter.getConnectionManager().getSslContextGlobal());
         try {
             client.start();
             URI uri = new URI(sUri);
@@ -52,7 +52,7 @@ public class SocketClient {
 
     public void shutdown() {
         try {
-            client.destroy();
+            if (client != null) client.destroy();
         } catch (Exception e) {
             e.printStackTrace();
         }

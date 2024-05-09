@@ -3,8 +3,9 @@ package com.iambadatplaying.data.map;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
+import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.Optional;
@@ -13,13 +14,13 @@ public class FriendManager extends MapDataManager<String> {
 
     private final static String lolChatV1FriendsPattern = "/lol-chat/v1/friends/(.*)";
 
-    public FriendManager(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    public FriendManager(Starter starter) {
+        super(starter);
     }
 
     @Override
-    public JsonObject load(String key) {
-        return new JsonObject();
+    public Optional<JsonObject> load(String key) {
+        return Optional.empty();
     }
 
     @Override
@@ -28,7 +29,7 @@ public class FriendManager extends MapDataManager<String> {
     }
 
     private void fetchFriends() {
-        JsonArray friends = mainInitiator.getConnectionManager().getResponseBodyAsJsonArray(mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
+        JsonArray friends = starter.getConnectionManager().getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
         if (friends == null) return;
         for (int i = 0; i < friends.size(); i++) {
             JsonObject friend = friends.get(i).getAsJsonObject();
@@ -51,10 +52,17 @@ public class FriendManager extends MapDataManager<String> {
         if (optIcon.isPresent()) {
             Integer icon = optIcon.get();
             if (icon < 1) icon = 1;
-            frontendFriend.addProperty("icon", icon);
+            frontendFriend.addProperty("iconId", icon);
         }
 
-        Util.copyJsonAttributes(friend, frontendFriend, "availability", "statusMessage", "name", "id",  "groupId", "lol");
+        Util.copyJsonAttributes(friend, frontendFriend, "availability", "statusMessage", "id",  "groupId", "lol", "summonerId");
+        Optional<JsonObject> optName = starter.getReworkedDataManager().getMapManagers(GameNameManager.class).load(puuid);
+        if (optName.isPresent()) {
+            frontendFriend.add("name", optName.get().get("gameName"));
+        } else {
+            frontendFriend.addProperty("name", puuid);
+        }
+
 
         return Optional.of(frontendFriend);
     }
@@ -67,15 +75,15 @@ public class FriendManager extends MapDataManager<String> {
     @Override
     protected void doUpdateAndSend(String uri, String type, JsonElement data) {
         switch (type) {
-            case "Delete":
+            case UPDATE_TYPE_DELETE:
                 String puuidWith = uri.replaceAll(lolChatV1FriendsPattern, "$1");
                 Integer atBegin = puuidWith.indexOf("@");
                 if (atBegin == -1) return;
                 String puuid = puuidWith.substring(0, atBegin);
                 map.remove(puuid);
                 break;
-            case "Create":
-            case "Update":
+            case UPDATE_TYPE_CREATE:
+            case UPDATE_TYPE_UPDATE:
                 Optional<JsonObject> updatedFriend = updateFriend(data);
                 if (!updatedFriend.isPresent()) return;
                 JsonObject dataObj = data.getAsJsonObject();
@@ -83,7 +91,7 @@ public class FriendManager extends MapDataManager<String> {
                 JsonObject updatedState = updatedFriend.get();
                 if (Util.equalJsonElements(updatedState, currentState)) return;
                 map.put(dataObj.get("puuid").getAsString(), updatedState);
-                mainInitiator.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString("FriendUpdate", updatedState));
+                starter.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_FRIENDS, updatedState));
                 break;
         }
     }

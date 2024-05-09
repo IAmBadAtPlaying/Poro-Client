@@ -1,74 +1,111 @@
 package com.iambadatplaying;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
-import com.iambadatplaying.frontendHanlder.Socket;
 import com.iambadatplaying.frontendHanlder.SocketServer;
-import com.iambadatplaying.lcuHandler.BackendMessageHandler;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.DataManager;
 import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
 import com.iambadatplaying.tasks.TaskManager;
 
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public class Starter extends MainInitiator {
+public class Starter {
+
+    public static Starter instance = null;
+
+    public static final boolean isDev = true;
 
     public static int ERROR_INVALID_AUTH = 400;
     public static int ERROR_INSUFFICIENT_PERMISSIONS = 401;
+    public static int ERROR_CERTIFICATE_SETUP_FAILED = 495;
 
-    private STATE state = STATE.UNINITIALIZED;
+    public static int ERROR_HTTP_PATCH_SETUP = 505;
+
+    public static final int VERSION_MAJOR = 0;
+    public static final int VERSION_MINOR = 1;
+    public static final int VERSION_PATCH = 4;
+
+    public static String[] requiredEndpoints = {"OnJsonApiEvent"};
+
+    private static final String appDirName = "poroclient";
+
+    public static final int DEBUG_FRONTEND_PORT = 3000;
+    public static final int DEBUG_FRONTEND_PORT_V2 = 3001;
+    public static final int RESSOURCE_SERVER_PORT = 35199;
+    public static final int FRONTEND_SOCKET_PORT = 8887;
+
+    private Path taskDirPath = null;
+
+
+    private Path basePath = null;
 
     private SocketClient client;
     private SocketServer server;
     private ConnectionManager connectionManager;
     private FrontendMessageHandler frontendMessageHandler;
 
-    private BackendMessageHandler backendMessageHandler;
     private ResourceServer resourceServer;
     private TaskManager taskManager;
 
     private ConfigLoader configLoader;
 
+    private ConnectionStatemachine connectionStatemachine;
+
     private DataManager dataManager;
     private ReworkedDataManager reworkedDataManager;
 
-    private volatile boolean running = false;
+    public static Starter getInstance() {
+        if (instance == null) {
+            instance = new Starter();
+        }
+        return instance;
+    }
 
     public static void main(String[] args) {
-        Starter starter = new Starter();
+        Starter starter = Starter.getInstance();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+
             starter.getConfigLoader().saveConfig();
         }));
+        starter.connectionStatemachine = new ConnectionStatemachine(starter);
         starter.run();
     }
 
+    public enum LOG_LEVEL {
+        LCU_MESSAGING,
+        DEBUG,
+        INFO,
+        WARN,
+        ERROR;
+    }
+
     public void run() {
-        setRunning(true);
+        if (isShutdownPending()) return;
         initReferences();
         configLoader.loadConfig();
         resourceServer.init();
         connectionManager.init();
-        awaitLCUConnection();
-        awaitFrontendProcess();
-        if (!validAuthString(connectionManager.getAuthString())) {
-            System.exit(ERROR_INVALID_AUTH);
-        }
-        state = STATE.RUNNING;
-        client.init();
         server.init();
+        connectionStatemachine.transition(ConnectionStatemachine.State.AWAITING_LEAGUE_PROCESS);
+    }
+
+    public void leagueProcessReady() {
+        client.init();
         reworkedDataManager.init();
         dataManager.init();
         taskManager.init();
+        server.getSockets().forEach(
+                socket -> frontendMessageHandler.sendInitialData(socket)
+        );
         subscribeToEndpointsOnConnection();
     }
 
     private void initReferences() {
-        state = STATE.STARTING;
         configLoader = new ConfigLoader(this);
         resourceServer = new ResourceServer(this);
         connectionManager = new ConnectionManager(this);
@@ -76,48 +113,10 @@ public class Starter extends MainInitiator {
         reworkedDataManager = new ReworkedDataManager(this);
         client = new SocketClient(this);
         server = new SocketServer(this);
-        backendMessageHandler = new BackendMessageHandler(this);
         frontendMessageHandler = new FrontendMessageHandler(this);
         taskManager = new TaskManager(this);
     }
 
-    private boolean validAuthString(String authString) {
-        return authString != null;
-    }
-
-    private void awaitLCUConnection() {
-        state = STATE.AWAITING_LCU;
-        while (!connectionManager.isLeagueAuthDataAvailable() && isRunning()) {
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                break;
-            }
-        }
-    }
-
-    private void awaitFrontendProcess() {
-        while (!feProcessesReady() && isRunning()) {
-            try {
-                log("Waiting");
-                Thread.sleep(500); //League Backend Socket needs time to be able to serve the resources TODO: This is fucking horrible
-            } catch (InterruptedException e) {
-                break;
-            }
-        }
-    }
-
-    private boolean feProcessesReady() {
-        try {
-            String resp = (String) connectionManager.getResponse(ConnectionManager.responseFormat.STRING, connectionManager.buildConnection(ConnectionManager.conOptions.GET,"/lol-player-preferences/v1/player-preferences-ready"));
-            boolean isReady = "true".equals(resp.trim());
-            log("FE-Process ready: " + isReady);
-            return isReady;
-        } catch (Exception e) {
-
-        }
-        return false;
-    }
 
     private void subscribeToEndpointsOnConnection() {
         new Thread(() -> {
@@ -134,16 +133,9 @@ public class Starter extends MainInitiator {
         }).start();
     }
 
-    public void frontendMessageReceived(String message, Socket socket) {
-        if (message != null && !message.isEmpty()) {
-            if (this.state != STATE.RUNNING) return;
-            new Thread(() -> getFrontendMessageHandler().handleMessage(message, socket)).start();
-        }
-    }
-
     public void backendMessageReceived(String message) {
         if (message != null && !message.isEmpty()) {
-            if (getState() != STATE.RUNNING) return;
+            if (connectionStatemachine.getCurrentState() != ConnectionStatemachine.State.CONNECTED) return;
             JsonElement messageElement = JsonParser.parseString(message);
             JsonArray messageArray = messageElement.getAsJsonArray();
             if (messageArray.isEmpty()) return;
@@ -154,32 +146,27 @@ public class Starter extends MainInitiator {
     }
 
     public void shutdown() {
-        state = STATE.STOPPING;
-        setRunning(false);
         configLoader.saveConfig();
         resetAllInternal();
-        state = STATE.STOPPED;
         log("Shutting down");
         System.exit(0);
     }
 
-    public void handleGracefulReset() {
-        if (isRunning()) {
-            state = STATE.RESTARTING;
-            resetAllInternal();
-            while (isRunning()) {
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException e) {
-                    return;
-                }
-            }
-            run();
-        }
+    public void handleLCUDisconnect() {
+        connectionManager.setLeagueAuthDataAvailable(false);
+        resourceServer.resetCachedData();
+        resetLCUDependentComponents();
+    }
+
+    private void resetLCUDependentComponents() {
+        client.shutdown();
+        reworkedDataManager.shutdown();
+        dataManager.shutdown();
+        taskManager.shutdown();
     }
 
     public void resetAllInternal() {
-        if (isRunning()) {
+        if (isShutdownPending()) {
             resourceServer.shutdown();
             taskManager.shutdown();
             server.shutdown();
@@ -193,8 +180,66 @@ public class Starter extends MainInitiator {
             client = null;
             dataManager = null;
             connectionManager = null;
-            setRunning(false);
         }
+    }
+
+    public void log(String s, LOG_LEVEL level) {
+        if (isDev) {
+            switch (level) {
+                case ERROR:
+                case INFO:
+                case DEBUG:
+                case LCU_MESSAGING:
+                    break;
+
+                default:
+                    return;
+            }
+        }
+        String prefix = "[" + level.name() + "]";
+        switch (level) {
+            case ERROR:
+                prefix = "\u001B[31m" + prefix + "\u001B[0m";
+                break;
+            case DEBUG:
+                prefix = "\u001B[32m" + prefix + "\u001B[0m";
+                break;
+            case LCU_MESSAGING:
+                prefix = "\u001B[34m" + prefix + "\u001B[0m";
+                break;
+            case INFO:
+                prefix = "\u001B[33m" + prefix + "\u001B[0m";
+                break;
+        }
+        System.out.println(prefix + ": " + s);
+    }
+
+    public void log(String s) {
+        log(s, LOG_LEVEL.DEBUG);
+    }
+
+    public static String getAppDirName() {
+        return appDirName;
+    }
+
+    public Path getTaskPath() {
+        if (taskDirPath == null) {
+            taskDirPath = getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME).resolve(ConfigLoader.TASKS_FOLDER_NAME);
+        }
+        return taskDirPath;
+    }
+
+    public Path getBasePath() {
+        if (basePath == null) {
+            try {
+                URL location = this.getClass().getProtectionDomain().getCodeSource().getLocation();
+                Path currentDirPath = Paths.get(location.toURI()).getParent();
+                log("Base-Location: " + currentDirPath, LOG_LEVEL.INFO);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return basePath;
     }
 
     public TaskManager getTaskManager() {
@@ -217,10 +262,6 @@ public class Starter extends MainInitiator {
         return frontendMessageHandler;
     }
 
-    public BackendMessageHandler getBackendMessageHandler() {
-        return backendMessageHandler;
-    }
-
     public DataManager getDataManager() {
         return dataManager;
     }
@@ -233,15 +274,21 @@ public class Starter extends MainInitiator {
         return configLoader;
     }
 
-    public boolean isRunning() {
-        return running;
+    public ConnectionStatemachine getConnectionStatemachine() {
+        return connectionStatemachine;
     }
 
-    public void setRunning(boolean newStatus) {
-        running = newStatus;
+    public ResourceServer getResourceServer() {
+        return resourceServer;
     }
 
-    public STATE getState() {
-        return state;
+    public boolean isShutdownPending() {
+        if (connectionStatemachine == null) return false;
+        return connectionStatemachine.getCurrentState() == ConnectionStatemachine.State.STOPPING;
+    }
+
+    public boolean isInitialized() {
+        if (connectionStatemachine == null) return false;
+        return connectionStatemachine.getCurrentState() == ConnectionStatemachine.State.CONNECTED;
     }
 }

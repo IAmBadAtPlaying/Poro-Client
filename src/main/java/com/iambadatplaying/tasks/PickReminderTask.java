@@ -2,7 +2,6 @@ package com.iambadatplaying.tasks;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.net.URLDecoder;
@@ -23,7 +22,7 @@ public class PickReminderTask extends Task{
 
     @Override
     public void notify(JsonArray webSocketEvent) {
-        if (!running || mainInitiator == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
+        if (!running || starter == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
             return;
         }
         JsonObject data = webSocketEvent.get(2).getAsJsonObject();
@@ -49,7 +48,7 @@ public class PickReminderTask extends Task{
                     timer.schedule(new TimerTask() {
                         @Override
                         public void run() {
-                            JsonObject participants = mainInitiator.getConnectionManager().getResponseBodyAsJsonObject(mainInitiator.getConnectionManager().buildRiotConnection(ConnectionManager.conOptions.GET, "/chat/v5/participants?cid="+ URLDecoder.decode(chatId),""));
+                            JsonObject participants = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildRiotConnection(ConnectionManager.conOptions.GET, "/chat/v5/participants?cid="+ URLDecoder.decode(chatId),""));
                             if (participants.has("participants")) {
                                 JsonArray participantsArray = participants.get("participants").getAsJsonArray();
                                 for (int i = 0; i < participantsArray.size(); i++) {
@@ -69,7 +68,7 @@ public class PickReminderTask extends Task{
                             reminderMessage.addProperty("type", "celebration");
                             reminderMessage.addProperty("body", sb.toString());
 
-                            mainInitiator.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, mainInitiator.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-chat/v1/conversations/" + chatId + "/messages", reminderMessage.toString()));
+                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-chat/v1/conversations/" + chatId + "/messages", reminderMessage.toString()));
                         }
                     }, 2000);
 
@@ -88,7 +87,7 @@ public class PickReminderTask extends Task{
     private String getRoomId(String uri) {
         if (uri == null || uri.isEmpty()) return "";
         String assumedUri = uri.substring(lol_chat_v1_conversations.length());
-        if (assumedUri.contains("%40champ-select") && !assumedUri.contains("/")) {
+        if (assumedUri.contains("champ-select") && !assumedUri.contains("/")) {
             return assumedUri;
         }
         return "";

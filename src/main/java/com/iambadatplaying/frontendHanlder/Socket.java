@@ -1,7 +1,9 @@
 package com.iambadatplaying.frontendHanlder;
 
 import com.google.gson.JsonArray;
-import com.iambadatplaying.MainInitiator;
+import com.google.gson.JsonObject;
+import com.iambadatplaying.ConnectionStatemachine;
+import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
 
@@ -12,7 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @WebSocket
 public class Socket {
 
-    private final MainInitiator mainInitiator;
+    private final Starter starter;
 
     private TimerTask timerTask;
 
@@ -20,17 +22,16 @@ public class Socket {
 
     private Thread messageSenderThread;
 
-    private final Socket socket = this;
-
     private Session currentSession = null;
 
     private volatile boolean shutdownPending = false;
 
-    private ConcurrentLinkedQueue<String> messageQueue = new ConcurrentLinkedQueue<>();
+    private ConcurrentLinkedQueue<String> messageQueue;
 
-    public Socket(MainInitiator mainInitiator) {
-        this.mainInitiator = mainInitiator;
-        log("Socket created", MainInitiator.LOG_LEVEL.DEBUG);
+    public Socket(Starter starter) {
+        this.starter = starter;
+        this.messageQueue = new ConcurrentLinkedQueue<>();
+        log("Socket created", Starter.LOG_LEVEL.DEBUG);
         messageSenderThread = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 if (messageQueue == null || messageQueue.isEmpty() || currentSession == null) {
@@ -53,14 +54,11 @@ public class Socket {
     }
 
     public void shutdown() {
-        //FIXME: The Issue lies in this line:
-        //FIXME: Upon calling SocketServer.shutdown the server will call externalShutdown,
-        //FIXME: Triggering on close on the session, which will try to remo
         if (!shutdownPending ) {
-            mainInitiator.getServer().removeSocket(this);
+            starter.getServer().removeSocket(this);
             externalShutdown();
         }
-        log("Socket shutdown", MainInitiator.LOG_LEVEL.DEBUG);
+        log("Socket shutdown", Starter.LOG_LEVEL.DEBUG);
     }
 
     public void externalShutdown() {
@@ -92,7 +90,7 @@ public class Socket {
     }
 
     public void sendMessage(String message) {
-        if (messageQueue != null) messageQueue.add(message);
+        if (messageQueue != null) messageQueue.offer(message);
     }
 
     @OnWebSocketConnect
@@ -107,9 +105,12 @@ public class Socket {
         currentSession = session;
         log("Client connected: " + session.getRemoteAddress().getAddress());
         messageSenderThread.start();
-        mainInitiator.getServer().addSocket(this);
-        messageQueue.add("[]");
+        starter.getServer().addSocket(this);
         queueNewKeepAlive(session);
+        starter.getFrontendMessageHandler().sendCurrentState(this);
+        if (starter.getConnectionStatemachine().getCurrentState() == ConnectionStatemachine.State.CONNECTED) {
+            starter.getFrontendMessageHandler().sendInitialData(this);
+        }
     }
 
 
@@ -130,25 +131,29 @@ public class Socket {
 
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
-        mainInitiator.frontendMessageReceived(message, this);
+        if (starter.getConnectionStatemachine().getCurrentState() != ConnectionStatemachine.State.CONNECTED) {
+            return;
+        }
+        new Thread(
+                () -> starter.getFrontendMessageHandler().handleMessage(message, this)
+        ).start();
     }
 
     @OnWebSocketClose
     public void onClose(Session session, int statusCode, String reason) {
-        log("Client closed called " + session.getRemoteAddress().getAddress());
         shutdown();
     }
 
     @OnWebSocketError
     public void onError(Session session, Throwable throwable) {
-        log("WebSocket error: " + throwable.getMessage(), MainInitiator.LOG_LEVEL.ERROR);
+        log("WebSocket error: " + throwable.getMessage(), Starter.LOG_LEVEL.ERROR);
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getSimpleName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getSimpleName() +": " + s, level);
     }
 
     private void log(String s) {
-        log(s, MainInitiator.LOG_LEVEL.DEBUG);
+        log(s, Starter.LOG_LEVEL.DEBUG);
     }
 }

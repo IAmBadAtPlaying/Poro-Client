@@ -1,4 +1,3 @@
-
 let socket;
 let pktNr = 0;
 
@@ -8,14 +7,14 @@ window.onload = function () {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-   replaceProfileIcons();
+    replaceProfileIcons();
 })
 
 function replaceProfileIcons() {
     let profileIcon = document.getElementById("preProfileIcon");
     if (profileIcon) {
         let value = profileIcon.className;
-        profileIcon.src = "/proxy/static/lol-game-data/assets/v1/profile-icons/"+value+".jpg"
+        profileIcon.src = "/proxy/static/lol-game-data/assets/v1/profile-icons/" + value + ".jpg"
         console.log(profileIcon.src);
         profileIcon.addEventListener('load', () => {
             console.log("Should have replaced");
@@ -31,7 +30,6 @@ function connect(host) {
     socket = new WebSocket(host);
     socket.onopen = function (msg) {
         console.log("Connected to " + host);
-        send([4]);
         createKeepAlive();
     }
     socket.onmessage = function (msg) {
@@ -53,29 +51,61 @@ function createKeepAlive() {
 }
 
 function createLobby(lobbyId) {
-    makeLCURequest("POST","/lol-lobby/v2/lobby","{\"queueId\":" + lobbyId + "}");
+    makeLCURequest("POST", "/lol-lobby/v2/lobby", "{\"queueId\":" + lobbyId + "}");
 }
 
 function makeLCURequest(requestType, endpoint, body) {
     switch (requestType) {
         case "GET":
-            axios.get("/proxy" + endpoint).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
-        break;
+            axios.get("/proxy" + endpoint).then((response) => {
+                console.log(response)
+            }).catch((error) => {
+                console.log(error)
+            });
+            break;
         case "POST":
-            axios.post("/proxy" + endpoint, body).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
-        break;
+            axios.post("/proxy" + endpoint, body, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then((response) => {
+                console.log(response)
+            }).catch((error) => {
+                console.log(error)
+            });
+            break;
         case "PUT":
-            axios.put("/proxy" + endpoint, body).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
-        break;
+            axios.put("/proxy" + endpoint, body, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then((response) => {
+                console.log(response)
+            }).catch((error) => {
+                console.log(error)
+            });
+            break;
         case "DELETE":
-            axios.delete("/proxy" + endpoint, body).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
-        break
+            axios.delete("/proxy" + endpoint).then((response) => {
+                console.log(response)
+            }).catch((error) => {
+                console.log(error)
+            });
+            break
         case "PATCH":
-             axios.patch("/proxy" + endpoint, body).then((response) => {console.log(response)}).catch((error) => {console.log(error)});
-        break;
+            axios.patch("/proxy" + endpoint, body, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then((response) => {
+                console.log(response)
+            }).catch((error) => {
+                console.log(error)
+            });
+            break;
         default:
             console.error("Invalid request type: " + requestType);
-        break;
+            break;
     }
 }
 
@@ -104,13 +134,11 @@ function manualRiotRequest() {
     makeRiotRequest(methodFilter.value, endpoint.value, body.value);
 }
 
-
 function send(jsonArray) {
     let request = jsonArray;
-    pktNr += 1;
-    request.push(pktNr);
-    console.log("Sending: " + JSON.stringify(request));
-    socket.send(JSON.stringify(request));
+    let jsonRequest = JSON.stringify(request);
+    console.log("Sending: " + jsonRequest);
+    socket.send(jsonRequest);
 }
 
 function backendWebsocketConfig() {
@@ -134,13 +162,13 @@ function updateTasks() {
             if (switchId === "AutoAcceptQueue") {
                 var delayInput = document.getElementById("AutoAcceptQueueDelay");
                 var delay = parseInt(delayInput.value);
-                send([3, 1, switchId, { "delay": delay }]);
+                send([3, 1, switchId, {"delay": delay}]);
             } else if (switchId === "AutoPickChamp") {
                 var delayInput = document.getElementById("AutoPickChampDelay");
                 var champIdInput = document.getElementById("AutoPickChampId");
                 var delay = parseInt(delayInput.value);
                 var champId = parseInt(champIdInput.value);
-                send([3, 1, switchId, { "delay": delay, "championId": champId }]);
+                send([3, 1, switchId, {"delay": delay, "championId": champId}]);
             }
         } else {
             send([3, 0, switchId, {}]);
@@ -149,5 +177,5 @@ function updateTasks() {
 }
 
 function restartRiotClientUX() {
-    makeLCURequest("POST","/riotclient/kill-and-restart-ux","");
+    makeLCURequest("POST", "/riotclient/kill-and-restart-ux", "");
 }

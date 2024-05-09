@@ -9,8 +9,12 @@ import java.util.Optional;
 
 public class Util {
 
-    public static JsonElement parseJson(String json) {
-        return JsonParser.parseString(json);
+    public static Optional<JsonElement> parseJson(String json) {
+        try {
+            return Optional.of(JsonParser.parseString(json));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     public static boolean equalJsonElements(JsonElement a, JsonElement b) {

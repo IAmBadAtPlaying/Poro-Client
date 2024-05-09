@@ -2,7 +2,7 @@ package com.iambadatplaying.tasks;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 
 public class TestTask extends Task {
     private String arg1 = "Unknown";
@@ -21,10 +21,10 @@ public class TestTask extends Task {
     public boolean setTaskArgs(JsonObject arguments) {
         try {
             arg1 = arguments.get("arg1").getAsString();
-            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), MainInitiator.LOG_LEVEL.DEBUG);
+            log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            mainInitiator.getTaskManager().removeTask(this.getClass().getSimpleName());
+            starter.getTaskManager().removeTask(this.getClass().getSimpleName());
         }
         return false;
     }
@@ -50,11 +50,11 @@ public class TestTask extends Task {
         return requiredArgs;
     }
 
-    private void log(String s, MainInitiator.LOG_LEVEL level) {
-        mainInitiator.log(this.getClass().getName() +": " + s, level);
+    private void log(String s, Starter.LOG_LEVEL level) {
+        starter.log(this.getClass().getName() +": " + s, level);
     }
 
     private void log(String s) {
-        mainInitiator.log(this.getClass().getName() +": " +s);
+        starter.log(this.getClass().getName() +": " +s);
     }
 }

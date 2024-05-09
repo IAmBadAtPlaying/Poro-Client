@@ -1,28 +1,29 @@
 package com.iambadatplaying.data.map;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.MainInitiator;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.data.BasicDataManager;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public abstract class MapDataManager<T> extends BasicDataManager {
 
-    protected MapDataManager(MainInitiator mainInitiator) {
-        super(mainInitiator);
+    protected MapDataManager(Starter starter) {
+        super(starter);
         map = Collections.synchronizedMap(new HashMap<>());
     }
 
     protected Map<T, JsonObject> map;
 
-    public JsonObject get(T key) {
-        if(map.containsKey(key)) return map.get(key);
-        else return load(key);
+    public Optional<JsonObject> get(T key) {
+        if(map.containsKey(key)) return Optional.of(map.get(key));
+        Optional<JsonObject> value = load(key);
+        value.ifPresent(jsonObject -> map.put(key, jsonObject));
+        return value;
     }
-    public abstract JsonObject load(T key);
+    public abstract Optional<JsonObject> load(T key);
 
     public void edit(T key, JsonObject value) {
         map.put(key, value);
@@ -36,12 +37,22 @@ public abstract class MapDataManager<T> extends BasicDataManager {
         return mapAsJson;
     }
 
-    public void updateMap(String uri, String type, JsonElement data) {
-        if (!initialized) {
-            log("Not initialized, wont have any effect", MainInitiator.LOG_LEVEL.WARN);
-            return;
+    public void shutdown() {
+        if (!initialized) return;
+        initialized = false;
+        doShutdown();
+        map.clear();
+    }
+
+    public static <T> Map<T, JsonObject> getMapFromArray(JsonArray array, String identifier) {
+        Map<T, JsonObject> map = Collections.synchronizedMap(new HashMap<>());
+        for (JsonElement element : array) {
+            if (!element.isJsonObject()) continue;
+            JsonObject object = element.getAsJsonObject();
+            if (!object.has(identifier.toString())) continue;
+            T key = (T) object.get(identifier);
+            map.put(key, object);
         }
-        if (!isRelevantURI(uri)) return;
-        doUpdateAndSend(uri, type, data);
+        return map;
     }
 }
