@@ -6,13 +6,14 @@ import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MatchmakingSearchManager extends StateDataManager {
 
-    private static final String MATCHMAKING_SEARCH_URI = "/lol-matchmaking/v1/search";
+    private static final Pattern MATCHMAKING_SEARCH_PATTERN = Pattern.compile("/lol-matchmaking/v1/search$");
 
     public MatchmakingSearchManager(Starter starter) {
         super(starter);
@@ -24,12 +25,12 @@ public class MatchmakingSearchManager extends StateDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return MATCHMAKING_SEARCH_URI.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return MATCHMAKING_SEARCH_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
                 resetState();
@@ -56,7 +57,7 @@ public class MatchmakingSearchManager extends StateDataManager {
         JsonObject frontendData = new JsonObject();
 
         if (!Util.jsonKeysPresent(data, "dodgeData", "estimatedQueueTime", "isCurrentlyInQueue", "readyCheck", "searchState", "timeInQueue")) return Optional.empty();
-        Util.copyJsonAttributes(data, frontendData, "dodgeData", "estimatedQueueTime", "isCurrentlyInQueue", "readyCheck", "searchState", "timeInQueue");
+        Util.copyJsonAttributes(data, frontendData, "dodgeData", "estimatedQueueTime", "isCurrentlyInQueue", "readyCheck", "searchState", "timeInQueue","lowPriorityData");
 
         return Optional.of(frontendData);
     }
@@ -72,7 +73,7 @@ public class MatchmakingSearchManager extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString(getEventName(), currentState));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(getEventName(), currentState));
     }
 
     @Override

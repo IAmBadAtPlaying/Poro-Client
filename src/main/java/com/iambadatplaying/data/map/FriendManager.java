@@ -9,10 +9,12 @@ import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class FriendManager extends MapDataManager<String> {
 
-    private final static String lolChatV1FriendsPattern = "/lol-chat/v1/friends/(.*)";
+    private static final Pattern lolChatV1FriendsPattern = Pattern.compile("/lol-chat/v1/friends/(.*)");
 
     public FriendManager(Starter starter) {
         super(starter);
@@ -46,7 +48,7 @@ public class FriendManager extends MapDataManager<String> {
         Optional<String> optPuuid = Util.getOptString(friend, "puuid");
         if (!optPuuid.isPresent()) return Optional.empty();
         String puuid = optPuuid.get();
-        frontendFriend.addProperty("puuid",puuid);
+        frontendFriend.addProperty("puuid", puuid);
 
         Optional<Integer> optIcon = Util.getOptInt(friend, "icon");
         if (optIcon.isPresent()) {
@@ -55,28 +57,22 @@ public class FriendManager extends MapDataManager<String> {
             frontendFriend.addProperty("iconId", icon);
         }
 
-        Util.copyJsonAttributes(friend, frontendFriend, "availability", "statusMessage", "id",  "groupId", "lol", "summonerId");
-        Optional<JsonObject> optName = starter.getReworkedDataManager().getMapManagers(GameNameManager.class).load(puuid);
-        if (optName.isPresent()) {
-            frontendFriend.add("name", optName.get().get("gameName"));
-        } else {
-            frontendFriend.addProperty("name", puuid);
-        }
+        Util.copyJsonAttributes(friend, frontendFriend, "availability", "statusMessage", "id", "groupId", "lol", "summonerId", "gameName", "gameTag", "productName", "product");
 
 
         return Optional.of(frontendFriend);
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return (uri.matches(lolChatV1FriendsPattern));
+    protected Matcher getURIMatcher(String uri) {
+        return lolChatV1FriendsPattern.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
-                String puuidWith = uri.replaceAll(lolChatV1FriendsPattern, "$1");
+                String puuidWith = uriMatcher.replaceAll("$1");
                 Integer atBegin = puuidWith.indexOf("@");
                 if (atBegin == -1) return;
                 String puuid = puuidWith.substring(0, atBegin);
@@ -91,7 +87,7 @@ public class FriendManager extends MapDataManager<String> {
                 JsonObject updatedState = updatedFriend.get();
                 if (Util.equalJsonElements(updatedState, currentState)) return;
                 map.put(dataObj.get("puuid").getAsString(), updatedState);
-                starter.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_FRIENDS, updatedState));
+                starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_FRIENDS, updatedState));
                 break;
         }
     }
@@ -105,7 +101,5 @@ public class FriendManager extends MapDataManager<String> {
 
     @Override
     public void doShutdown() {
-        map.clear();
-        map = null;
     }
 }

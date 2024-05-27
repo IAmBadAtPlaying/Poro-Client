@@ -2,10 +2,8 @@ package com.iambadatplaying;
 
 import com.google.gson.*;
 import com.iambadatplaying.data.ReworkedDataManager;
-import com.iambadatplaying.frontendHanlder.FrontendMessageHandler;
-import com.iambadatplaying.frontendHanlder.SocketServer;
+import com.iambadatplaying.frontendHandler.*;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
 import com.iambadatplaying.tasks.TaskManager;
@@ -56,7 +54,6 @@ public class Starter {
 
     private ConnectionStatemachine connectionStatemachine;
 
-    private DataManager dataManager;
     private ReworkedDataManager reworkedDataManager;
 
     public static Starter getInstance() {
@@ -97,7 +94,6 @@ public class Starter {
     public void leagueProcessReady() {
         client.init();
         reworkedDataManager.init();
-        dataManager.init();
         taskManager.init();
         server.getSockets().forEach(
                 socket -> frontendMessageHandler.sendInitialData(socket)
@@ -109,7 +105,6 @@ public class Starter {
         configLoader = new ConfigLoader(this);
         resourceServer = new ResourceServer(this);
         connectionManager = new ConnectionManager(this);
-        dataManager = new DataManager(this);
         reworkedDataManager = new ReworkedDataManager(this);
         client = new SocketClient(this);
         server = new SocketServer(this);
@@ -161,7 +156,6 @@ public class Starter {
     private void resetLCUDependentComponents() {
         client.shutdown();
         reworkedDataManager.shutdown();
-        dataManager.shutdown();
         taskManager.shutdown();
     }
 
@@ -171,14 +165,12 @@ public class Starter {
             taskManager.shutdown();
             server.shutdown();
             client.shutdown();
-            dataManager.shutdown();
             reworkedDataManager.shutdown();
             connectionManager.shutdown();
             resourceServer = null;
             taskManager = null;
             server = null;
             client = null;
-            dataManager = null;
             connectionManager = null;
         }
     }
@@ -191,7 +183,6 @@ public class Starter {
                 case DEBUG:
                 case LCU_MESSAGING:
                     break;
-
                 default:
                     return;
             }
@@ -260,10 +251,6 @@ public class Starter {
 
     public FrontendMessageHandler getFrontendMessageHandler() {
         return frontendMessageHandler;
-    }
-
-    public DataManager getDataManager() {
-        return dataManager;
     }
 
     public ReworkedDataManager getReworkedDataManager() {

@@ -1,7 +1,6 @@
 package com.iambadatplaying.data.array;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.data.BasicDataManager;
 
@@ -9,7 +8,7 @@ import java.util.Optional;
 
 public abstract class ArrayDataManager extends BasicDataManager {
 
-    protected JsonArray array = null;
+    protected JsonArray currentArray = null;
 
     protected ArrayDataManager(Starter starter) {
         super(starter);
@@ -20,14 +19,14 @@ public abstract class ArrayDataManager extends BasicDataManager {
             log("Not initialized, wont fetch current state", Starter.LOG_LEVEL.ERROR);
             return Optional.empty();
         }
-        if (array != null) return Optional.of(array);
+        if (currentArray != null) return Optional.of(currentArray);
         Optional<JsonArray> newState = fetchCurrentState();
-        newState.ifPresent(jsonArray -> array = jsonArray);
+        newState.ifPresent(jsonArray -> currentArray = jsonArray);
         return newState;
     }
 
     public void setCurrentState(JsonArray currentState) {
-        this.array = currentState;
+        this.currentArray = currentState;
     }
 
     protected abstract Optional<JsonArray> fetchCurrentState();
@@ -38,7 +37,7 @@ public abstract class ArrayDataManager extends BasicDataManager {
     public void shutdown() {
         if (!initialized) return;
         initialized = false;
-        array = null;
+        currentArray = null;
         doShutdown();
     }
 
@@ -47,7 +46,8 @@ public abstract class ArrayDataManager extends BasicDataManager {
             log("Not initialized, wont have any effect", Starter.LOG_LEVEL.WARN);
             return;
         }
-        array = new JsonArray();
+        currentArray = new JsonArray();
+        sendCurrentState();
     }
 
     public abstract String getEventName();

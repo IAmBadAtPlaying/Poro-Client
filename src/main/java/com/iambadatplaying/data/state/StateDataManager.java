@@ -38,8 +38,8 @@ public abstract class StateDataManager extends BasicDataManager {
     public void shutdown() {
         if (!initialized) return;
         initialized = false;
-        currentState = null;
         doShutdown();
+        currentState = null;
     }
 
     public void resetState() {

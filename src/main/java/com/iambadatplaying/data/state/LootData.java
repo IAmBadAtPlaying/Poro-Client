@@ -6,13 +6,14 @@ import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class LootData extends StateDataManager {
 
-    private static final String LOOT_URI = "/lol-loot/v2/player-loot-map";
+    private static final Pattern LOOT_URI_PATTERN = Pattern.compile("/lol-loot/v2/player-loot-map$");
 
     public LootData(Starter starter) {
         super(starter);
@@ -24,12 +25,12 @@ public class LootData extends StateDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return LOOT_URI.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return LOOT_URI_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
                 break;
@@ -57,14 +58,14 @@ public class LootData extends StateDataManager {
 
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
-        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v2/player-loot-map"));
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-loot/v2/player-loot-map"));
         if (!data.has("errorCode")) return backendToFrontendLoot(data);
         return Optional.empty();
     }
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_LOOT, currentState));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_LOOT, currentState));
     }
 
     @Override

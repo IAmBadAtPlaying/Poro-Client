@@ -8,11 +8,13 @@ import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GameflowData extends StateDataManager {
 
 
-    private static final String lolGameflowV1SessionPattern = "/lol-gameflow/v1/session";
+    private static final Pattern lolGameflowV1SessionPattern = Pattern.compile("/lol-gameflow/v1/session$");
 
     public GameflowData(Starter starter) {
         super(starter);
@@ -23,12 +25,12 @@ public class GameflowData extends StateDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return lolGameflowV1SessionPattern.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return lolGameflowV1SessionPattern.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
                 resetState();
@@ -65,7 +67,7 @@ public class GameflowData extends StateDataManager {
 
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
-        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolGameflowV1SessionPattern));
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-gameflow/v1/session"));
         if (!data.has("errorCode")) return backendToFrontendGameflow(data);
         String phase = (String) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-gameflow/v1/gameflow-phase"));
         if (phase == null) return Optional.empty();
@@ -76,7 +78,7 @@ public class GameflowData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_GAMEFLOW_PHASE, currentState));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_GAMEFLOW_PHASE, currentState));
     }
 
     @Override

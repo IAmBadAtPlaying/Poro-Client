@@ -130,6 +130,8 @@ public class ConfigLoader {
     private void setupDefaultConfig() {
         config.addProperty(KEY_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
         for (ConfigModule module : configModules.values()) {
+            module.setupDirectories();
+
             module.loadStandardConfiguration();
             JsonElement moduleConfig = module.getConfiguration();
             if (moduleConfig != null) {

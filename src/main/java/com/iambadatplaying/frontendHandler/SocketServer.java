@@ -1,4 +1,4 @@
-package com.iambadatplaying.frontendHanlder;
+package com.iambadatplaying.frontendHandler;
 
 import com.iambadatplaying.Starter;
 import org.eclipse.jetty.server.Server;

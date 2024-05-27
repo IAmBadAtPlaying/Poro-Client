@@ -3,12 +3,10 @@ package com.iambadatplaying.data;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
-import com.iambadatplaying.data.array.ArrayDataManager;
-import com.iambadatplaying.data.array.InvitationManager;
-import com.iambadatplaying.data.array.TickerMessageManager;
+import com.iambadatplaying.data.array.*;
 import com.iambadatplaying.data.map.*;
 import com.iambadatplaying.data.state.*;
-import com.iambadatplaying.frontendHanlder.Socket;
+import com.iambadatplaying.frontendHandler.Socket;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.HashMap;
@@ -26,6 +24,7 @@ public class ReworkedDataManager {
     public static final String UPDATE_TYPE_PATCHER = "PatcherUpdate";
     public static final String UPDATE_TYPE_CHAMP_SELECT = "ChampSelectUpdate";
     public static final String UPDATE_TYPE_FRIENDS = "FriendUpdate";
+    public static final String UPDATE_TYPE_FRIEND_GROUPS = "FriendGroupUpdate";
     public static final String UPDATE_TYPE_CONVERSATION = "ConversationUpdate";
     public static final String UPDATE_TYPE_HONOR_EOG = "HonorEndOfGameUpdate";
     public static final String UPDATE_TYPE_TICKER_MESSAGES = "TickerMessageUpdate";
@@ -33,7 +32,10 @@ public class ReworkedDataManager {
     public static final String UPDATE_TYPE_INVITATIONS = "InvitationsUpdate";
     public static final String UPDATE_TYPE_MATCHMAKING_SEARCH_STATE = "MatchmakingSearchStateUpdate";
     public static final String UPDATE_TYPE_INTERNAL_STATE = "InternalStateUpdate";
+    public static final String UPDATE_TYPE_OWNED_SKINS = "OwnedSkinsUpdate";
+    public static final String UPDATE_TYPE_OWNED_CHAMPIONS = "OwnedChampionsUpdate";
     public static final String UPDATE_TYPE_CURRENT_SUMMONER = "CurrentSummonerUpdate";
+    public static final String UPDATE_TYPE_QUEUE = "QueueUpdate";
 
     private static final String DATA_STRING_EVENT = "event";
 
@@ -55,6 +57,8 @@ public class ReworkedDataManager {
     private void addArrayManagers() {
         addManager(new TickerMessageManager(starter));
         addManager(new InvitationManager(starter));
+        addManager(new ChampionInventoryManager(starter));
+        addManager(new SkinInventoryManager(starter));
     }
 
     private void addMapManagers() {
@@ -62,6 +66,8 @@ public class ReworkedDataManager {
         addManager(new FriendManager(starter));
         addManager(new GameNameManager(starter));
         addManager(new MessageManager(starter));
+        addManager(new FriendGroupManager(starter));
+        addManager(new QueueManager(starter));
     }
 
     private void addStateManagers() {
@@ -117,6 +123,14 @@ public class ReworkedDataManager {
             manager.shutdown();
         }
 
+        for (MapDataManager manager : mapDataManagers.values()) {
+            manager.shutdown();
+        }
+
+        for (ArrayDataManager manager : arrayDataManagers.values()) {
+            manager.shutdown();
+        }
+
         initialized = false;
     }
 
@@ -129,7 +143,7 @@ public class ReworkedDataManager {
             log(type + " " + uri + ": " + data, Starter.LOG_LEVEL.LCU_MESSAGING);
             doUpdate(uri, type, data);
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
     }
 

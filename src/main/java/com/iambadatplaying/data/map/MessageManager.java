@@ -7,7 +7,6 @@ import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +22,10 @@ public class MessageManager extends  MapDataManager<String> {
 
     private static final String SYSTEM_LEFT_ROOM = "left_room";
 
+    String completeRegex = "/lol-chat/v1/conversations(/[^/]+)(/participants|/messages((/([^/]+))|$)|$)";
+
+    Pattern completePattern = Pattern.compile(completeRegex);
+
     String conversationIdRegex = "/lol-chat/v1/conversations/([^/]+)";
 
     Pattern conversationIdPattern = Pattern.compile(conversationIdRegex);
@@ -37,43 +40,29 @@ public class MessageManager extends  MapDataManager<String> {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        if (uri.startsWith("/lol-chat/v1/conversations/")) {
-            return true;
-        }
-        return false;
+    protected Matcher getURIMatcher(String uri) {
+        return completePattern.matcher(uri);
     }
 
-    private Optional<String> extractConversationId(String uri) {
-        Matcher matcher = conversationIdPattern.matcher(uri);
-        if (matcher.find()) {
+    private Optional<String> extractConversationId(String matcherPart) {
+        matcherPart = matcherPart.substring(1);
 
-            String conversationId = matcher.group(1);
-
+        if (!matcherPart.contains("@")) {
             try {
-                if (!conversationId.contains("@")) {
-                    conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
-                }
-                return Optional.of(conversationId);
+                return Optional.of(URLDecoder.decode(matcherPart, StandardCharsets.UTF_8.toString()));
             } catch (Exception e) {
-
+                return Optional.empty();
             }
-
+        } else {
+            return Optional.of(matcherPart);
         }
-        return Optional.empty();
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
-                if (uri.contains("/messages")) return;
-                log("Registered conversation deletion", Starter.LOG_LEVEL.DEBUG);
-                Optional<String> conversationId = extractConversationId(uri);
-                if (conversationId.isPresent()) {
-                    log("Conversation " + conversationId.get() + " deleted, removing from cache", Starter.LOG_LEVEL.DEBUG);
-                    map.remove(conversationId.get());
-                }
+                handleDelete(uriMatcher, type, data);
                 break;
             case UPDATE_TYPE_CREATE:
             case UPDATE_TYPE_UPDATE:
@@ -81,22 +70,51 @@ public class MessageManager extends  MapDataManager<String> {
                 //Peer to peer messages are updated via single messages, only override happens on init
                 //For some godforsaken reason, group messages are updated via a message array, that replaces the current one AND via single messages
                 //I should really look into the RTMP in the lower levels but this is beyond the scope of this project
-                Optional<String> updateConversationId = extractConversationId(uri);
-                if (uri.contains("/participants")) return;
-                if (!updateConversationId.isPresent()) {
-                    return;
-                }
-                String conversationIdStr = updateConversationId.get();
-                if (!uri.contains("/messages")) return;
-                if (uri.endsWith("/messages")) { //Contains a message array that replaces the current one
+                handleUpdateOrCreate(uriMatcher, type, data);
+                break;
+        }
+    }
+
+    private void handleUpdateOrCreate(Matcher uriMatcher, String type, JsonElement data) {
+        int matchCount = uriMatcher.groupCount();
+        switch (matchCount) {
+            case 0:
+                break;
+            case 1:
+                break;
+            case 2:
+            case 3:
+            default:
+                if ("/participants".equals(uriMatcher.group(2)) || "".equals(uriMatcher.group(2))) return;
+                Optional<String> conversationId = extractConversationId(uriMatcher.group(1));
+                if (!conversationId.isPresent()) return;
+                String conversationIdStr = conversationId.get();
+                if ("".equals(uriMatcher.group(3))) {//Ends with /messages
                     log("Conversation " + conversationIdStr + " updated via message array", Starter.LOG_LEVEL.DEBUG);
                     handleMessageArray(conversationIdStr, data.getAsJsonArray());
-                } else { //We expect a single message, add it to the array
+                } else {
                     log("Conversation " + conversationIdStr + " updated via single message", Starter.LOG_LEVEL.DEBUG);
                     handleSingleMessage(conversationIdStr, data.getAsJsonObject());
                 }
+        }
+    }
 
+    private void handleDelete(Matcher uriMatcher, String type, JsonElement data) {
+        int matchCount = uriMatcher.groupCount();
+        switch (matchCount) {
+            case 0:
                 break;
+            case 2:
+            case 3:
+            default:
+                if (!"".equals(uriMatcher.group(2))) return;
+                log("Registered conversation deletion", Starter.LOG_LEVEL.DEBUG);
+                Optional<String> conversationId = extractConversationId(uriMatcher.group(1));
+                if (conversationId.isPresent()) {
+                    log("Conversation " + conversationId.get() + " deleted, removing from cache", Starter.LOG_LEVEL.DEBUG);
+                    map.remove(conversationId.get());
+                }
+            break;
         }
     }
 
@@ -110,7 +128,7 @@ public class MessageManager extends  MapDataManager<String> {
             }
         }
         conversation.add("messages", messages);
-        updateMap(conversationId, conversation);
+        sendConversation( conversation);
     }
 
     private void handleSingleMessage(String conversationId, JsonObject messageData) {
@@ -142,17 +160,17 @@ public class MessageManager extends  MapDataManager<String> {
             JsonObject previousMessage = previousMessages.get(i).getAsJsonObject();
             if (previousMessage.get("id").getAsString().equals(currentMessageId)) {
                 log("Conversation " + conversationId + " already contains message " + currentMessageId + ", will not update", Starter.LOG_LEVEL.DEBUG);
-                updateMap(conversationId, conversation);
+                sendConversation(conversation);
                 return;
             }
         }
         previousMessages.add(messageData);
 
-        updateMap(conversationId, conversation);
+        sendConversation(conversation);
     }
 
-    private void updateMap(String conversationId, JsonObject conversation) {
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_CONVERSATION, conversation));
+    private void sendConversation(JsonObject conversation) {
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_CONVERSATION, conversation));
     }
 
 

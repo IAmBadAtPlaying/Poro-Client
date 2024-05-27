@@ -13,6 +13,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ReworkedChampSelectData extends StateDataManager {
     private static final String JSON_KEY_PHASE = "phase";
@@ -25,7 +27,7 @@ public class ReworkedChampSelectData extends StateDataManager {
 
     private static final String UPDATE_TYPE_CHAMP_SELECT = ReworkedDataManager.UPDATE_TYPE_CHAMP_SELECT;
 
-    private static final String CHAMP_SELECT_SESSION_URI = "/lol-champ-select/v1/session";
+    private static final Pattern CHAMP_SELECT_SESSION_PATTERN = Pattern.compile("/lol-champ-select/v1/session$");
 
     public ReworkedChampSelectData(Starter starter) {
         super(starter);
@@ -131,12 +133,12 @@ public class ReworkedChampSelectData extends StateDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return CHAMP_SELECT_SESSION_URI.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return CHAMP_SELECT_SESSION_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_CREATE:
             case UPDATE_TYPE_UPDATE:
@@ -307,7 +309,7 @@ public class ReworkedChampSelectData extends StateDataManager {
         }
     }
 
-    private void setNormalGameBans( JsonObject frontendChampSelect) {
+    private void setNormalGameBans(JsonObject frontendChampSelect) {
         //Bans are NOT handled in array for each team
         //Actions are already all present
         frontendChampSelect.addProperty("isCustomGame", false);
@@ -322,7 +324,8 @@ public class ReworkedChampSelectData extends StateDataManager {
         bans.add("myTeamBans", myTeamBans);
         bans.add("theirTeamBans", theirTeamBans);
 
-        frontendChampSelect.add("bans", bans);;
+        frontendChampSelect.add("bans", bans);
+
     }
 
     private void setBansFromBanMap(JsonArray myTeamBans, JsonArray theirTeamBans) {
@@ -387,7 +390,7 @@ public class ReworkedChampSelectData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(com.iambadatplaying.lcuHandler.DataManager.getEventDataString(UPDATE_TYPE_CHAMP_SELECT, currentState));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_CHAMP_SELECT, currentState));
     }
 
     @Override

@@ -37,7 +37,7 @@ public class ProxyHandler extends AbstractHandler {
 
     @Override
     public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
-        if (starter.getResourceServer().filterRequest(httpServletRequest, httpServletResponse)) {
+        if (starter.getResourceServer().filterRequest(httpServletRequest, httpServletResponse) && !Starter.isDev) {
             request.setHandled(true);
             httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return;

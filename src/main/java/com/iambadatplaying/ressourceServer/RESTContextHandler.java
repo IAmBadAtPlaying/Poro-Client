@@ -163,8 +163,6 @@ public class RESTContextHandler extends ServletContextHandler {
                 com.iambadatplaying.rest.jerseyServlets.LootServlet.class,
                 com.iambadatplaying.rest.jerseyServlets.MessagingServlet.class,
                 com.iambadatplaying.rest.jerseyServlets.ShutdownServlet.class,
-                com.iambadatplaying.rest.jerseyServlets.QuickPlayProfileServlet.class,
-                com.iambadatplaying.rest.jerseyServlets.UserConfigurationServlet.class,
                 com.iambadatplaying.rest.jerseyServlets.RunesServlet.class
         );
 

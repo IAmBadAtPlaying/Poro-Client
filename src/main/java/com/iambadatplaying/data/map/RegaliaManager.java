@@ -5,19 +5,19 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.data.state.ChatMeManager;
 import com.iambadatplaying.data.state.LobbyData;
 import com.iambadatplaying.data.state.StateDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import java.math.BigInteger;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RegaliaManager extends MapDataManager<BigInteger>{
 
-    private final static String lolRegaliaV2SummonerPattern = "/lol-regalia/v2/summoners/(.*)/regalia/async";
+    private final static Pattern lolRegaliaV2SummonerPattern = Pattern.compile("/lol-regalia/v2/summoners/(.*)/regalia/async");
 
     public RegaliaManager(Starter starter) {
         super(starter);
@@ -32,19 +32,20 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     public void doInitialize() {
     }
 
-    protected boolean isRelevantURI(String uri) {
-        return uri.matches(lolRegaliaV2SummonerPattern);
+    protected Matcher getURIMatcher(String uri) {
+        return lolRegaliaV2SummonerPattern.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
+        String summonerIdStr = uriMatcher.replaceAll("$1");
+        BigInteger summonerId = new BigInteger(summonerIdStr);
         switch (type) {
             case UPDATE_TYPE_DELETE:
+                map.remove(summonerId);
                 break;
             case UPDATE_TYPE_CREATE:
             case UPDATE_TYPE_UPDATE:
-                String summonerIdStr = uri.replaceAll(lolRegaliaV2SummonerPattern, "$1");
-                BigInteger summonerId = new BigInteger(summonerIdStr);
                 updateRegalia(summonerId);
                 break;
         }
@@ -52,26 +53,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
 
     @Override
     public void doShutdown() {
-        map.clear();
-        map = null;
     }
-
-    public void update(String uri, String type, JsonElement data) {
-        if (!isRelevantURI(uri)) return;
-        switch (type) {
-            case "Delete":
-                break;
-            case "Create":
-            case "Update":
-                String summonerIdStr = uri.replaceAll(DataManager.REGALIA_REGEX, "$1");
-
-                summonerIdStr  = summonerIdStr .replaceAll("^/+", "").replaceAll("/+$", "");;
-                BigInteger summonerId = new BigInteger(summonerIdStr);
-                updateRegalia(summonerId);
-                break;
-        }
-    }
-
 
     public JsonObject getRegalia(BigInteger summonerId) {
         if (map.containsKey(summonerId)) {
