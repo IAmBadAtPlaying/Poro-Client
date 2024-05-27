@@ -174,11 +174,7 @@ public class ResourceServer {
             return false;
         }
 
-        if (localHostPattern.matcher(origin).find() || allowedOrigins.contains(origin)) {
-            return false;
-        }
-
-        return true;
+        return !localHostPattern.matcher(origin).find() && !allowedOrigins.contains(origin);
     }
 
     public boolean filterRequest(HttpServletRequest req, HttpServletResponse resp) {
