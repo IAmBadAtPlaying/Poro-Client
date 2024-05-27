@@ -3,10 +3,12 @@ package com.iambadatplaying.data.map;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.data.BasicDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
+import java.util.regex.Matcher;
 
 public class GameNameManager extends MapDataManager<String> {
 
@@ -20,12 +22,12 @@ public class GameNameManager extends MapDataManager<String> {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return false;
+    protected Matcher getURIMatcher(String uri) {
+        return BasicDataManager.UNMATCHABLE_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
 
     }
 

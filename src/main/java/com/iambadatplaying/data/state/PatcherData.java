@@ -6,13 +6,14 @@ import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PatcherData extends StateDataManager {
 
-    private final static String PATCHER_URI = "/patcher/v1/products/league_of_legends/state";
+    private final static Pattern PATCHER_PATTERN = Pattern.compile("/patcher/v1/products/league_of_legends/state$");
 
     public PatcherData(Starter starter) {
         super(starter);
@@ -24,12 +25,12 @@ public class PatcherData extends StateDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return PATCHER_URI.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return PATCHER_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
                 break;
@@ -51,14 +52,14 @@ public class PatcherData extends StateDataManager {
 
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
-        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, PATCHER_URI));
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/patcher/v1/products/league_of_legends/state"));
         if (!data.has("errorCode")) return Optional.of(data);
         return Optional.empty();
     }
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_PATCHER, currentState));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_PATCHER, currentState));
     }
 
     @Override

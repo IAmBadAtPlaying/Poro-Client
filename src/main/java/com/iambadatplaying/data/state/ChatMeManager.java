@@ -7,15 +7,16 @@ import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ChatMeManager extends StateDataManager {
 
     private static final String UPDATE_TYPE_SELF_PRESENCE = ReworkedDataManager.UPDATE_TYPE_SELF_PRESENCE;
 
-    private static final String lolChatV1MePattern = "/lol-chat/v1/me";
+    private static final Pattern lolChatV1MePattern = Pattern.compile("/lol-chat/v1/me$");
 
     public ChatMeManager(Starter starter) {
         super(starter);
@@ -27,12 +28,12 @@ public class ChatMeManager extends StateDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return lolChatV1MePattern.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return lolChatV1MePattern.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
                 resetState();
@@ -75,13 +76,13 @@ public class ChatMeManager extends StateDataManager {
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
         if (currentState != null) return Optional.of(currentState);
-        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, lolChatV1MePattern));
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/me"));
         return backendToFrontendChatMe(data);
     }
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_SELF_PRESENCE, currentState));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_SELF_PRESENCE, currentState));
     }
 
     @Override

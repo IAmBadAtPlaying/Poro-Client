@@ -8,16 +8,17 @@ import com.iambadatplaying.Util;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.data.map.GameNameManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class EOGHonorManager extends StateDataManager {
 
     private static final String UPDATE_TYPE_HONOR_EOG = ReworkedDataManager.UPDATE_TYPE_HONOR_EOG;
 
-    private static final String HONOR_BALLOT_URI = "/lol-honor-v2/v1/ballot";
+    private static final Pattern HONOR_BALLOT_PATTERN = Pattern.compile("/lol-honor-v2/v1/ballot$");
 
     public EOGHonorManager(Starter starter) {
         super(starter);
@@ -29,12 +30,12 @@ public class EOGHonorManager extends StateDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return HONOR_BALLOT_URI.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return HONOR_BALLOT_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_CREATE:
             case UPDATE_TYPE_UPDATE:
@@ -93,7 +94,7 @@ public class EOGHonorManager extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_HONOR_EOG, currentState));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_HONOR_EOG, currentState));
     }
 
     @Override

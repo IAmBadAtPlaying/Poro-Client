@@ -7,14 +7,15 @@ import com.iambadatplaying.Util;
 import com.iambadatplaying.data.BasicDataManager;
 import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TickerMessageManager extends ArrayDataManager {
 
-    private static final String URI = "/lol-service-status/v1/ticker-messages";
+    private static final Pattern TICKER_MESSAGES_PATTERN = Pattern.compile("/lol-service-status/v1/ticker-messages$");
 
     private static final String UPDATE_TYPE_TICKER_MESSAGE = ReworkedDataManager.UPDATE_TYPE_TICKER_MESSAGES;
 
@@ -28,20 +29,20 @@ public class TickerMessageManager extends ArrayDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return URI.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return TICKER_MESSAGES_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case BasicDataManager.UPDATE_TYPE_CREATE:
             case BasicDataManager.UPDATE_TYPE_UPDATE:
                 if (!data.isJsonArray()) return;
                 Optional<JsonArray> updatedState = fetchCurrentState();
                 if (!updatedState.isPresent()) return;
-                if (Util.equalJsonElements(updatedState.get(), array)) return;
-                array = updatedState.get();
+                if (Util.equalJsonElements(updatedState.get(), currentArray)) return;
+                currentArray = updatedState.get();
                 sendCurrentState();
                 break;
             case "Delete":
@@ -67,7 +68,7 @@ public class TickerMessageManager extends ArrayDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_TICKER_MESSAGE, array));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_TICKER_MESSAGE, currentArray));
     }
 
     @Override

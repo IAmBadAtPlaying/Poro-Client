@@ -1,7 +1,7 @@
 package com.iambadatplaying.ressourceServer;
 
 import com.iambadatplaying.Starter;
-import com.iambadatplaying.lcuHandler.DataManager;
+import com.iambadatplaying.data.ReworkedDataManager;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
@@ -120,8 +120,8 @@ public class ConfigHandler extends AbstractHandler {
         starter.getTaskManager().loadAtRuntime(fileName);
         String actualName = fileName.substring(0, fileName.length() - ".java".length());
         starter.getTaskManager().addTask(actualName);
-        log(DataManager.getEventDataString("TaskUpdate", starter.getTaskManager().getTaskAndArgs()));
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString("TaskUpdate", starter.getTaskManager().getTaskAndArgs()));
+        log(ReworkedDataManager.getEventDataString("TaskUpdate", starter.getTaskManager().getTaskAndArgs()));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString("TaskUpdate", starter.getTaskManager().getTaskAndArgs()));
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {

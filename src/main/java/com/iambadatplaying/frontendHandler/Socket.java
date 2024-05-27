@@ -1,4 +1,4 @@
-package com.iambadatplaying.frontendHanlder;
+package com.iambadatplaying.frontendHandler;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -134,9 +134,6 @@ public class Socket {
         if (starter.getConnectionStatemachine().getCurrentState() != ConnectionStatemachine.State.CONNECTED) {
             return;
         }
-        new Thread(
-                () -> starter.getFrontendMessageHandler().handleMessage(message, this)
-        ).start();
     }
 
     @OnWebSocketClose

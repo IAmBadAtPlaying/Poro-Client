@@ -3,7 +3,7 @@ package com.iambadatplaying;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.data.ReworkedDataManager;
-import com.iambadatplaying.frontendHanlder.SocketServer;
+import com.iambadatplaying.frontendHandler.SocketServer;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.ArrayList;
@@ -118,8 +118,7 @@ public class ConnectionStatemachine {
         onStateChange(currentState);
     }
 
-    private ConnectionStatemachine() {
-    }
+    private ConnectionStatemachine() {}
 
     private void initTransitions() {
         State.STARTING.setTransitions(
@@ -161,13 +160,13 @@ public class ConnectionStatemachine {
         }
 
         if (!currentState.isValidTransition(newState)) {
-            System.out.println("Invalid transition from " + currentState + " to " + newState);
+            log("Invalid transition from " + currentState + " to " + newState, Starter.LOG_LEVEL.ERROR);
             return;
         }
 
         log(
                 "Transitioning from " + currentState + " to " + newState,
-                Starter.LOG_LEVEL.INFO
+                Starter.LOG_LEVEL.DEBUG
         );
         this.currentState = newState;
         new Thread(
@@ -249,12 +248,10 @@ public class ConnectionStatemachine {
     }
 
     private void handleNoProcessIdle() {
-        //Nothing to do here
+        log("No process found, will not continue to search for the League Client Process", Starter.LOG_LEVEL.INFO);
     }
 
     private void handleAwaitingLcuConnection() {
-        ConnectionManager cm = Starter.getInstance().getConnectionManager();
-
         for (int i = 0; i < MAXIMUM_LCU_CONNECTION_ATTEMPTS; i++) {
             if (Starter.getInstance().isShutdownPending()) {
                 return;
@@ -280,8 +277,6 @@ public class ConnectionStatemachine {
     }
 
     private void handleAwaitingLcuInit() {
-        ConnectionManager cm = Starter.getInstance().getConnectionManager();
-
         ArrayList<String> checkedEndpoints = new ArrayList<>();
 
         for (int i = 0; i < MAXIMUM_LCU_INIT_ATTEMPTS; i++) {

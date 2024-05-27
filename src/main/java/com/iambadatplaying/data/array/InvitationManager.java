@@ -9,10 +9,12 @@ import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class InvitationManager extends ArrayDataManager {
 
-    private static final String INVITATION_URI = "/lol-lobby/v2/received-invitations";
+    private static final Pattern INVITATION_PATTERN = Pattern.compile("/lol-lobby/v2/received-invitations$");
 
     public InvitationManager(Starter starter) {
         super(starter);
@@ -26,12 +28,12 @@ public class InvitationManager extends ArrayDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return INVITATION_URI.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return INVITATION_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
                 resetState();
@@ -42,8 +44,8 @@ public class InvitationManager extends ArrayDataManager {
                 Optional<JsonArray> updatedFEData = backendToFrontendInvitations(data.getAsJsonArray());
                 if (!updatedFEData.isPresent()) return;
                 JsonArray updatedState = updatedFEData.get();
-                if (Util.equalJsonElements(updatedState, array)) return;
-                array = updatedState;
+                if (Util.equalJsonElements(updatedState, currentArray)) return;
+                currentArray = updatedState;
                 sendCurrentState();
                 break;
         }
@@ -57,7 +59,7 @@ public class InvitationManager extends ArrayDataManager {
 
     @Override
     protected Optional<JsonArray> fetchCurrentState() {
-        if (array != null) return Optional.of(array);
+        if (currentArray != null) return Optional.of(currentArray);
         JsonArray data = ConnectionManager.getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/received-invitations"));
         return Optional.of(data);
     }
@@ -101,7 +103,7 @@ public class InvitationManager extends ArrayDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(getEventName(), array));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(getEventName(), currentArray));
     }
 
     @Override

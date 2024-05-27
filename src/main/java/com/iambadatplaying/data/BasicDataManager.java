@@ -3,7 +3,12 @@ package com.iambadatplaying.data;
 import com.google.gson.JsonElement;
 import com.iambadatplaying.Starter;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public abstract class BasicDataManager {
+    public static Pattern UNMATCHABLE_PATTERN = Pattern.compile("^\\b$");
+
     protected boolean initialized = false;
     protected Starter starter;
 
@@ -24,17 +29,19 @@ public abstract class BasicDataManager {
 
     protected abstract void doInitialize();
 
-    protected abstract boolean isRelevantURI(String uri);
+    protected abstract Matcher getURIMatcher(String uri);
 
-    protected abstract void doUpdateAndSend(String uri, String type, JsonElement data);
+    protected abstract void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data);
 
     public void update(String uri, String type, JsonElement data) {
         if (!initialized) {
             log("Not initialized, wont have any effect", Starter.LOG_LEVEL.WARN);
             return;
         }
-        if (!isRelevantURI(uri)) return;
-        doUpdateAndSend(uri, type, data);
+
+        Matcher uriMatcher = getURIMatcher(uri);
+        if (!uriMatcher.matches()) return;
+        doUpdateAndSend(uriMatcher, type, data);
     }
     public void shutdown() {
         if (!initialized) return;

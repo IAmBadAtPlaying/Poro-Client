@@ -9,16 +9,17 @@ import com.iambadatplaying.data.ReworkedDataManager;
 import com.iambadatplaying.data.map.GameNameManager;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
-import com.iambadatplaying.lcuHandler.DataManager;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class LobbyData extends StateDataManager {
 
     private static final String UPDATE_TYPE_LOBBY = ReworkedDataManager.UPDATE_TYPE_LOBBY;
 
-    private static final String LOBBY_URI = "/lol-lobby/v2/lobby";
+    private static final Pattern LOBBY_URI_PATTERN = Pattern.compile("/lol-lobby/v2/lobby$");
 
     public LobbyData(Starter starter) {
         super(starter);
@@ -39,12 +40,12 @@ public class LobbyData extends StateDataManager {
     }
 
     @Override
-    protected boolean isRelevantURI(String uri) {
-        return LOBBY_URI.equals(uri.trim());
+    protected Matcher getURIMatcher(String uri) {
+        return LOBBY_URI_PATTERN.matcher(uri);
     }
 
     @Override
-    protected void doUpdateAndSend(String uri, String type, JsonElement data) {
+    protected void doUpdateAndSend(Matcher uriMatcher, String type, JsonElement data) {
         switch (type) {
             case UPDATE_TYPE_DELETE:
                 resetState();
@@ -67,7 +68,7 @@ public class LobbyData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
+        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
     }
 
     private Optional<JsonObject> backendToFrontendLobby(JsonObject data) {
