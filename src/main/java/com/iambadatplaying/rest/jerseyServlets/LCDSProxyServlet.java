@@ -46,7 +46,7 @@ public class LCDSProxyServlet {
 
         JsonObject bodyObject = bodyElement.getAsJsonObject();
 
-        if (!Util.jsonKeysPresent(bodyObject,"destination","method","args")) {
+        if (!Util.jsonKeysPresent(bodyObject, "destination", "method", "args")) {
             return Response
                     .status(Response.Status.BAD_REQUEST)
                     .entity(ServletUtils.createErrorMessage("Invalid JSON"))
@@ -83,7 +83,7 @@ public class LCDSProxyServlet {
         String argsString = URLEncoder.encode(args.toString());
 
         String resource = "/lol-login/v1/session/invoke?destination=" + destinationString + "&method=" + methodString + "&args=" + argsString;
-        JsonObject response = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,resource));
+        JsonObject response = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, resource));
         if (response == null) {
             return Response
                     .status(Response.Status.INTERNAL_SERVER_ERROR)

@@ -26,7 +26,7 @@ public class SocketServer {
     }
 
     public void sendToAllSessions(String message) {
-        for(Socket socket: sockets) {
+        for (Socket socket : sockets) {
             socket.sendMessage(message);
         }
     }
@@ -55,7 +55,7 @@ public class SocketServer {
                         return null;
                     }
 
-                   return new Socket(starter);
+                    return new Socket(starter);
                 });
                 log("[Frontend] Configured socket server");
             }
@@ -71,7 +71,7 @@ public class SocketServer {
 
     public void shutdown() {
         try {
-            for (Socket socket: sockets) {
+            for (Socket socket : sockets) {
                 if (socket == null) continue;
                 socket.externalShutdown();
             }
@@ -88,7 +88,7 @@ public class SocketServer {
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getSimpleName() +": " + s, level);
+        starter.log(this.getClass().getSimpleName() + ": " + s, level);
     }
 
     private void log(String s) {

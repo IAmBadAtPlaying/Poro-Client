@@ -12,11 +12,6 @@ import com.iambadatplaying.lcuHandler.ConnectionManager;
 import java.util.HashMap;
 
 public class ReworkedDataManager {
-    private HashMap<String, StateDataManager> stateDataManagers;
-    private HashMap<String, MapDataManager> mapDataManagers;
-    private HashMap<String, ArrayDataManager> arrayDataManagers;
-
-
     public static final String UPDATE_TYPE_SELF_PRESENCE = "SelfPresenceUpdate";
     public static final String UPDATE_TYPE_GAMEFLOW_PHASE = "GameflowPhaseUpdate";
     public static final String UPDATE_TYPE_LOBBY = "LobbyUpdate";
@@ -36,11 +31,11 @@ public class ReworkedDataManager {
     public static final String UPDATE_TYPE_OWNED_CHAMPIONS = "OwnedChampionsUpdate";
     public static final String UPDATE_TYPE_CURRENT_SUMMONER = "CurrentSummonerUpdate";
     public static final String UPDATE_TYPE_QUEUE = "QueueUpdate";
-
     private static final String DATA_STRING_EVENT = "event";
-
     private final Starter starter;
-
+    private final HashMap<String, StateDataManager> stateDataManagers;
+    private final HashMap<String, MapDataManager> mapDataManagers;
+    private final HashMap<String, ArrayDataManager> arrayDataManagers;
     private boolean initialized = false;
 
     public ReworkedDataManager(Starter starter) {
@@ -52,6 +47,20 @@ public class ReworkedDataManager {
         addStateManagers();
         addMapManagers();
         addArrayManagers();
+    }
+
+    public static String getEventDataString(String event, JsonElement data) {
+        JsonObject dataToSend = new JsonObject();
+        dataToSend.addProperty(DATA_STRING_EVENT, event);
+        dataToSend.add("data", data);
+        return dataToSend.toString();
+    }
+
+    public static String getInitialDataString(String event, JsonElement data) {
+        JsonObject dataToSend = new JsonObject();
+        dataToSend.addProperty(DATA_STRING_EVENT, "Initial" + event);
+        dataToSend.add("data", data);
+        return dataToSend.toString();
     }
 
     private void addArrayManagers() {
@@ -163,14 +172,13 @@ public class ReworkedDataManager {
         for (ArrayDataManager manager : arrayDataManagers.values()) {
             new Thread(() ->
                     manager.getCurrentState().ifPresent(
-                        state -> socket.sendMessage(
-                                ReworkedDataManager.getInitialDataString(manager.getEventName(), state)
-                        )
+                            state -> socket.sendMessage(
+                                    ReworkedDataManager.getInitialDataString(manager.getEventName(), state)
+                            )
                     )
             ).start();
         }
     }
-
 
     private void doUpdate(String uri, String type, JsonElement data) {
         if (!initialized) {
@@ -226,20 +234,6 @@ public class ReworkedDataManager {
 
     public ArrayDataManager getArrayManagers(Class manager) {
         return arrayDataManagers.get(manager.getName());
-    }
-
-    public static String getEventDataString(String event, JsonElement data) {
-        JsonObject dataToSend = new JsonObject();
-        dataToSend.addProperty(DATA_STRING_EVENT, event);
-        dataToSend.add("data", data);
-        return dataToSend.toString();
-    }
-
-    public static String getInitialDataString(String event, JsonElement data) {
-        JsonObject dataToSend = new JsonObject();
-        dataToSend.addProperty(DATA_STRING_EVENT, "Initial" + event);
-        dataToSend.add("data", data);
-        return dataToSend.toString();
     }
 
     private void log(Object o, Starter.LOG_LEVEL level) {

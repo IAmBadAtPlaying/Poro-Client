@@ -157,7 +157,7 @@ public class LootServlet extends BaseRESTServlet {
                         somethingFailed = true;
                         break loop;
                     }
-                    log("Rerolling response: " + responseJson.toString(), Starter.LOG_LEVEL.DEBUG);
+                    log("Rerolling response: " + responseJson, Starter.LOG_LEVEL.DEBUG);
                     connection.disconnect();
                     long time2 = System.currentTimeMillis();
                     log("Rerolling took: " + (time2 - time) + "ms", Starter.LOG_LEVEL.DEBUG);

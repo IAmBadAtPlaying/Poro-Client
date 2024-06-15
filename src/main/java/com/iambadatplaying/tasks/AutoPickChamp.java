@@ -55,13 +55,13 @@ public class AutoPickChamp extends Task {
             if (!optMyTeam.isPresent()) return;
 
             JsonArray myTeam = optMyTeam.get();
-            for (int i = 0, arrayLength = myTeam.size(); i< arrayLength; i++) {
+            for (int i = 0, arrayLength = myTeam.size(); i < arrayLength; i++) {
                 JsonObject player = myTeam.get(i).getAsJsonObject();
                 if (player.isEmpty()) continue;
                 if (!Util.jsonKeysPresent(player, "cellId")) continue;
                 if (player.get("cellId").getAsInt() == localPlayerCellId) {
                     JsonObject pickAction = player.get("pickAction").getAsJsonObject();
-                    if (!Util.jsonKeysPresent(pickAction, "isInProgress","id")) continue;
+                    if (!Util.jsonKeysPresent(pickAction, "isInProgress", "id")) continue;
                     if (!pickAction.get("isInProgress").getAsBoolean()) continue;
                     scheduleLockIn(championId);
                     break;
@@ -74,26 +74,26 @@ public class AutoPickChamp extends Task {
 
 
     private void scheduleLockIn(Integer championId) {
-            alreadyPicked = true;
-            timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    try {
-                        log("Trying to invoke champion Pick", Starter.LOG_LEVEL.DEBUG);
-                        JsonObject action = new JsonObject();
-                        action.addProperty("championId", championId);
-                        action.addProperty("lockIn", true);
-                        HttpURLConnection proxyCon = (HttpURLConnection) new URL("http://localhost:"+ Starter.RESSOURCE_SERVER_PORT +"/rest/champSelect/pick").openConnection();
-                        proxyCon.setRequestMethod("POST");
-                        proxyCon.setDoOutput(true);
-                        proxyCon.getOutputStream().write(action.toString().getBytes());
-                        proxyCon.getResponseCode();
-                        proxyCon.disconnect();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+        alreadyPicked = true;
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    log("Trying to invoke champion Pick", Starter.LOG_LEVEL.DEBUG);
+                    JsonObject action = new JsonObject();
+                    action.addProperty("championId", championId);
+                    action.addProperty("lockIn", true);
+                    HttpURLConnection proxyCon = (HttpURLConnection) new URL("http://localhost:" + Starter.RESSOURCE_SERVER_PORT + "/rest/champSelect/pick").openConnection();
+                    proxyCon.setRequestMethod("POST");
+                    proxyCon.setDoOutput(true);
+                    proxyCon.getOutputStream().write(action.toString().getBytes());
+                    proxyCon.getResponseCode();
+                    proxyCon.disconnect();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            }, delay);
+            }
+        }, delay);
     }
 
     private void resetChampSelectVariables() {
@@ -115,12 +115,16 @@ public class AutoPickChamp extends Task {
 
     public boolean setTaskArgs(JsonObject arguments) {
         try {
-            delay = arguments.get("delay").getAsInt();
-            championId = arguments.get("championId").getAsInt();
+
+            int delay = arguments.get("delay").getAsInt();
+            int championId = arguments.get("championId").getAsInt();
+
+            this.delay = delay;
+            this.championId = championId;
             log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            starter.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase());
+            e.printStackTrace();
         }
         return false;
     }
@@ -157,11 +161,11 @@ public class AutoPickChamp extends Task {
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getName() +": " + s, level);
+        starter.log(this.getClass().getName() + ": " + s, level);
     }
 
     private void log(String s) {
-        starter.log(this.getClass().getName() +": " +s);
+        starter.log(this.getClass().getName() + ": " + s);
     }
 
 }

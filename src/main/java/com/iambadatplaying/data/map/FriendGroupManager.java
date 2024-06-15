@@ -79,7 +79,7 @@ public class FriendGroupManager extends MapDataManager<Integer> {
         HttpsURLConnection connection = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friend-groups/" + key);
         JsonObject friendGroup = ConnectionManager.getResponseBodyAsJsonObject(connection);
         if (friendGroup == null) return Optional.empty();
-        if (Util.jsonKeysPresent(friendGroup,"errorCode")) {
+        if (Util.jsonKeysPresent(friendGroup, "errorCode")) {
             return Optional.empty();
         }
 

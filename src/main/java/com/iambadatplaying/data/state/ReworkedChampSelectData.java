@@ -28,102 +28,12 @@ public class ReworkedChampSelectData extends StateDataManager {
     private static final String UPDATE_TYPE_CHAMP_SELECT = ReworkedDataManager.UPDATE_TYPE_CHAMP_SELECT;
 
     private static final Pattern CHAMP_SELECT_SESSION_PATTERN = Pattern.compile("/lol-champ-select/v1/session$");
-
-    public ReworkedChampSelectData(Starter starter) {
-        super(starter);
-    }
-
-    private enum ChampSelectState {
-        PREPARATION,
-        BANNING,
-        AWAITING_BAN_RESULTS,
-        AWAITING_PICK,
-        PICKING_WITHOUT_BAN,
-        PICKING_WITH_BAN,
-        AWAITING_FINALIZATION,
-        FINALIZATION;
-
-        // Logic breaks in tournament draft (kinda)
-        // Suppressing warnings as there is no other way to do this
-        @java.lang.SuppressWarnings({"squid:S6541", "squid:S3776"})
-        public static ChampSelectState fromParameters(JsonObject parameters) {
-            if (parameters == null) return null;
-            String timerPhase = parameters.get(JSON_KEY_PHASE).getAsString();
-            if (timerPhase == null) {
-                timerPhase = "UNKNOWN";
-            }
-            boolean banExists = parameters.has(JSON_KEY_BAN_ACTION) && !parameters.get(JSON_KEY_BAN_ACTION).getAsJsonObject().isEmpty();
-            boolean pickExists = parameters.has(JSON_KEY_PICK_ACTION) && !parameters.get(JSON_KEY_PICK_ACTION).getAsJsonObject().isEmpty();
-
-            boolean isPickInProgress = false;
-            boolean isPickCompleted = false;
-
-            boolean isBanInProgress = false;
-            boolean isBanCompleted = false;
-
-            if (pickExists) {
-                JsonObject pickAction = parameters.get(JSON_KEY_PICK_ACTION).getAsJsonObject();
-                isPickInProgress = pickAction.get(JSON_KEY_IS_IN_PROGRESS).getAsBoolean();
-                isPickCompleted = pickAction.get(JSON_KEY_COMPLETED).getAsBoolean();
-            }
-            if (banExists) {
-                JsonObject banAction = parameters.get(JSON_KEY_BAN_ACTION).getAsJsonObject();
-                isBanInProgress = banAction.get(JSON_KEY_IS_IN_PROGRESS).getAsBoolean();
-                isBanCompleted = banAction.get(JSON_KEY_COMPLETED).getAsBoolean();
-            }
-
-            switch (timerPhase) {
-                case "PLANNING":
-                    return PREPARATION;
-                case "BAN_PICK":
-                    if (banExists) {
-                        if (isBanInProgress) {
-                            return BANNING;
-                        } else {
-                            if (isBanCompleted) {
-                                if (pickExists) {
-                                    if (isPickInProgress) {
-                                        return PICKING_WITH_BAN;
-                                    } else {
-                                        if (isPickCompleted) {
-                                            return AWAITING_FINALIZATION;
-                                        } else {
-                                            return AWAITING_PICK;
-                                        }
-                                    }
-                                } else {
-                                    return AWAITING_FINALIZATION;
-                                }
-                            } else {
-                                return AWAITING_BAN_RESULTS;
-                            }
-                        }
-                    } else {
-                        if (pickExists) {
-                            if (isPickInProgress) {
-                                return PICKING_WITHOUT_BAN;
-                            } else {
-                                if (isPickCompleted) {
-                                    return AWAITING_FINALIZATION;
-                                } else {
-                                    return AWAITING_PICK;
-                                }
-                            }
-                        } else {
-                            return AWAITING_FINALIZATION;
-                        }
-                    }
-                case "FINALIZATION":
-                    return FINALIZATION;
-                default:
-                    return null;
-            }
-        }
-    }
-
     private Map<Integer, JsonObject> cellIdMemberMap;
     private Map<Integer, JsonObject> banMap;
     private Map<Integer, JsonObject> pickMap;
+    public ReworkedChampSelectData(Starter starter) {
+        super(starter);
+    }
 
     @Override
     protected void doInitialize() {
@@ -396,5 +306,93 @@ public class ReworkedChampSelectData extends StateDataManager {
     @Override
     public String getEventName() {
         return UPDATE_TYPE_CHAMP_SELECT;
+    }
+
+    private enum ChampSelectState {
+        PREPARATION,
+        BANNING,
+        AWAITING_BAN_RESULTS,
+        AWAITING_PICK,
+        PICKING_WITHOUT_BAN,
+        PICKING_WITH_BAN,
+        AWAITING_FINALIZATION,
+        FINALIZATION;
+
+        // Logic breaks in tournament draft (kinda)
+        // Suppressing warnings as there is no other way to do this
+        @java.lang.SuppressWarnings({"squid:S6541", "squid:S3776"})
+        public static ChampSelectState fromParameters(JsonObject parameters) {
+            if (parameters == null) return null;
+            String timerPhase = parameters.get(JSON_KEY_PHASE).getAsString();
+            if (timerPhase == null) {
+                timerPhase = "UNKNOWN";
+            }
+            boolean banExists = parameters.has(JSON_KEY_BAN_ACTION) && !parameters.get(JSON_KEY_BAN_ACTION).getAsJsonObject().isEmpty();
+            boolean pickExists = parameters.has(JSON_KEY_PICK_ACTION) && !parameters.get(JSON_KEY_PICK_ACTION).getAsJsonObject().isEmpty();
+
+            boolean isPickInProgress = false;
+            boolean isPickCompleted = false;
+
+            boolean isBanInProgress = false;
+            boolean isBanCompleted = false;
+
+            if (pickExists) {
+                JsonObject pickAction = parameters.get(JSON_KEY_PICK_ACTION).getAsJsonObject();
+                isPickInProgress = pickAction.get(JSON_KEY_IS_IN_PROGRESS).getAsBoolean();
+                isPickCompleted = pickAction.get(JSON_KEY_COMPLETED).getAsBoolean();
+            }
+            if (banExists) {
+                JsonObject banAction = parameters.get(JSON_KEY_BAN_ACTION).getAsJsonObject();
+                isBanInProgress = banAction.get(JSON_KEY_IS_IN_PROGRESS).getAsBoolean();
+                isBanCompleted = banAction.get(JSON_KEY_COMPLETED).getAsBoolean();
+            }
+
+            switch (timerPhase) {
+                case "PLANNING":
+                    return PREPARATION;
+                case "BAN_PICK":
+                    if (banExists) {
+                        if (isBanInProgress) {
+                            return BANNING;
+                        } else {
+                            if (isBanCompleted) {
+                                if (pickExists) {
+                                    if (isPickInProgress) {
+                                        return PICKING_WITH_BAN;
+                                    } else {
+                                        if (isPickCompleted) {
+                                            return AWAITING_FINALIZATION;
+                                        } else {
+                                            return AWAITING_PICK;
+                                        }
+                                    }
+                                } else {
+                                    return AWAITING_FINALIZATION;
+                                }
+                            } else {
+                                return AWAITING_BAN_RESULTS;
+                            }
+                        }
+                    } else {
+                        if (pickExists) {
+                            if (isPickInProgress) {
+                                return PICKING_WITHOUT_BAN;
+                            } else {
+                                if (isPickCompleted) {
+                                    return AWAITING_FINALIZATION;
+                                } else {
+                                    return AWAITING_PICK;
+                                }
+                            }
+                        } else {
+                            return AWAITING_FINALIZATION;
+                        }
+                    }
+                case "FINALIZATION":
+                    return FINALIZATION;
+                default:
+                    return null;
+            }
+        }
     }
 }

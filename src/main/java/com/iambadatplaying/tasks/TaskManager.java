@@ -13,7 +13,7 @@ import java.util.HashMap;
 
 public class TaskManager {
 
-    private Starter starter;
+    private final Starter starter;
 
     private HashMap<String, Task> runningtaskList;
 
@@ -42,7 +42,6 @@ public class TaskManager {
                 }).start();
             }
         } catch (Exception e) {
-            return;
         }
     }
 
@@ -84,7 +83,7 @@ public class TaskManager {
 
     public void addTaskToMap(Task task) {
         if (task != null) {
-            log("Added " + task.getClass().getSimpleName().toLowerCase()+ " to the Map");
+            log("Added " + task.getClass().getSimpleName().toLowerCase() + " to the Map");
             allTasksMap.put(task.getClass().getSimpleName().toLowerCase(), task);
         }
     }
@@ -171,11 +170,11 @@ public class TaskManager {
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getSimpleName() +": " + s, level);
+        starter.log(this.getClass().getSimpleName() + ": " + s, level);
     }
 
     private void log(String s) {
-        starter.log(this.getClass().getSimpleName() +": " +s);
+        starter.log(this.getClass().getSimpleName() + ": " + s);
     }
 
 }

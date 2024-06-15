@@ -10,10 +10,16 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URLEncoder;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 
 public class ProxyHandler extends AbstractHandler {
@@ -145,7 +151,7 @@ public class ProxyHandler extends AbstractHandler {
             Map<String, List<String>> headers = con.getHeaderFields();
 
             if (is == null) {
-                log(""+con.getResponseCode());
+                log("" + con.getResponseCode());
             }
 
             byte[] resourceBytes = readBytesFromStream(is);

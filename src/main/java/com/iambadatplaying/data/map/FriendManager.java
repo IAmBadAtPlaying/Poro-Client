@@ -31,7 +31,7 @@ public class FriendManager extends MapDataManager<String> {
     }
 
     private void fetchFriends() {
-        JsonArray friends = starter.getConnectionManager().getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
+        JsonArray friends = ConnectionManager.getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-chat/v1/friends"));
         if (friends == null) return;
         for (int i = 0; i < friends.size(); i++) {
             JsonObject friend = friends.get(i).getAsJsonObject();

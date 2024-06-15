@@ -56,7 +56,14 @@ public class EOGHonorManager extends StateDataManager {
     private Optional<JsonObject> backendHonorToFrontendHonor(JsonObject data) {
         JsonObject frontendData = new JsonObject();
         Util.copyJsonAttributes(data, frontendData, "gameId");
-        JsonArray eligiblePlayers = data.getAsJsonArray("eligiblePlayers");
+        JsonArray eligiblePlayers;
+        if (Util.jsonKeysPresent(data, "eligiblePlayers")) {
+            eligiblePlayers = data.getAsJsonArray("eligiblePlayers");
+        } else if (Util.jsonKeysPresent(data, "eligibleAllies")) {
+            eligiblePlayers = data.getAsJsonArray("eligibleAllies");
+        } else {
+            return Optional.empty();
+        }
         JsonArray feEligiblePlayers = new JsonArray();
         for (int i = 0, size = eligiblePlayers.size(); i < size; i++) {
             JsonObject player = eligiblePlayers.get(i).getAsJsonObject();

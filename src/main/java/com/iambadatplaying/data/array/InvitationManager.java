@@ -15,12 +15,11 @@ import java.util.regex.Pattern;
 public class InvitationManager extends ArrayDataManager {
 
     private static final Pattern INVITATION_PATTERN = Pattern.compile("/lol-lobby/v2/received-invitations$");
+    private List<String> invitations = null;
 
     public InvitationManager(Starter starter) {
         super(starter);
     }
-
-    private List<String> invitations = null;
 
     @Override
     protected void doInitialize() {

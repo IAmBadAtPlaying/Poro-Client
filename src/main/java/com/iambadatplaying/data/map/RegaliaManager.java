@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class RegaliaManager extends MapDataManager<BigInteger>{
+public class RegaliaManager extends MapDataManager<BigInteger> {
 
     private final static Pattern lolRegaliaV2SummonerPattern = Pattern.compile("/lol-regalia/v2/summoners/(.*)/regalia/async");
 
@@ -105,7 +105,7 @@ public class RegaliaManager extends MapDataManager<BigInteger>{
     }
 
     public JsonObject updateRegalia(BigInteger summonerId) {
-        JsonObject regalia =  starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-regalia/v3/summoners/"+summonerId.toString()+"/regalia"));
+        JsonObject regalia = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-regalia/v3/summoners/" + summonerId.toString() + "/regalia"));
         map.put(summonerId, regalia);
         updateChatMe(summonerId);
         updateLobbyMemeberRegalia(summonerId);

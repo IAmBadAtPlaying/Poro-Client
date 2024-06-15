@@ -192,7 +192,8 @@ public class QuickPlayServlet {
                     try {
                         int respCode = connection.getResponseCode();
                         connection.disconnect();
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
         );
 
@@ -209,7 +210,8 @@ public class QuickPlayServlet {
                             try {
                                 int respCode = connection.getResponseCode();
                                 connection.disconnect();
-                            } catch (Exception ignored) {}
+                            } catch (Exception ignored) {
+                            }
                         }
                 );
 
@@ -296,7 +298,7 @@ public class QuickPlayServlet {
 
         JsonArray slots = profile.get(QuickPlayModule.PROPERTY_QUICKPLAY_PROFILE_SLOTS).getAsJsonArray();
 
-        for (JsonElement backendSlot: slots) {
+        for (JsonElement backendSlot : slots) {
             JsonObject lcuSlot = new JsonObject();
             JsonObject backendSlotObj = backendSlot.getAsJsonObject();
 

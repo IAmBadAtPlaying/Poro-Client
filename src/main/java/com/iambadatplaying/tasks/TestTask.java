@@ -51,10 +51,10 @@ public class TestTask extends Task {
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getName() +": " + s, level);
+        starter.log(this.getClass().getName() + ": " + s, level);
     }
 
     private void log(String s) {
-        starter.log(this.getClass().getName() +": " +s);
+        starter.log(this.getClass().getName() + ": " + s);
     }
 }

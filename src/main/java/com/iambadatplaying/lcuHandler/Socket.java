@@ -11,16 +11,13 @@ import java.util.TimerTask;
 public class Socket {
 
     Starter starter;
+    private TimerTask timerTask;
+    private volatile boolean connected = false;
+    private Session currentSession;
 
     public Socket(Starter starter) {
         this.starter = starter;
     }
-
-    private TimerTask timerTask;
-
-    private volatile boolean connected = false;
-
-    private Session currentSession;
 
     public boolean isConnected() {
         return connected;
@@ -100,7 +97,7 @@ public class Socket {
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getSimpleName()+ ": " + s, level);
+        starter.log(this.getClass().getSimpleName() + ": " + s, level);
     }
 
     private void log(String s) {

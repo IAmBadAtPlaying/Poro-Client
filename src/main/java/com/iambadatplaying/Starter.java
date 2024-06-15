@@ -1,8 +1,12 @@
 package com.iambadatplaying;
 
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.iambadatplaying.data.ReworkedDataManager;
-import com.iambadatplaying.frontendHandler.*;
+import com.iambadatplaying.frontendHandler.FrontendMessageHandler;
+import com.iambadatplaying.frontendHandler.SocketServer;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
@@ -14,33 +18,25 @@ import java.nio.file.Paths;
 
 public class Starter {
 
-    public static Starter instance = null;
-
     public static final boolean isDev = true;
-
-    public static int ERROR_INVALID_AUTH = 400;
-    public static int ERROR_INSUFFICIENT_PERMISSIONS = 401;
-    public static int ERROR_CERTIFICATE_SETUP_FAILED = 495;
-
-    public static int ERROR_HTTP_PATCH_SETUP = 505;
-
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 1;
     public static final int VERSION_PATCH = 4;
-
-    public static String[] requiredEndpoints = {"OnJsonApiEvent"};
-
-    private static final String appDirName = "poroclient";
-
     public static final int DEBUG_FRONTEND_PORT = 3000;
     public static final int DEBUG_FRONTEND_PORT_V2 = 3001;
     public static final int RESSOURCE_SERVER_PORT = 35199;
     public static final int FRONTEND_SOCKET_PORT = 8887;
-
+    private static final String appDirName = "poroclient";
+    public static Starter instance = null;
+    public static int ERROR_INVALID_AUTH = 400;
+    public static int ERROR_INSUFFICIENT_PERMISSIONS = 401;
+    public static int ERROR_CERTIFICATE_SETUP_FAILED = 495;
+    public static int ERROR_HTTP_PATCH_SETUP = 505;
+    public static String[] requiredEndpoints = {"OnJsonApiEvent"};
     private Path taskDirPath = null;
 
 
-    private Path basePath = null;
+    private final Path basePath = null;
 
     private SocketClient client;
     private SocketServer server;
@@ -65,20 +61,13 @@ public class Starter {
 
     public static void main(String[] args) {
         Starter starter = Starter.getInstance();
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-
-            starter.getConfigLoader().saveConfig();
-        }));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> starter.getConfigLoader().saveConfig()));
         starter.connectionStatemachine = new ConnectionStatemachine(starter);
         starter.run();
     }
 
-    public enum LOG_LEVEL {
-        LCU_MESSAGING,
-        DEBUG,
-        INFO,
-        WARN,
-        ERROR;
+    public static String getAppDirName() {
+        return appDirName;
     }
 
     public void run() {
@@ -209,10 +198,6 @@ public class Starter {
         log(s, LOG_LEVEL.DEBUG);
     }
 
-    public static String getAppDirName() {
-        return appDirName;
-    }
-
     public Path getTaskPath() {
         if (taskDirPath == null) {
             taskDirPath = getConfigLoader().getAppFolderPath().resolve(ConfigLoader.USER_DATA_FOLDER_NAME).resolve(ConfigLoader.TASKS_FOLDER_NAME);
@@ -277,5 +262,13 @@ public class Starter {
     public boolean isInitialized() {
         if (connectionStatemachine == null) return false;
         return connectionStatemachine.getCurrentState() == ConnectionStatemachine.State.CONNECTED;
+    }
+
+    public enum LOG_LEVEL {
+        LCU_MESSAGING,
+        DEBUG,
+        INFO,
+        WARN,
+        ERROR
     }
 }

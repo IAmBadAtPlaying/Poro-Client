@@ -12,7 +12,7 @@ import java.nio.file.Path;
 //TODO: JRE cant compile java files, therefore allow users to upload .class files, no longer .java files
 public class TaskLoader {
 
-    private Starter starter;
+    private final Starter starter;
     private Path taskDirPath;
 
     public TaskLoader(Starter starter) {
@@ -65,7 +65,7 @@ public class TaskLoader {
 
         int compilationResult = compiler.run(null, null, null, taskJavaPath.toString());
         if (compilationResult != 0) {
-            log("Could not compile task: " + taskJavaPath.toString(), Starter.LOG_LEVEL.ERROR);
+            log("Could not compile task: " + taskJavaPath, Starter.LOG_LEVEL.ERROR);
         }
     }
 
@@ -108,12 +108,12 @@ public class TaskLoader {
         try {
             Files.delete(taskJavaPath);
         } catch (IOException e) {
-            log("Failed to delete task java file: " + taskJavaPath.toString(), Starter.LOG_LEVEL.ERROR);
+            log("Failed to delete task java file: " + taskJavaPath, Starter.LOG_LEVEL.ERROR);
         }
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getSimpleName() +": " + s, level);
+        starter.log(this.getClass().getSimpleName() + ": " + s, level);
     }
 
     private void log(String s) {

@@ -9,6 +9,9 @@ import java.util.Optional;
 
 public class Util {
 
+    private Util() {
+    }
+
     public static Optional<JsonElement> parseJson(String json) {
         try {
             return Optional.of(JsonParser.parseString(json));
@@ -127,6 +130,4 @@ public class Util {
         if (jsonObject == null || !jsonObject.has(key)) return Optional.empty();
         return Optional.of(jsonObject.get(key).getAsJsonArray());
     }
-
-    private Util() {}
 }

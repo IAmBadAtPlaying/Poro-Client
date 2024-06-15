@@ -27,9 +27,9 @@ public class AutoAcceptQueue extends Task {
             case gameflow_v1_gameflow_phase:
                 JsonObject updateObject = webSocketEvent.get(2).getAsJsonObject();
                 handleUpdateData(updateObject);
-            break;
+                break;
             default:
-            break;
+                break;
         }
     }
 
@@ -37,13 +37,13 @@ public class AutoAcceptQueue extends Task {
         try {
             JsonObject data = updateData.get("data").getAsJsonObject();
             String newGameflowPhase = data.get("phase").getAsString();
-            if("ReadyCheck".equals(newGameflowPhase)) {
+            if ("ReadyCheck".equals(newGameflowPhase)) {
                 Timer timer = new java.util.Timer();
                 timer.schedule(new TimerTask() {
                     @Override
                     public void run() {
                         try {
-                            HttpURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-matchmaking/v1/ready-check/accept","{}");
+                            HttpURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-matchmaking/v1/ready-check/accept", "{}");
                             con.getResponseCode();
                             con.disconnect();
                         } catch (Exception e) {
@@ -81,6 +81,7 @@ public class AutoAcceptQueue extends Task {
         }
         return false;
     }
+
     public JsonObject getTaskArgs() {
         JsonObject taskArgs = new JsonObject();
         taskArgs.addProperty("delay", delay);
@@ -104,11 +105,11 @@ public class AutoAcceptQueue extends Task {
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getName() +": " + s, level);
+        starter.log(this.getClass().getName() + ": " + s, level);
     }
 
     private void log(String s) {
-        starter.log(this.getClass().getName() +": " +s);
+        starter.log(this.getClass().getName() + ": " + s);
     }
 
 }

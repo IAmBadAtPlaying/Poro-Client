@@ -8,7 +8,7 @@ import java.net.URLDecoder;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class PickReminderTask extends Task{
+public class PickReminderTask extends Task {
 
     private static final String typeChampSelect = "championSelect";
 
@@ -41,14 +41,14 @@ public class PickReminderTask extends Task{
                     String chatId = getRoomId(JsonData.get("uri").getAsString());
                     if (chatId.isEmpty()) return;
 
-                    currentChatId =chatId;
+                    currentChatId = chatId;
                     StringBuilder sb = new StringBuilder();
                     sb.append("[Poro-Client] You are playing with\n");
 
                     timer.schedule(new TimerTask() {
                         @Override
                         public void run() {
-                            JsonObject participants = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildRiotConnection(ConnectionManager.conOptions.GET, "/chat/v5/participants?cid="+ URLDecoder.decode(chatId),""));
+                            JsonObject participants = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildRiotConnection(ConnectionManager.conOptions.GET, "/chat/v5/participants?cid=" + URLDecoder.decode(chatId), ""));
                             if (participants.has("participants")) {
                                 JsonArray participantsArray = participants.get("participants").getAsJsonArray();
                                 for (int i = 0; i < participantsArray.size(); i++) {
@@ -68,19 +68,20 @@ public class PickReminderTask extends Task{
                             reminderMessage.addProperty("type", "celebration");
                             reminderMessage.addProperty("body", sb.toString());
 
-                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-chat/v1/conversations/" + chatId + "/messages", reminderMessage.toString()));
+                            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + chatId + "/messages", reminderMessage.toString()));
                         }
                     }, 2000);
 
                     alreadyReminded = true;
                 }
-            break;
+                break;
             case "Delete":
                 if (getRoomId(JsonData.get("uri").getAsString()).equals(currentChatId)) {
                     alreadyReminded = false;
                 }
-            break;
-            default: break;
+                break;
+            default:
+                break;
         }
     }
 

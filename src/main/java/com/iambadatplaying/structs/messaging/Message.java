@@ -1,5 +1,4 @@
 package com.iambadatplaying.structs.messaging;
-;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -27,14 +26,10 @@ public class Message {
     private String body;
     private String timestamp;
     private String type;
-    private String id;
+    private final String id;
 
     public Message(String id) {
         this.id = id;
-    }
-
-    public boolean isSystemMessage() {
-        return TYPE_SYSTEM.equals(this.type);
     }
 
     public static Message createCelebrationMessage(String body) {
@@ -56,6 +51,25 @@ public class Message {
         return messages;
     }
 
+    public static Message fromJsonObject(JsonObject jsonMessage) {
+        if (jsonMessage == null) return null;
+        if (jsonMessage.has(ID)) {
+            Message message = new Message(jsonMessage.get(ID).getAsString());
+            if (jsonMessage.has(AUTHOR_PUUID)) message.setAuthorPuuid(jsonMessage.get(AUTHOR_PUUID).getAsString());
+            if (jsonMessage.has(OBFUSCATED_AUTHOR_ID))
+                message.setObfuscatedAuthorId(jsonMessage.get(OBFUSCATED_AUTHOR_ID).getAsString());
+            if (jsonMessage.has(BODY)) message.setBody(jsonMessage.get(BODY).getAsString());
+            if (jsonMessage.has(TIMESTAMP)) message.setTimestamp(jsonMessage.get(TIMESTAMP).getAsString());
+            if (jsonMessage.has(TYPE)) message.setType(jsonMessage.get(TYPE).getAsString());
+            return message;
+        }
+        return null;
+    }
+
+    public boolean isSystemMessage() {
+        return TYPE_SYSTEM.equals(this.type);
+    }
+
     public JsonObject toJsonObject() {
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty(ID, this.id);
@@ -67,65 +81,52 @@ public class Message {
         return jsonObject;
     }
 
-    public static Message fromJsonObject(JsonObject jsonMessage) {
-        if(jsonMessage == null) return null;
-        if (jsonMessage.has(ID)) {
-            Message message = new Message(jsonMessage.get(ID).getAsString());
-            if(jsonMessage.has(AUTHOR_PUUID)) message.setAuthorPuuid(jsonMessage.get(AUTHOR_PUUID).getAsString());
-            if (jsonMessage.has(OBFUSCATED_AUTHOR_ID)) message.setObfuscatedAuthorId(jsonMessage.get(OBFUSCATED_AUTHOR_ID).getAsString());
-            if (jsonMessage.has(BODY)) message.setBody(jsonMessage.get(BODY).getAsString());
-            if (jsonMessage.has(TIMESTAMP)) message.setTimestamp(jsonMessage.get(TIMESTAMP).getAsString());
-            if (jsonMessage.has(TYPE)) message.setType(jsonMessage.get(TYPE).getAsString());
-            return message;
-        } return null;
+    public String getAuthorPuuid() {
+        return authorPuuid;
     }
 
     public void setAuthorPuuid(String authorPuuid) {
         this.authorPuuid = authorPuuid;
     }
 
-    public void setAuthorId(String authorId) {
-        this.authorId = authorId;
-    }
-
-    public void setObfuscatedAuthorId(String obfuscatedAuthorId) {
-        this.obfuscatedAuthorId = obfuscatedAuthorId;
-    }
-
-    public void setBody(String body) {
-        this.body = body;
-    }
-
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getAuthorPuuid() {
-        return authorPuuid;
-    }
-
     public String getAuthorId() {
         return authorId;
+    }
+
+    public void setAuthorId(String authorId) {
+        this.authorId = authorId;
     }
 
     public String getObfuscatedAuthorId() {
         return obfuscatedAuthorId;
     }
 
+    public void setObfuscatedAuthorId(String obfuscatedAuthorId) {
+        this.obfuscatedAuthorId = obfuscatedAuthorId;
+    }
+
     public String getBody() {
         return body;
+    }
+
+    public void setBody(String body) {
+        this.body = body;
     }
 
     public String getTimestamp() {
         return timestamp;
     }
 
+    public void setTimestamp(String timestamp) {
+        this.timestamp = timestamp;
+    }
+
     public String getType() {
         return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public String getId() {
