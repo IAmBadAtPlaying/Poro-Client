@@ -70,16 +70,16 @@ public class ChampSelectServlet extends BaseRESTServlet {
         }
     }
 
-    public int pickChampion (Integer championId,boolean lockIn) throws IOException {
+    public int pickChampion(Integer championId, boolean lockIn) throws IOException {
         return performChampionAction("pick", championId, lockIn);
     }
 
-    public int banChampion (Integer championId,boolean lockIn) throws IOException {
+    public int banChampion(Integer championId, boolean lockIn) throws IOException {
         return performChampionAction("ban", championId, lockIn);
     }
 
 
-    private int performChampionAction ( String actionType, Integer championId, boolean lockIn) throws IOException {
+    private int performChampionAction(String actionType, Integer championId, boolean lockIn) throws IOException {
         Optional<JsonObject> optCurrentState = starter.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class).getCurrentState();
         if (!optCurrentState.isPresent()) return -1;
         JsonObject currentChampSelectState = optCurrentState.get();
@@ -98,7 +98,7 @@ public class ChampSelectServlet extends BaseRESTServlet {
         JsonArray myTeam = optMyTeam.get();
 
         Optional<JsonObject> optMe = Optional.empty();
-        for (int i = 0, arrayLength = myTeam.size(); i< arrayLength; i++) {
+        for (int i = 0, arrayLength = myTeam.size(); i < arrayLength; i++) {
             JsonObject player = myTeam.get(i).getAsJsonObject();
             if (player.isEmpty()) continue;
             if (!Util.jsonKeysPresent(player, "cellId", "championId")) continue;
@@ -114,10 +114,10 @@ public class ChampSelectServlet extends BaseRESTServlet {
         Optional<JsonObject> specificActions = Optional.empty();
         switch (actionType) {
             case "pick":
-                    specificActions = Util.getOptJSONObject(me, "pickAction");
+                specificActions = Util.getOptJSONObject(me, "pickAction");
                 break;
             case "ban":
-                    specificActions = Util.getOptJSONObject(me, "banAction");
+                specificActions = Util.getOptJSONObject(me, "banAction");
                 break;
             default:
                 return -1;

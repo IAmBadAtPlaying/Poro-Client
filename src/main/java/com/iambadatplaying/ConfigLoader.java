@@ -17,41 +17,31 @@ import java.util.Optional;
 
 public class ConfigLoader {
 
-    private static final String LOCAL_FOLDER_PATH = System.getenv("LOCALAPPDATA");
-    private final Starter starter;
-
-    private Path APP_FOLDER_PATH;
-    private Path USER_DATA_FOLDER_PATH;
-
     public static final String CONFIG_FILE_NAME = "config.json";
-
     public static final String USER_DATA_FOLDER_NAME = "userdata";
-
     public static final String TASKS_FOLDER_NAME = "tasks";
     public static final String BACKGROUNDS_FOLDER_NAME = "backgrounds";
-
     public static final String KEY_SCHEMA_VERSION = "schemaVersion";
     public static final Integer CURRENT_SCHEMA_VERSION = 1;
-
     // CLIENT PROPERTIES
     public static final String KEY_SECTION_CLIENT_PROPERTIES = "clientProperties";
-
     public static final String PROPERTY_CLIENT_BACKGROUND_TYPE = "clientBackgroundType";
     public static final String PROPERTY_CLIENT_BACKGROUND = "clientBackground";
     public static final String PROPERTY_CLIENT_BACKGROUND_CONTENT_TYPE = "clientBackgroundContentType";
-
     // QUICK-PLAY PROFILES
     public static final String KEY_SECTION_QUICK_PLAY_PROFILES = "quickPlayProfiles";
-
     public static final String PROPERTY_QUICK_PLAY_PROFILE_NAME = "name";
     public static final String PROPERTY_QUICK_PLAY_PROFILE_UUID = "uuid";
     public static final String PROPERTY_QUICK_PLAY_PROFILE_COMMENT = "comment";
     public static final String PROPERTY_QUICK_PLAY_PROFILE_SCHEMA_VERSION = "schemaVersion";
     public static final String PROPERTY_QUICK_PLAY_PROFILE_DATA = "data";
-
+    private static final String LOCAL_FOLDER_PATH = System.getenv("LOCALAPPDATA");
+    private final Starter starter;
+    private Path APP_FOLDER_PATH;
+    private Path USER_DATA_FOLDER_PATH;
     private JsonObject config;
 
-    private Map<String, ConfigModule> configModules;
+    private final Map<String, ConfigModule> configModules;
 
     public ConfigLoader(Starter starter) {
         this.starter = starter;
@@ -165,7 +155,6 @@ public class ConfigLoader {
         }
         if (!setupUserDataFolder()) {
             log("Failed to setup user data folder", Starter.LOG_LEVEL.ERROR);
-            return;
         }
     }
 

@@ -2,19 +2,17 @@ package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import com.iambadatplaying.ConfigLoader;
-import com.iambadatplaying.Starter;
-import com.iambadatplaying.config.dynamicBackground.BackgroundModule;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 
 public class UploadServlet extends BaseRESTServlet {
 
@@ -36,10 +34,9 @@ public class UploadServlet extends BaseRESTServlet {
         switch (pathParts[0]) {
             case PATH_USERDATA:
                 handleGetUserData(pathParts, req, resp);
-            break;
+                break;
             default:
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                return;
         }
     }
 
@@ -52,10 +49,9 @@ public class UploadServlet extends BaseRESTServlet {
         switch (pathParts[1]) {
             case PATH_USERDATA_CUSTOM_BACKGROUND:
                 handleGetBackground(req, resp);
-            break;
+                break;
             default:
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                return;
         }
     }
 
@@ -107,14 +103,13 @@ public class UploadServlet extends BaseRESTServlet {
         switch (pathParts[0]) {
             case PATH_USERDATA:
                 handleUploadUserData(pathParts, req, resp);
-            break;
+                break;
             default:
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                return;
         }
     }
 
-    private void handleUploadUserData(String[] pathParts,HttpServletRequest req, HttpServletResponse resp) {
+    private void handleUploadUserData(String[] pathParts, HttpServletRequest req, HttpServletResponse resp) {
         if (pathParts.length < 2) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
@@ -123,10 +118,9 @@ public class UploadServlet extends BaseRESTServlet {
         switch (pathParts[1]) {
             case PATH_USERDATA_CUSTOM_BACKGROUND:
                 handleUploadBackground(req, resp);
-            break;
+                break;
             default:
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                return;
         }
     }
 
@@ -268,12 +262,12 @@ public class UploadServlet extends BaseRESTServlet {
     }
 
     private int findStartOfContent(byte[] requestBody, String boundary) {
-        String startMarker =  "\r\n\r\n";
-        return indexOf(requestBody, startMarker.getBytes())+startMarker.length();
+        String startMarker = "\r\n\r\n";
+        return indexOf(requestBody, startMarker.getBytes()) + startMarker.length();
     }
 
     private int findEndOfContent(byte[] requestBody, String boundary) {
-        String endMarker = boundary+"--\r\n";
+        String endMarker = boundary + "--\r\n";
         return indexOf(requestBody, endMarker.getBytes());
     }
 

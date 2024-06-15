@@ -21,31 +21,6 @@ public class BackgroundModule implements ConfigModule {
     public static final String PROPERTY_BACKGROUND_TYPE = "backgroundType";
     public static final String PROPERTY_BACKGROUND = "background";
     public static final String PROPERTY_BACKGROUND_CONTENT_TYPE = "backgroundContentType";
-
-    public enum CLIENT_BACKGROUND_TYPE {
-        NONE,
-        LOCAL_IMAGE,
-        LOCAL_VIDEO,
-        LCU_IMAGE,
-        LCU_VIDEO;
-
-        public static CLIENT_BACKGROUND_TYPE fromString(String s) {
-            switch (s) {
-                case "LOCAL_IMAGE":
-                    return LOCAL_IMAGE;
-                case "LOCAL_VIDEO":
-                    return LOCAL_VIDEO;
-                case "LCU_IMAGE":
-                    return LCU_IMAGE;
-                case "LCU_VIDEO":
-                    return LCU_VIDEO;
-                case "NONE":
-                default:
-                    return NONE;
-            }
-        }
-    }
-
     private CLIENT_BACKGROUND_TYPE backgroundType = CLIENT_BACKGROUND_TYPE.NONE;
     private String background = "";
     private String backgroundContentType = "";
@@ -102,7 +77,7 @@ public class BackgroundModule implements ConfigModule {
 
     @Override
     public Class<?>[] getServletConfiguration() {
-        return new Class[] {
+        return new Class[]{
                 MultiPartFeature.class,
                 GsonJsonElementMessageBodyReader.class,
                 GsonJsonElementMessageBodyWriter.class,
@@ -143,5 +118,29 @@ public class BackgroundModule implements ConfigModule {
 
     public void setBackgroundContentType(String backgroundContentType) {
         this.backgroundContentType = backgroundContentType;
+    }
+
+    public enum CLIENT_BACKGROUND_TYPE {
+        NONE,
+        LOCAL_IMAGE,
+        LOCAL_VIDEO,
+        LCU_IMAGE,
+        LCU_VIDEO;
+
+        public static CLIENT_BACKGROUND_TYPE fromString(String s) {
+            switch (s) {
+                case "LOCAL_IMAGE":
+                    return LOCAL_IMAGE;
+                case "LOCAL_VIDEO":
+                    return LOCAL_VIDEO;
+                case "LCU_IMAGE":
+                    return LCU_IMAGE;
+                case "LCU_VIDEO":
+                    return LCU_VIDEO;
+                case "NONE":
+                default:
+                    return NONE;
+            }
+        }
     }
 }

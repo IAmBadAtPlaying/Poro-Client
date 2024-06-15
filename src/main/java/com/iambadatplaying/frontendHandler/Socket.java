@@ -1,7 +1,6 @@
 package com.iambadatplaying.frontendHandler;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.iambadatplaying.ConnectionStatemachine;
 import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.api.Session;
@@ -54,7 +53,7 @@ public class Socket {
     }
 
     public void shutdown() {
-        if (!shutdownPending ) {
+        if (!shutdownPending) {
             starter.getServer().removeSocket(this);
             externalShutdown();
         }
@@ -132,7 +131,6 @@ public class Socket {
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
         if (starter.getConnectionStatemachine().getCurrentState() != ConnectionStatemachine.State.CONNECTED) {
-            return;
         }
     }
 
@@ -147,7 +145,7 @@ public class Socket {
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getSimpleName() +": " + s, level);
+        starter.log(this.getClass().getSimpleName() + ": " + s, level);
     }
 
     private void log(String s) {

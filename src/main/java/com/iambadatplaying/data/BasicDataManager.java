@@ -7,14 +7,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class BasicDataManager {
-    public static Pattern UNMATCHABLE_PATTERN = Pattern.compile("^\\b$");
-
-    protected boolean initialized = false;
-    protected Starter starter;
-
     protected static final String UPDATE_TYPE_DELETE = "Delete";
     protected static final String UPDATE_TYPE_CREATE = "Create";
     protected static final String UPDATE_TYPE_UPDATE = "Update";
+    public static Pattern UNMATCHABLE_PATTERN = Pattern.compile("^\\b$");
+    protected boolean initialized = false;
+    protected Starter starter;
 
     protected BasicDataManager(Starter starter) {
         this.starter = starter;
@@ -43,6 +41,7 @@ public abstract class BasicDataManager {
         if (!uriMatcher.matches()) return;
         doUpdateAndSend(uriMatcher, type, data);
     }
+
     public void shutdown() {
         if (!initialized) return;
         initialized = false;
@@ -52,7 +51,7 @@ public abstract class BasicDataManager {
     protected abstract void doShutdown();
 
     protected void log(Object o, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getSimpleName() +": " + o, level);
+        starter.log(this.getClass().getSimpleName() + ": " + o, level);
     }
 
     protected void log(Object o) {

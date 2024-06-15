@@ -7,7 +7,10 @@ import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Response;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -76,10 +79,6 @@ public class MessagingServlet {
     }
 
     private boolean checkValidConversationId(String conversationId) {
-        if (conversationId.isEmpty() || !conversationId.contains("@")) {
-            return false;
-        }
-
-        return true;
+        return !conversationId.isEmpty() && conversationId.contains("@");
     }
 }

@@ -5,7 +5,7 @@ import com.iambadatplaying.ConnectionStatemachine;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
-public class ShutdownServlet extends BaseRESTServlet{
+public class ShutdownServlet extends BaseRESTServlet {
 
     @Override
     public void doPost(javax.servlet.http.HttpServletRequest request, javax.servlet.http.HttpServletResponse response) throws javax.servlet.ServletException, java.io.IOException {
@@ -38,7 +38,7 @@ public class ShutdownServlet extends BaseRESTServlet{
         responseJson.addProperty("message", "Shutting down in one second, bye ^^");
         responseJson.addProperty("httpStatus", javax.servlet.http.HttpServletResponse.SC_OK);
 
-        response.getWriter().println(responseJson.toString());
+        response.getWriter().println(responseJson);
         response.getWriter().flush();
 
     }
@@ -48,7 +48,7 @@ public class ShutdownServlet extends BaseRESTServlet{
         new Thread(() -> {
             log("[Shutdown] Invoking Self-shutdown", Starter.LOG_LEVEL.INFO);
             String discBody = "{\"data\": {\"title\": \"Poro Client disconnected!\", \"details\": \"Have fun!\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"/fe/lol-settings/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
-            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications" , discBody));
+            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", discBody));
             //Show Riot UX again so the user doesn't end up with league still running and them not noticing
             log("Sending Riot UX request", Starter.LOG_LEVEL.INFO);
             starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));

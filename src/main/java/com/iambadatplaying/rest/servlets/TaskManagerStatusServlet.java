@@ -21,6 +21,6 @@ public class TaskManagerStatusServlet extends BaseRESTServlet {
             responseJson.addProperty("running", taskManager.isRunning());
             responseJson.addProperty("httpStatus", javax.servlet.http.HttpServletResponse.SC_OK);
         }
-        response.getWriter().println(responseJson.toString());
+        response.getWriter().println(responseJson);
     }
 }

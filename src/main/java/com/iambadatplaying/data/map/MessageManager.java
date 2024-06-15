@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class MessageManager extends  MapDataManager<String> {
+public class MessageManager extends MapDataManager<String> {
 
     public static final String CURRENT_CHAMP_SELECT = "CHAMP_SELECT";
 
@@ -114,7 +114,7 @@ public class MessageManager extends  MapDataManager<String> {
                     log("Conversation " + conversationId.get() + " deleted, removing from cache", Starter.LOG_LEVEL.DEBUG);
                     map.remove(conversationId.get());
                 }
-            break;
+                break;
         }
     }
 
@@ -128,11 +128,11 @@ public class MessageManager extends  MapDataManager<String> {
             }
         }
         conversation.add("messages", messages);
-        sendConversation( conversation);
+        sendConversation(conversation);
     }
 
     private void handleSingleMessage(String conversationId, JsonObject messageData) {
-        if (!Util.jsonKeysPresent(messageData, "body", "type","id")) {
+        if (!Util.jsonKeysPresent(messageData, "body", "type", "id")) {
             log("Message " + messageData.get("id").getAsString() + " is missing required fields", Starter.LOG_LEVEL.DEBUG);
             return;
         }
@@ -156,7 +156,7 @@ public class MessageManager extends  MapDataManager<String> {
         String currentMessageId = messageData.get("id").getAsString();
         JsonArray previousMessages = conversation.get("messages").getAsJsonArray();
         //We will just check the last 10 messages for duplicates, if we find one we dont add it
-        for (int i = previousMessages.size()-1 ; i >= 0 && i >= previousMessages.size()-10; i--) {
+        for (int i = previousMessages.size() - 1; i >= 0 && i >= previousMessages.size() - 10; i--) {
             JsonObject previousMessage = previousMessages.get(i).getAsJsonObject();
             if (previousMessage.get("id").getAsString().equals(currentMessageId)) {
                 log("Conversation " + conversationId + " already contains message " + currentMessageId + ", will not update", Starter.LOG_LEVEL.DEBUG);

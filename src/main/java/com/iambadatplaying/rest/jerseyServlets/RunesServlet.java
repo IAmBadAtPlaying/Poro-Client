@@ -33,9 +33,9 @@ public class RunesServlet {
         }
 
         JsonObject jsonObject = jsonElement.getAsJsonObject();
-        jsonObject.addProperty("current",true);
+        jsonObject.addProperty("current", true);
 
-        if (!Util.jsonKeysPresent(jsonObject, "selectedPerkIds", "name","primaryStyleId","subStyleId")) {
+        if (!Util.jsonKeysPresent(jsonObject, "selectedPerkIds", "name", "primaryStyleId", "subStyleId")) {
             return Response
                     .status(Response.Status.BAD_REQUEST)
                     .entity(ServletUtils.createErrorJson("Invalid JSON", "Missing keys in JSON"))

@@ -27,80 +27,6 @@ public class RESTContextHandler extends ServletContextHandler {
         addAllServlets();
     }
 
-    private void addAllServlets() {
-        getServletContext().setAttribute("mainInitiator", starter);
-
-        ServletHolder statusServletHolder = addServlet(ServletContainer.class, "/*");
-        statusServletHolder.setInitOrder(0);
-        statusServletHolder.setInitParameter(
-                "jersey.config.server.provider.classnames",
-                buildStatusConfig()
-        );
-
-
-        ServletHolder taskManagerStatusServletHolder = new ServletHolder(TaskManagerStatusServlet.class);
-        addServlet(taskManagerStatusServletHolder, "/taskManager/status");
-
-        ServletHolder taskManagerStartServletHolder = new ServletHolder(TaskHandlerServlet.class);
-        addServlet(taskManagerStartServletHolder, "/tasks/*");
-
-        ServletHolder champSelectServletHolder = new ServletHolder(ChampSelectServlet.class);
-        addServlet(champSelectServletHolder, "/champSelect/*");
-
-        ServletHolder runesSaveServletHolder = new ServletHolder(RunesSaveServlet.class);
-        addServlet(runesSaveServletHolder, "/runes/save");
-
-        ServletHolder shutdownServletHolder = new ServletHolder(ShutdownServlet.class);
-        addServlet(shutdownServletHolder, "/shutdown");
-
-        ServletHolder lcdsProxyServletHolder = new ServletHolder(LCDSProxyServlet.class);
-        addServlet(lcdsProxyServletHolder, "/lcds");
-
-        ServletHolder conversationServletHolder = new ServletHolder(MessagingServlet.class);
-        addServlet(conversationServletHolder, "/conversations/*");
-
-        ServletHolder test = new ServletHolder(Userconfig.class);
-        addServlet(test, "/userconfig/*");
-
-        ServletHolder lootServletHolder = new ServletHolder(LootServlet.class);
-        addServlet(lootServletHolder, "/loot/*");
-
-        ServletHolder uploadTest = new ServletHolder(UploadServlet.class);
-        addServlet(uploadTest, "/dynamic/*");
-
-        FilterHolder initFilterHolder = new FilterHolder(InitializerFilter.class);
-        FilterHolder originFilterHolder = new FilterHolder(OriginFilter.class);
-
-        addFilter(initFilterHolder, "/v2/*", EnumSet.of(DispatcherType.REQUEST));
-        addFilter(originFilterHolder, "/v2/*", EnumSet.of(DispatcherType.REQUEST));
-
-        ServletHolder jerseyServlet = addServlet(ServletContainer.class, "/v2/*");
-        jerseyServlet.setInitOrder(0);
-        jerseyServlet.setInitParameter(
-                "jersey.config.server.provider.classnames",
-                buildProtectedRestConfig()
-        );
-
-        addConfigServlets();
-    }
-
-
-    private void addConfigServlets() {
-        ConfigLoader configLoader = starter.getConfigLoader();
-        ConfigModule[] configModules = configLoader.getConfigModules();
-        for (ConfigModule configModule : configModules) {
-            String contextPath = "/config/" + configModule.getRestPath() + "/*";
-            log("Adding config Module: " + configModule.getClass().getSimpleName() + ", available at: " + contextPath, Starter.LOG_LEVEL.INFO);
-            ServletHolder servletHolder = addServlet(ServletContainer.class, contextPath);
-            servletHolder.setInitOrder(0);
-            servletHolder.setInitParameter(
-                    "jersey.config.server.provider.classnames",
-                    buildConfigProviderList(configModule)
-            );
-        }
-    }
-
-
     private static String buildConfigProviderList(ConfigModule configModule) {
         StringBuilder sb = new StringBuilder();
         sb.append(configModule.getRestServlet());
@@ -202,11 +128,83 @@ public class RESTContextHandler extends ServletContextHandler {
         }
     }
 
+    private void addAllServlets() {
+        getServletContext().setAttribute("mainInitiator", starter);
+
+        ServletHolder statusServletHolder = addServlet(ServletContainer.class, "/*");
+        statusServletHolder.setInitOrder(0);
+        statusServletHolder.setInitParameter(
+                "jersey.config.server.provider.classnames",
+                buildStatusConfig()
+        );
+
+
+        ServletHolder taskManagerStatusServletHolder = new ServletHolder(TaskManagerStatusServlet.class);
+        addServlet(taskManagerStatusServletHolder, "/taskManager/status");
+
+        ServletHolder taskManagerStartServletHolder = new ServletHolder(TaskHandlerServlet.class);
+        addServlet(taskManagerStartServletHolder, "/tasks/*");
+
+        ServletHolder champSelectServletHolder = new ServletHolder(ChampSelectServlet.class);
+        addServlet(champSelectServletHolder, "/champSelect/*");
+
+        ServletHolder runesSaveServletHolder = new ServletHolder(RunesSaveServlet.class);
+        addServlet(runesSaveServletHolder, "/runes/save");
+
+        ServletHolder shutdownServletHolder = new ServletHolder(ShutdownServlet.class);
+        addServlet(shutdownServletHolder, "/shutdown");
+
+        ServletHolder lcdsProxyServletHolder = new ServletHolder(LCDSProxyServlet.class);
+        addServlet(lcdsProxyServletHolder, "/lcds");
+
+        ServletHolder conversationServletHolder = new ServletHolder(MessagingServlet.class);
+        addServlet(conversationServletHolder, "/conversations/*");
+
+        ServletHolder test = new ServletHolder(Userconfig.class);
+        addServlet(test, "/userconfig/*");
+
+        ServletHolder lootServletHolder = new ServletHolder(LootServlet.class);
+        addServlet(lootServletHolder, "/loot/*");
+
+        ServletHolder uploadTest = new ServletHolder(UploadServlet.class);
+        addServlet(uploadTest, "/dynamic/*");
+
+        FilterHolder initFilterHolder = new FilterHolder(InitializerFilter.class);
+        FilterHolder originFilterHolder = new FilterHolder(OriginFilter.class);
+
+        addFilter(initFilterHolder, "/v2/*", EnumSet.of(DispatcherType.REQUEST));
+        addFilter(originFilterHolder, "/v2/*", EnumSet.of(DispatcherType.REQUEST));
+
+        ServletHolder jerseyServlet = addServlet(ServletContainer.class, "/v2/*");
+        jerseyServlet.setInitOrder(0);
+        jerseyServlet.setInitParameter(
+                "jersey.config.server.provider.classnames",
+                buildProtectedRestConfig()
+        );
+
+        addConfigServlets();
+    }
+
+    private void addConfigServlets() {
+        ConfigLoader configLoader = starter.getConfigLoader();
+        ConfigModule[] configModules = configLoader.getConfigModules();
+        for (ConfigModule configModule : configModules) {
+            String contextPath = "/config/" + configModule.getRestPath() + "/*";
+            log("Adding config Module: " + configModule.getClass().getSimpleName() + ", available at: " + contextPath, Starter.LOG_LEVEL.INFO);
+            ServletHolder servletHolder = addServlet(ServletContainer.class, contextPath);
+            servletHolder.setInitOrder(0);
+            servletHolder.setInitParameter(
+                    "jersey.config.server.provider.classnames",
+                    buildConfigProviderList(configModule)
+            );
+        }
+    }
+
     private void log(String message) {
         log(message, Starter.LOG_LEVEL.DEBUG);
     }
 
     private void log(String message, Starter.LOG_LEVEL level) {
-     Starter.getInstance().log(this.getClass().getSimpleName() + ": " + message, level);
+        Starter.getInstance().log(this.getClass().getSimpleName() + ": " + message, level);
     }
 }

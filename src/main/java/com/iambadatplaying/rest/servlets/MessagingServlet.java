@@ -89,7 +89,7 @@ public class MessagingServlet extends BaseRESTServlet {
             messageJson.addProperty("body", body);
             messageJson.addProperty("type", "chat");
 
-            JsonObject responseJson = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId + "/messages", messageJson.toString()));
+            JsonObject responseJson = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId + "/messages", messageJson.toString()));
 
             if (responseJson == null) {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -99,7 +99,6 @@ public class MessagingServlet extends BaseRESTServlet {
             resp.setHeader("Content-Type", "application/json");
             resp.getWriter().write(responseJson.toString());
 
-            return;
         }
     }
 }

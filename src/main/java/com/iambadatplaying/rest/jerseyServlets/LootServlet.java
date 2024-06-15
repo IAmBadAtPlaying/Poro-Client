@@ -15,7 +15,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Path("/loot")
@@ -142,7 +141,7 @@ public class LootServlet {
         JsonObject responseJson = new JsonObject();
         JsonObject result = new JsonObject();
 
-        for (String category : new String[] {"added", "redeemed", "removed"}) {
+        for (String category : new String[]{"added", "redeemed", "removed"}) {
             JsonArray combined = responses.stream()
                     //Create Stream of JsonElements from all responses
                     .flatMap(response -> response.getAsJsonArray(category).getAsJsonArray().asList().stream())
@@ -168,7 +167,7 @@ public class LootServlet {
         responseJson.add("details", result);
 
         if (somethingFailed) {
-            responseJson.addProperty("message","Not all loot could be disenchanted");
+            responseJson.addProperty("message", "Not all loot could be disenchanted");
 
             return Response.serverError()
                     .status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -262,7 +261,8 @@ public class LootServlet {
 
         boolean somethingFailed = false;
         ArrayList<JsonObject> responses = new ArrayList<>();
-        disenchantLoop: for (JsonArray rerollArray : rerollCollections) {
+        disenchantLoop:
+        for (JsonArray rerollArray : rerollCollections) {
             log("Rerolling: " + rerollArray.toString());
             log("Type: " + type);
             HttpsURLConnection connection = Starter.getInstance().getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-loot/v1/recipes/" + removeRental(type) + "_reroll/craft?repeat=1", rerollArray.toString());
@@ -298,7 +298,7 @@ public class LootServlet {
         JsonObject responseJson = new JsonObject();
         JsonObject result = new JsonObject();
 
-        for (String category : new String[] {"added", "redeemed", "removed"}) {
+        for (String category : new String[]{"added", "redeemed", "removed"}) {
             JsonArray combined = responses.stream()
                     //Create Stream of JsonElements from all responses
                     .flatMap(response -> response.getAsJsonArray(category).getAsJsonArray().asList().stream())
@@ -324,7 +324,7 @@ public class LootServlet {
         responseJson.add("details", result);
 
         if (somethingFailed) {
-            responseJson.addProperty("message","Not all loot could be rerolled");
+            responseJson.addProperty("message", "Not all loot could be rerolled");
 
             return Response.serverError()
                     .status(Response.Status.INTERNAL_SERVER_ERROR)

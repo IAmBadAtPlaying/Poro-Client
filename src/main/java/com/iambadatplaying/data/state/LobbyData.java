@@ -33,7 +33,7 @@ public class LobbyData extends StateDataManager {
     @Override
     protected Optional<JsonObject> fetchCurrentState() {
         HttpsURLConnection con = starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/lobby");
-        JsonObject data = starter.getConnectionManager().getResponseBodyAsJsonObject(con);
+        JsonObject data = ConnectionManager.getResponseBodyAsJsonObject(con);
         if (!data.has("errorCode")) return backendToFrontendLobby(data);
         log("Cant fetch current state, maybe not in a lobby ?: " + data.get("message").getAsString(), Starter.LOG_LEVEL.WARN);
         return Optional.empty();

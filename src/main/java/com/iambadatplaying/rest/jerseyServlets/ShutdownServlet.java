@@ -10,7 +10,6 @@ import com.iambadatplaying.lcuHandler.ConnectionManager;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -35,7 +34,7 @@ public class ShutdownServlet {
 
         JsonObject jsonObject = config.getAsJsonObject();
 
-        if (Util.jsonKeysPresent(jsonObject,"type")) {
+        if (Util.jsonKeysPresent(jsonObject, "type")) {
             String type = jsonObject.get("type").getAsString();
             switch (type) {
                 case SHUTDOWN_ALL:
@@ -43,7 +42,7 @@ public class ShutdownServlet {
                     break;
                 case SHUTDOWN_SIMPLE:
                 default:
-                break;
+                    break;
             }
         }
 
@@ -76,7 +75,7 @@ public class ShutdownServlet {
             Starter starter = Starter.getInstance();
             log("[Shutdown] Invoking Self-shutdown", Starter.LOG_LEVEL.INFO);
             String discBody = "{\"data\": {\"title\": \"Poro Client disconnected!\", \"details\": \"Have fun!\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"/fe/lol-settings/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
-            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications" , discBody));
+            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", discBody));
             //Show Riot UX again so the user doesn't end up with league still running and them not noticing
             log("Sending Riot UX request", Starter.LOG_LEVEL.INFO);
             starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/riotclient/launch-ux", ""));
@@ -89,6 +88,6 @@ public class ShutdownServlet {
     }
 
     private void log(String message, Starter.LOG_LEVEL level) {
-        Starter.getInstance().log(this.getClass().getSimpleName() +": "+ message, level);
+        Starter.getInstance().log(this.getClass().getSimpleName() + ": " + message, level);
     }
 }

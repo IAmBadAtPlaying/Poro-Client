@@ -33,7 +33,6 @@ public class AutoBanChamp extends Task {
     private void handleUpdateData(JsonObject updateData) {
         if ("Create".equals(updateData.get("eventType").getAsString())) { //A new ChampSelect Instance has started, we reset the picked status
             resetChampSelectVariables();
-            return;
         }
     }
 

@@ -23,7 +23,6 @@ public class TaskHandlerServlet extends BaseRESTServlet {
         JsonObject responseJson = new JsonObject();
 
 
-
         String taskName = getTaskNameFromPathInfo(request.getPathInfo());
         if (handledInvalidTaskName(taskName, response)) return;
         Task task = starter.getTaskManager().getTaskFromString(taskName);
@@ -32,12 +31,12 @@ public class TaskHandlerServlet extends BaseRESTServlet {
         responseJson.addProperty("name", taskName);
         responseJson.addProperty("running", task.isRunning());
         responseJson.add("args", task.getRequiredArgs());
-        response.getWriter().println(responseJson.toString());
+        response.getWriter().println(responseJson);
     }
 
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
-       doPost(request, response);
+        doPost(request, response);
     }
 
     @Override
@@ -53,7 +52,7 @@ public class TaskHandlerServlet extends BaseRESTServlet {
         StringBuilder sb = new StringBuilder();
         String line;
         JsonObject json;
-        while ((line = request.getReader().readLine() )!= null) {
+        while ((line = request.getReader().readLine()) != null) {
             sb.append(line);
         }
         try {
@@ -70,23 +69,23 @@ public class TaskHandlerServlet extends BaseRESTServlet {
             responseJson.addProperty("message", "Task not found");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().println(responseJson.toString());
+            response.getWriter().println(responseJson);
             return;
         }
 
         starter.getTaskManager().addTask(taskName);
-        if(!starter.getTaskManager().getActiveTaskByName(taskName).setTaskArgs(json)) {
+        if (!starter.getTaskManager().getActiveTaskByName(taskName).setTaskArgs(json)) {
             responseJson.addProperty("message", "Task args invalid");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().println(responseJson.toString());
+            response.getWriter().println(responseJson);
             return;
         }
         response.setStatus(HttpServletResponse.SC_OK);
         responseJson.addProperty("httpStatus", HttpServletResponse.SC_OK);
         responseJson.addProperty("name", taskName);
         responseJson.add("args", task.getTaskArgs());
-        response.getWriter().println(responseJson.toString());
+        response.getWriter().println(responseJson);
     }
 
     @Override
@@ -101,7 +100,7 @@ public class TaskHandlerServlet extends BaseRESTServlet {
             responseJson.addProperty("message", "Task not running");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().println(responseJson.toString());
+            response.getWriter().println(responseJson);
             return;
         }
         starter.getTaskManager().removeTask(taskName);
@@ -115,20 +114,20 @@ public class TaskHandlerServlet extends BaseRESTServlet {
             JsonArray taskList = starter.getTaskManager().getTaskAndArgs();
             responseJson.add("tasks", taskList);
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_OK);
-            response.getWriter().println(responseJson.toString());
+            response.getWriter().println(responseJson);
             return true;
         }
         if (starter.getTaskManager() == null || !starter.getTaskManager().isRunning()) {
             responseJson.addProperty("message", "TaskManager not running");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().println(responseJson.toString());
+            response.getWriter().println(responseJson);
             return true;
         }
         Task task = starter.getTaskManager().getTaskFromString(taskName);
         if (task == null) {
             responseJson.addProperty("message", "Task not found");
             responseJson.addProperty("httpStatus", HttpServletResponse.SC_NOT_FOUND);
-            response.getWriter().println(responseJson.toString());
+            response.getWriter().println(responseJson);
             return true;
         }
         return false;
@@ -137,7 +136,7 @@ public class TaskHandlerServlet extends BaseRESTServlet {
 
     private String getTaskNameFromPathInfo(String pathInfo) {
         if (pathInfo != null && pathInfo.length() > 1) {
-            String modifiedPathInfo = pathInfo.replaceFirst("/","").trim();
+            String modifiedPathInfo = pathInfo.replaceFirst("/", "").trim();
             String[] pathParts = modifiedPathInfo.split("/");
             String taskName = pathParts[pathParts.length - 1];
             for (int i = 0; i < pathParts.length; i++) {

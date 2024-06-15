@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Optional;
 
-public class RunesSaveServlet extends BaseRESTServlet{
+public class RunesSaveServlet extends BaseRESTServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         JsonObject json = getJsonObjectFromRequestBody(req);
@@ -32,7 +32,7 @@ public class RunesSaveServlet extends BaseRESTServlet{
     }
 
     private Optional<BigInteger> getValidRunePageId() {
-        JsonArray resp = starter.getConnectionManager().getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/pages"));
+        JsonArray resp = ConnectionManager.getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-perks/v1/pages"));
         if (resp == null) return Optional.empty();
         if (resp.isEmpty()) {
             log("No runepages found, creating new one", Starter.LOG_LEVEL.INFO);
@@ -44,20 +44,20 @@ public class RunesSaveServlet extends BaseRESTServlet{
             if (!page.get("isTemporary").getAsBoolean()) {
                 lastPage = page;
                 if (page.get("name").getAsString().startsWith("Poro-Client")) {
-                    log("Runepage \""+page.get("name").getAsString()+ "\" will be replaced!", Starter.LOG_LEVEL.INFO);
+                    log("Runepage \"" + page.get("name").getAsString() + "\" will be replaced!", Starter.LOG_LEVEL.INFO);
                     return Optional.of(page.get("id").getAsBigInteger());
                 }
             }
         }
         if (lastPage != null) {
-            log("Runepage \""+lastPage.get("name").getAsString()+ "\" will be replaced!", Starter.LOG_LEVEL.INFO);
+            log("Runepage \"" + lastPage.get("name").getAsString() + "\" will be replaced!", Starter.LOG_LEVEL.INFO);
             return Optional.of(lastPage.get("id").getAsBigInteger());
         }
         return Optional.empty();
     }
 
     private Optional<BigInteger> getCurrentRunePageId() {
-        JsonObject resp = starter.getConnectionManager().getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET,"/lol-perks/v1/currentpage"));
+        JsonObject resp = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-perks/v1/currentpage"));
         if (resp == null) return Optional.empty();
         Optional<BigInteger> result = Optional.empty();
         if (!Util.jsonKeysPresent(resp, "id", "")) return Optional.empty();
@@ -67,11 +67,11 @@ public class RunesSaveServlet extends BaseRESTServlet{
 
     private void deleteRunePage(BigInteger pageId) {
         if (pageId == null) return;
-        starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.DELETE,"/lol-perks/v1/pages/"+pageId));
+        starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.DELETE, "/lol-perks/v1/pages/" + pageId));
     }
 
     private void createNewRunePage(JsonObject body) {
         if (body == null || body.isEmpty()) return;
-        starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST,"/lol-perks/v1/pages", body.toString()));
+        starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-perks/v1/pages", body.toString()));
     }
 }

@@ -1,6 +1,5 @@
 package com.iambadatplaying.data.state;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.data.BasicDataManager;
@@ -9,11 +8,11 @@ import java.util.Optional;
 
 public abstract class StateDataManager extends BasicDataManager {
 
+    protected JsonObject currentState = null;
+
     protected StateDataManager(Starter starter) {
         super(starter);
     }
-
-    protected JsonObject currentState = null;
 
     public Optional<JsonObject> getCurrentState() {
         if (!initialized) {

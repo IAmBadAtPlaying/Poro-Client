@@ -11,114 +11,66 @@ import java.util.Optional;
 
 public class ConnectionStatemachine {
 
+    public static final State[] STOPPING_TRANSITIONS = {};
     private static final String[] statusEndpoints = {
             "/lol-summoner/v1/status"
     };
-
     private static final String[] readyEndpoints = {
             "/lol-game-settings/v1/ready",
             "/lol-loot/v1/ready",
             "/lol-progression/v1/ready",
             "/lol-settings/v2/ready"
     };
-
     private static final int MAXIMUM_CONNECTION_ATTEMPTS = 3;
-
     private static final int MAXIMUM_PROCESS_FIND_ATTEMPTS = 30;
     private static final int PROCESS_FIND_ATTEMPT_DELAY = 1000;
-
     private static final int MAXIMUM_LCU_CONNECTION_ATTEMPTS = 10;
     private static final int LCU_CONNECTION_ATTEMPT_DELAY = 1000;
-
     private static final int MAXIMUM_LCU_INIT_ATTEMPTS = 10;
     private static final int LCU_INIT_ATTEMPT_DELAY = 1000;
-
     private static final State[] STARTING_TRANSITIONS = {
             State.AWAITING_LEAGUE_PROCESS,
             State.STOPPING
     };
-
     private static final State[] AWAITING_LEAGUE_PROCESS_TRANSITIONS = {
             State.NO_PROCESS_IDLE,
             State.AWAITING_LCU_CONNECTION,
             State.STOPPING
     };
-
     private static final State[] NO_PROCESS_IDLE_TRANSITIONS = {
             State.AWAITING_LEAGUE_PROCESS,
             State.STOPPING
     };
-
     private static final State[] AWAIT_LCU_CONNECTION_TRANSITIONS = {
             State.AWAITING_LCU_INIT,
             State.AWAITING_LEAGUE_PROCESS,
             State.DISCONNECTED,
             State.STOPPING
     };
-
     private static final State[] AWAIT_LCU_INIT_TRANSITIONS = {
             State.CONNECTED,
             State.DISCONNECTED,
             State.STOPPING
     };
-
     private static final State[] CONNECTED_TRANSITIONS = {
             State.DISCONNECTED,
             State.STOPPING
     };
-
     private static final State[] DISCONNECTED_TRANSITIONS = {
             State.AWAITING_LEAGUE_PROCESS,
             State.STOPPING
     };
-
-    public static final State[] STOPPING_TRANSITIONS = {};
-
-    public enum State {
-        STARTING,
-        AWAITING_LEAGUE_PROCESS,
-        NO_PROCESS_IDLE,
-        AWAITING_LCU_CONNECTION,
-        AWAITING_LCU_INIT,
-        CONNECTED,
-        DISCONNECTED,
-        STOPPING;
-
-        private State[] transitions;
-
-        State() {
-        }
-
-        private void setTransitions(State[] transitions) {
-            this.transitions = transitions;
-        }
-
-        public State[] getTransitions() {
-            return transitions;
-        }
-
-        public boolean isValidTransition(State newState) {
-            for (State state : transitions) {
-                if (state == newState) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
     private int failedConnectionAttempts = 0;
-
     private State currentState = State.STARTING;
     private Starter starter;
-
     public ConnectionStatemachine(Starter starter) {
         initTransitions();
         this.starter = starter;
         onStateChange(currentState);
     }
 
-    private ConnectionStatemachine() {}
+    private ConnectionStatemachine() {
+    }
 
     private void initTransitions() {
         State.STARTING.setTransitions(
@@ -178,7 +130,6 @@ public class ConnectionStatemachine {
         return currentState;
     }
 
-
     private void onStateChange(State newState) {
         if (starter == null) {
             return;
@@ -218,7 +169,6 @@ public class ConnectionStatemachine {
                 return;
             case STOPPING:
                 handleStopping();
-                return;
         }
     }
 
@@ -400,6 +350,39 @@ public class ConnectionStatemachine {
 
     private void log(String s, Starter.LOG_LEVEL level) {
         Starter.getInstance().log(this.getClass().getSimpleName() + ": " + s, level);
+    }
+
+    public enum State {
+        STARTING,
+        AWAITING_LEAGUE_PROCESS,
+        NO_PROCESS_IDLE,
+        AWAITING_LCU_CONNECTION,
+        AWAITING_LCU_INIT,
+        CONNECTED,
+        DISCONNECTED,
+        STOPPING;
+
+        private State[] transitions;
+
+        State() {
+        }
+
+        public State[] getTransitions() {
+            return transitions;
+        }
+
+        private void setTransitions(State[] transitions) {
+            this.transitions = transitions;
+        }
+
+        public boolean isValidTransition(State newState) {
+            for (State state : transitions) {
+                if (state == newState) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }
 

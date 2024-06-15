@@ -35,7 +35,7 @@ public abstract class BaseRESTServlet extends HttpServlet {
         JsonObject json = new JsonObject();
         try {
             req.setCharacterEncoding(StandardCharsets.UTF_8.toString());
-            while ((line = req.getReader().readLine() )!= null) {
+            while ((line = req.getReader().readLine()) != null) {
                 sb.append(line);
             }
             JsonElement element = new JsonParser().parse(sb.toString());
@@ -54,7 +54,7 @@ public abstract class BaseRESTServlet extends HttpServlet {
         JsonArray json = new JsonArray();
         try {
             req.setCharacterEncoding(StandardCharsets.UTF_8.toString());
-            while ((line = req.getReader().readLine() )!= null) {
+            while ((line = req.getReader().readLine()) != null) {
                 sb.append(line);
             }
             JsonElement element = new JsonParser().parse(sb.toString());
@@ -97,11 +97,11 @@ public abstract class BaseRESTServlet extends HttpServlet {
     }
 
     public void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getSimpleName() +": " + s, level);
+        starter.log(this.getClass().getSimpleName() + ": " + s, level);
     }
 
     @Override
     public void log(String s) {
-        starter.log(this.getClass().getSimpleName() +": " +s);
+        starter.log(this.getClass().getSimpleName() + ": " + s);
     }
 }

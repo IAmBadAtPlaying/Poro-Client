@@ -19,7 +19,7 @@ public class LCDSProxyServlet extends BaseRESTServlet {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
-        if (!Util.jsonKeysPresent(json,"destination","method","args")) {
+        if (!Util.jsonKeysPresent(json, "destination", "method", "args")) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.getWriter().write(createResponse("Missing required fields").toString());
             return;

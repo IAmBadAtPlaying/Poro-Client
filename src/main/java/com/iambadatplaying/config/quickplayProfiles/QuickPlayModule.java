@@ -13,7 +13,6 @@ import com.iambadatplaying.rest.providers.GsonJsonElementMessageBodyWriter;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class QuickPlayModule implements ConfigModule {
 
@@ -38,7 +37,7 @@ public class QuickPlayModule implements ConfigModule {
     public static final String PROPERTY_QUICKPLAY_PROFILE_SLOT_PERKS_PERK_STYLE = "perkStyle";
     public static final String PROPERTY_QUICKPLAY_PROFILE_SLOT_PERKS_PERK_SUBSTYLE = "perkSubStyle";
 
-    private HashMap<String, JsonObject> quickplayProfiles;
+    private final HashMap<String, JsonObject> quickplayProfiles;
 
     public QuickPlayModule() {
         quickplayProfiles = new HashMap<>();
@@ -125,7 +124,7 @@ public class QuickPlayModule implements ConfigModule {
 
     @Override
     public Class<?>[] getServletConfiguration() {
-        return new Class[] {
+        return new Class[]{
                 GsonJsonElementMessageBodyReader.class,
                 GsonJsonElementMessageBodyWriter.class,
 

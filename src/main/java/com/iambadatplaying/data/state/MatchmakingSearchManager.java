@@ -56,8 +56,9 @@ public class MatchmakingSearchManager extends StateDataManager {
     private Optional<JsonObject> backendToFrontendMatchmakingSearch(JsonObject data) {
         JsonObject frontendData = new JsonObject();
 
-        if (!Util.jsonKeysPresent(data, "dodgeData", "estimatedQueueTime", "isCurrentlyInQueue", "readyCheck", "searchState", "timeInQueue")) return Optional.empty();
-        Util.copyJsonAttributes(data, frontendData, "dodgeData", "estimatedQueueTime", "isCurrentlyInQueue", "readyCheck", "searchState", "timeInQueue","lowPriorityData");
+        if (!Util.jsonKeysPresent(data, "dodgeData", "estimatedQueueTime", "isCurrentlyInQueue", "readyCheck", "searchState", "timeInQueue"))
+            return Optional.empty();
+        Util.copyJsonAttributes(data, frontendData, "dodgeData", "estimatedQueueTime", "isCurrentlyInQueue", "readyCheck", "searchState", "timeInQueue", "lowPriorityData");
 
         return Optional.of(frontendData);
     }
