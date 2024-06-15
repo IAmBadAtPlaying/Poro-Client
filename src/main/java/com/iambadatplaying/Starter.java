@@ -21,7 +21,7 @@ public class Starter {
     public static final boolean isDev = true;
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 1;
-    public static final int VERSION_PATCH = 4;
+    public static final int VERSION_PATCH = 6;
     public static final int DEBUG_FRONTEND_PORT = 3000;
     public static final int DEBUG_FRONTEND_PORT_V2 = 3001;
     public static final int RESSOURCE_SERVER_PORT = 35199;
