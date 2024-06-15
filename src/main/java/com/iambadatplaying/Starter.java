@@ -18,7 +18,8 @@ import java.nio.file.Paths;
 
 public class Starter {
 
-    public static final boolean isDev = true;
+    public static final boolean isDev = false;
+
     public static final int VERSION_MAJOR = 0;
     public static final int VERSION_MINOR = 1;
     public static final int VERSION_PATCH = 6;
