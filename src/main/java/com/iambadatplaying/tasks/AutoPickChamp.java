@@ -6,7 +6,9 @@ import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.state.ReworkedChampSelectData;
 import com.iambadatplaying.data.state.StateDataManager;
+import com.iambadatplaying.rest.jerseyServlets.ShutdownServlet;
 
+import javax.ws.rs.core.Response;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Optional;
@@ -115,12 +117,16 @@ public class AutoPickChamp extends Task {
 
     public boolean setTaskArgs(JsonObject arguments) {
         try {
-            delay = arguments.get("delay").getAsInt();
-            championId = arguments.get("championId").getAsInt();
+
+            int delay = arguments.get("delay").getAsInt();
+            int championId = arguments.get("championId").getAsInt();
+
+            this.delay = delay;
+            this.championId = championId;
             log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            starter.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase());
+            e.printStackTrace();
         }
         return false;
     }

@@ -42,7 +42,7 @@ public class ChampSelectServlet extends BaseRESTServlet {
         return null;
     }
 
-    private void    handlePick(HttpServletResponse response, JsonObject json) {
+    private void handlePick(HttpServletResponse response, JsonObject json) {
         if (json == null || json.isEmpty()) return;
         try {
             Integer championId = json.get("championId").getAsInt();

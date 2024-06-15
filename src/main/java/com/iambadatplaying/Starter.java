@@ -9,6 +9,7 @@ import com.iambadatplaying.ressourceServer.ResourceServer;
 import com.iambadatplaying.tasks.TaskManager;
 
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -65,10 +66,7 @@ public class Starter {
 
     public static void main(String[] args) {
         Starter starter = Starter.getInstance();
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-
-            starter.getConfigLoader().saveConfig();
-        }));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> starter.getConfigLoader().saveConfig()));
         starter.connectionStatemachine = new ConnectionStatemachine(starter);
         starter.run();
     }

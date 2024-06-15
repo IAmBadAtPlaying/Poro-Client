@@ -202,7 +202,7 @@ public class ConnectionManager {
 
     public static String inputStreamToString(InputStream is) throws IOException {
         StringBuilder result = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
             String line;
             while ((line = br.readLine()) != null) {
                 result.append(line).append("\n");
