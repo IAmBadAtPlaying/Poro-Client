@@ -1,4 +1,4 @@
-package com.iambadatplaying.rest.filter;
+package com.iambadatplaying.rest.filter.containerRequestFilters;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -7,7 +7,7 @@ import javax.ws.rs.ext.Provider;
 import java.io.IOException;
 
 @Provider
-public class OptionsCorsFilter implements ContainerRequestFilter {
+public class ContainerOptionsCorsFilter implements ContainerRequestFilter {
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {

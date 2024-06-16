@@ -5,8 +5,8 @@ import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.config.ConfigModule;
-import com.iambadatplaying.rest.filter.OptionsCorsFilter;
-import com.iambadatplaying.rest.filter.OriginFilter;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerOriginFilter;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerOptionsCorsFilter;
 import com.iambadatplaying.rest.providers.GsonJsonElementMessageBodyReader;
 import com.iambadatplaying.rest.providers.GsonJsonElementMessageBodyWriter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -82,8 +82,8 @@ public class BackgroundModule implements ConfigModule {
                 GsonJsonElementMessageBodyReader.class,
                 GsonJsonElementMessageBodyWriter.class,
 
-                OptionsCorsFilter.class,
-                OriginFilter.class
+                ContainerOriginFilter.class,
+                ContainerOptionsCorsFilter.class,
         };
     }
 

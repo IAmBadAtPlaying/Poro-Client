@@ -177,17 +177,29 @@ public class ResourceServer {
         String origin = req.getHeader("Origin");
 
         //Either local host OR non-browser request
-        if (origin == null) {
-            return false;
-        }
-
-        if (Starter.isDev || localHostPattern.matcher(origin).find() || allowedOrigins.contains(origin)) {
+        if (!filterOrigin(origin)) {
             resp.setHeader("Access-Control-Allow-Origin", "*");
             resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
             return false;
         }
 
+        return true;
+    }
+
+    public boolean filterOrigin(String origin) {
+        if (origin == null) {
+            Starter.getInstance().log("Origin is null", Starter.LOG_LEVEL.DEBUG);
+            return false;
+        }
+
+        if (localHostPattern.matcher(origin).find() || allowedOrigins.contains(origin)) {
+            Starter.getInstance().log("Origin is allowed: " + origin, Starter.LOG_LEVEL.DEBUG);
+            return false;
+        }
+
+        Starter.getInstance().log("Origin is not allowed: " + origin, Starter.LOG_LEVEL.DEBUG);
         return true;
     }
 

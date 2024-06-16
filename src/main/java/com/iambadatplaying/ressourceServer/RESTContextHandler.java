@@ -4,7 +4,8 @@ import com.iambadatplaying.ConfigLoader;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.config.ConfigModule;
 import com.iambadatplaying.rest.filter.InitializerFilter;
-import com.iambadatplaying.rest.filter.OptionsCorsFilter;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerOriginFilter;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerOptionsCorsFilter;
 import com.iambadatplaying.rest.filter.OriginFilter;
 import com.iambadatplaying.rest.servlets.*;
 import org.eclipse.jetty.servlet.FilterHolder;
@@ -27,19 +28,16 @@ public class RESTContextHandler extends ServletContextHandler {
         addAllServlets();
     }
 
-    private static String buildConfigProviderList(ConfigModule configModule) {
+    private String buildConfigProviderList(ConfigModule configModule) {
+        log("Building config provider list for " + configModule.getClass().getSimpleName(), Starter.LOG_LEVEL.INFO);
         StringBuilder sb = new StringBuilder();
-        sb.append(configModule.getRestServlet());
-        sb.append(",");
-
         for (Class c : configModule.getServletConfiguration()) {
             if (c == null) continue;
             sb.append(c.getCanonicalName());
             sb.append(",");
         }
-
-        // Remove trailing comma
-        sb.deleteCharAt(sb.length() - 1);
+        sb.append(configModule.getRestServlet().getCanonicalName());
+        log("Config provider list: " + sb.toString(), Starter.LOG_LEVEL.INFO);
         return sb.toString();
     }
 
@@ -48,8 +46,8 @@ public class RESTContextHandler extends ServletContextHandler {
 
         buildGenericList(
                 sb,
-                OriginFilter.class,
-                OptionsCorsFilter.class
+                ContainerOriginFilter.class,
+                ContainerOptionsCorsFilter.class
         );
 
         buildProviderList(
@@ -197,6 +195,7 @@ public class RESTContextHandler extends ServletContextHandler {
                     "jersey.config.server.provider.classnames",
                     buildConfigProviderList(configModule)
             );
+            log("Successfully added config Module: " + configModule.getClass().getSimpleName(), Starter.LOG_LEVEL.INFO);
         }
     }
 
