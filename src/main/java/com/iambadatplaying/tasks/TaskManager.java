@@ -93,29 +93,36 @@ public class TaskManager {
         taskLoader.compileAndLoadTask(taskPath);
     }
 
-    public void addTask(String taskName) {
-        if (running && taskName != null && !taskName.isEmpty()) {
-            taskName = taskName.toLowerCase();
-            runningtaskList.computeIfAbsent(taskName, k -> {
-                Task task = allTasksMap.get(k);
-                if (task == null) return null;
-                task.setMainInitiator(starter);
-                task.init();
-                log("Added task: " + task.getClass().getSimpleName());
-                return task;
-            });
-        }
+    public void activateTask(String taskName) {
+        if (taskName == null || taskName.isEmpty()) return;
+        taskName = taskName.toLowerCase();
+        Task task = allTasksMap.get(taskName);
+        activateTask(task);
     }
 
-    public void removeTask(String taskName) {
-        if (running && taskName != null && !taskName.isEmpty()) {
-            taskName = taskName.toLowerCase();
-            runningtaskList.computeIfPresent(taskName, (k, v) -> {
-                log("Removed task: " + k);
-                v.shutdown();
-                return null;
-            });
-        }
+    public boolean activateTask(Task task) {
+        if (!running || task == null) return false;
+        if (runningtaskList.containsKey(task.getClass().getSimpleName().toLowerCase())) return false;
+        task.setMainInitiator(starter);
+        task.init();
+        log("Added task: " + task.getClass().getSimpleName());
+        runningtaskList.put(task.getClass().getSimpleName().toLowerCase(), task);
+        return true;
+    }
+
+    public void shutdownTask(String taskName) {
+        if (taskName == null || taskName.isEmpty()) return;
+        taskName = taskName.toLowerCase();
+        Task task = runningtaskList.get(taskName);
+        shutdownTask(task);
+    }
+
+    public boolean shutdownTask(Task task) {
+        if (!running || task == null) return false;
+        log("Removed task: " + task.getClass().getSimpleName());
+        task.shutdown();
+        runningtaskList.remove(task);
+        return true;
     }
 
     public boolean isRunning() {

@@ -1,4 +1,4 @@
-package com.iambadatplaying.rest.jerseyServlets;
+package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

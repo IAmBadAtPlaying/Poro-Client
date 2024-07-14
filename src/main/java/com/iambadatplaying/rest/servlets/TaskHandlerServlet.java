@@ -1,150 +1,230 @@
 package com.iambadatplaying.rest.servlets;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.tasks.Task;
+import com.iambadatplaying.tasks.TaskManager;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import javax.ws.rs.*;
+import javax.ws.rs.core.Response;
 
-public class TaskHandlerServlet extends BaseRESTServlet {
+/**
+ * Servlet that handles tasks
+ */
+@Path("/tasks")
+public class TaskHandlerServlet {
 
-    // /rest/tasks/{SOME_NAME} => GET INFO
-    // /rest/tasks/{SOME_NAME} => POST START; SET PARAMS
-    // /rest/tasks/{SOME_NAME} => DELETE STOP
-    // /rest/tasks/{SOME_NAME} => PUT RESTART; CHANGE PARAMS
-
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
-        response.setHeader("Content-Type", "application/json");
-        JsonObject responseJson = new JsonObject();
-
-
-        String taskName = getTaskNameFromPathInfo(request.getPathInfo());
-        if (handledInvalidTaskName(taskName, response)) return;
-        Task task = starter.getTaskManager().getTaskFromString(taskName);
-        response.setStatus(HttpServletResponse.SC_OK);
-        responseJson.addProperty("httpStatus", HttpServletResponse.SC_OK);
-        responseJson.addProperty("name", taskName);
-        responseJson.addProperty("running", task.isRunning());
-        responseJson.add("args", task.getRequiredArgs());
-        response.getWriter().println(responseJson);
-    }
-
-    @Override
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
-        doPost(request, response);
-    }
-
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
-        response.setHeader("Content-Type", "application/json");
-        JsonObject responseJson = new JsonObject();
-
-        log(request.getPathInfo());
-
-        String taskName = getTaskNameFromPathInfo(request.getPathInfo());
-        if (handledInvalidTaskName(taskName, response)) return;
-
-        StringBuilder sb = new StringBuilder();
-        String line;
-        JsonObject json;
-        while ((line = request.getReader().readLine()) != null) {
-            sb.append(line);
-        }
-        try {
-            JsonElement element = JsonParser.parseString(sb.toString());
-            json = element.getAsJsonObject();
-        } catch (Exception e) {
-            responseJson.addProperty("message", "Invalid JSON");
-            responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
-            return;
+    @GET
+    @Produces("application/json")
+    public Response getAvailableTasks() {
+        Starter starter = Starter.getInstance();
+        TaskManager taskManager = starter.getTaskManager();
+        if (taskManager == null) {
+            return Response
+                    .status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not referenced", "TaskManager not referenced, please wait and try again"))
+                    .build();
         }
 
-        Task task = starter.getTaskManager().getTaskFromString(taskName);
+        if (!taskManager.isRunning()) {
+            return Response
+                    .status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not running", "TaskManager not running, please wait for League to start and try again"))
+                    .build();
+        }
+
+        return Response.status(Response.Status.OK).entity(taskManager.getTaskAndArgs()).build();
+    }
+
+    /**
+     * Get the status and current configuration of a task by name
+     */
+    @GET
+    @Produces("application/json")
+    @Path("/{taskName}")
+    public Response getTask(@PathParam("taskName") String taskName) {
+        Starter starter = Starter.getInstance();
+        TaskManager taskManager = starter.getTaskManager();
+        if (taskManager == null) {
+            return Response
+                    .status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not referenced", "TaskManager not referenced, please wait and try again"))
+                    .build();
+        }
+
+        if (!taskManager.isRunning()) {
+            return Response
+                    .status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not running", "TaskManager not running, please wait for League to start and try again"))
+                    .build();
+        }
+
+        Task task = taskManager.getTaskFromString(taskName);
         if (task == null) {
-            responseJson.addProperty("message", "Task not found");
-            responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().println(responseJson);
-            return;
+            return Response
+                    .status(Response.Status.NOT_FOUND)
+                    .entity(ServletUtils.createErrorJson("Task not found", "Task with name " + taskName + " not found"))
+                    .build();
         }
 
-        starter.getTaskManager().addTask(taskName);
-        if (!starter.getTaskManager().getActiveTaskByName(taskName).setTaskArgs(json)) {
-            responseJson.addProperty("message", "Task args invalid");
-            responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().println(responseJson);
-            return;
-        }
-        response.setStatus(HttpServletResponse.SC_OK);
-        responseJson.addProperty("httpStatus", HttpServletResponse.SC_OK);
-        responseJson.addProperty("name", taskName);
-        responseJson.add("args", task.getTaskArgs());
-        response.getWriter().println(responseJson);
+        JsonObject taskJson = new JsonObject();
+        taskJson.addProperty("name", task.getClass().getSimpleName());
+        taskJson.addProperty("running", task.isRunning());
+        taskJson.add("args", task.getRequiredArgs());
+        return Response.status(Response.Status.OK).entity(taskJson.toString()).build();
     }
 
-    @Override
-    protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
-        response.setHeader("Content-Type", "application/json");
-        JsonObject responseJson = new JsonObject();
+    @POST
+    @Consumes("application/json")
+    @Produces("application/json")
+    @Path("/{taskName}")
+    public Response startTask(@PathParam("taskName") String taskName, JsonElement jsonElement) {
+        Starter starter = Starter.getInstance();
+        TaskManager taskManager = starter.getTaskManager();
+        if (taskManager == null) {
+            return Response.status(Response
+                            .Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not referenced", "TaskManager not referenced, please wait and try again"))
+                    .build();
+        }
 
-        String taskName = getTaskNameFromPathInfo(request.getPathInfo());
-        if (handledInvalidTaskName(taskName, response)) return;
-        Task task = starter.getTaskManager().getActiveTaskByName(taskName);
+        if (!taskManager.isRunning()) {
+            return Response
+                    .status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not running", "TaskManager not running, please wait for League to start and try again"))
+                    .build();
+        }
+
+        Task task = taskManager.getTaskFromString(taskName);
         if (task == null) {
-            responseJson.addProperty("message", "Task not running");
-            responseJson.addProperty("httpStatus", HttpServletResponse.SC_BAD_REQUEST);
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().println(responseJson);
-            return;
+            return Response
+                    .status(Response.Status.NOT_FOUND)
+                    .entity(ServletUtils.createErrorJson("Task not found", "Task with name " + taskName + " not found"))
+                    .build();
         }
-        starter.getTaskManager().removeTask(taskName);
 
-        response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+        if (!taskManager.activateTask(task)) {
+            return Response
+                    .status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ServletUtils.createErrorJson("Failed to activate task", "Task failed to activate"))
+                    .build();
+        }
+
+        if (jsonElement == null) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorJson("Invalid JSON", "All Data should be a JSON object"))
+                    .build();
+        }
+
+        if (!jsonElement.isJsonObject()) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorJson("Invalid JSON", "All Data should be a JSON object"))
+                    .build();
+        }
+
+        JsonObject json = jsonElement.getAsJsonObject();
+        boolean success = task.setTaskArgs(json);
+        if (!success) {
+            return Response
+                    .status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ServletUtils.createErrorJson("Failed to set task arguments", "Task failed to set arguments"))
+                    .build();
+        }
+
+        return Response.status(Response.Status.OK).build();
     }
 
-    private boolean handledInvalidTaskName(String taskName, HttpServletResponse response) throws IOException {
-        JsonObject responseJson = new JsonObject();
-        if (taskName == null || taskName.length() == 0) {
-            JsonArray taskList = starter.getTaskManager().getTaskAndArgs();
-            responseJson.add("tasks", taskList);
-            responseJson.addProperty("httpStatus", HttpServletResponse.SC_OK);
-            response.getWriter().println(responseJson);
-            return true;
+    @PUT
+    @Path("/{taskName}")
+    public Response modifyTask(@PathParam("taskName") String taskName, JsonElement body) {
+        Starter starter = Starter.getInstance();
+        TaskManager taskManager = starter.getTaskManager();
+        if (taskManager == null) {
+            return Response.status(Response
+                            .Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not referenced", "TaskManager not referenced, please wait and try again"))
+                    .build();
         }
-        if (starter.getTaskManager() == null || !starter.getTaskManager().isRunning()) {
-            responseJson.addProperty("message", "TaskManager not running");
-            responseJson.addProperty("httpStatus", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.getWriter().println(responseJson);
-            return true;
+
+        if (!taskManager.isRunning()) {
+            return Response
+                    .status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not running", "TaskManager not running, please wait for League to start and try again"))
+                    .build();
         }
-        Task task = starter.getTaskManager().getTaskFromString(taskName);
+
+        Task task = taskManager.getActiveTaskByName(taskName);
         if (task == null) {
-            responseJson.addProperty("message", "Task not found");
-            responseJson.addProperty("httpStatus", HttpServletResponse.SC_NOT_FOUND);
-            response.getWriter().println(responseJson);
-            return true;
+            return Response
+                    .status(Response.Status.NOT_FOUND)
+                    .entity(ServletUtils.createErrorJson("Task not found", "Task with name " + taskName + " not found"))
+                    .build();
         }
-        return false;
+
+        if (body == null) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorJson("Invalid JSON", "All Data should be a JSON object"))
+                    .build();
+        }
+
+        if (!body.isJsonObject()) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorJson("Invalid JSON", "All Data should be a JSON object"))
+                    .build();
+        }
+
+        JsonObject json = body.getAsJsonObject();
+        boolean success = task.setTaskArgs(json);
+        if (!success) {
+            return Response
+                    .status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ServletUtils.createErrorJson("Failed to set task arguments", "Task failed to set arguments"))
+                    .build();
+        }
+
+        return Response.status(Response.Status.OK).build();
     }
 
-
-    private String getTaskNameFromPathInfo(String pathInfo) {
-        if (pathInfo != null && pathInfo.length() > 1) {
-            String modifiedPathInfo = pathInfo.replaceFirst("/", "").trim();
-            String[] pathParts = modifiedPathInfo.split("/");
-            String taskName = pathParts[pathParts.length - 1];
-            for (int i = 0; i < pathParts.length; i++) {
-                log(pathParts[i]);
-            }
-
-            return taskName;
+    @DELETE
+    @Path("/{taskName}")
+    public Response stopTask(@PathParam("taskName") String taskName) {
+        Starter starter = Starter.getInstance();
+        TaskManager taskManager = starter.getTaskManager();
+        if (taskManager == null) {
+            return Response.status(Response
+                            .Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not referenced", "TaskManager not referenced, please wait and try again"))
+                    .build();
         }
-        return null;
+
+        if (!taskManager.isRunning()) {
+            return Response
+                    .status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(ServletUtils.createErrorJson("TaskManager not running", "TaskManager not running, please wait for League to start and try again"))
+                    .build();
+        }
+
+        if (taskName == null) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorJson("Invalid task name", "Task name cannot be null"))
+                    .build();
+        }
+
+        Task task = taskManager.getActiveTaskByName(taskName.toLowerCase());
+        if (task == null) {
+            return Response
+                    .status(Response.Status.NOT_FOUND)
+                    .entity(ServletUtils.createErrorJson("Task not found", "Task with name " + taskName + " not found"))
+                    .build();
+        }
+
+        taskManager.shutdownTask(task);
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
 }

@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.Optional;
@@ -74,11 +74,11 @@ public class MatchmakingSearchManager extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(getEventName(), currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(getEventName(), currentState));
     }
 
     @Override
     public String getEventName() {
-        return ReworkedDataManager.UPDATE_TYPE_MATCHMAKING_SEARCH_STATE;
+        return DataManager.UPDATE_TYPE_MATCHMAKING_SEARCH_STATE;
     }
 }

@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.BasicDataManager;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -17,7 +17,7 @@ public class TickerMessageManager extends ArrayDataManager {
 
     private static final Pattern TICKER_MESSAGES_PATTERN = Pattern.compile("/lol-service-status/v1/ticker-messages$");
 
-    private static final String UPDATE_TYPE_TICKER_MESSAGE = ReworkedDataManager.UPDATE_TYPE_TICKER_MESSAGES;
+    private static final String UPDATE_TYPE_TICKER_MESSAGE = DataManager.UPDATE_TYPE_TICKER_MESSAGES;
 
     public TickerMessageManager(Starter starter) {
         super(starter);
@@ -68,11 +68,11 @@ public class TickerMessageManager extends ArrayDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_TICKER_MESSAGE, currentArray));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_TICKER_MESSAGE, currentArray));
     }
 
     @Override
     public String getEventName() {
-        return ReworkedDataManager.UPDATE_TYPE_TICKER_MESSAGES;
+        return DataManager.UPDATE_TYPE_TICKER_MESSAGES;
     }
 }

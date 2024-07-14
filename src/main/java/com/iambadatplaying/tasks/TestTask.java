@@ -24,7 +24,7 @@ public class TestTask extends Task {
             log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            starter.getTaskManager().removeTask(this.getClass().getSimpleName());
+            log("Failed to set Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.ERROR);
         }
         return false;
     }

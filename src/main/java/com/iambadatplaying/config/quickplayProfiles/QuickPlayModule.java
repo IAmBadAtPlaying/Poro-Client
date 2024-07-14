@@ -1,18 +1,24 @@
 package com.iambadatplaying.config.quickplayProfiles;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.iambadatplaying.ConfigLoader;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.config.ConfigModule;
-import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerOriginFilter;
+import com.iambadatplaying.config.ConfigServlet;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerRequestOriginFilter;
 import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerOptionsCorsFilter;
+import com.iambadatplaying.rest.filter.containerResponseFilters.ContainerAllowOriginCorsFilter;
 import com.iambadatplaying.rest.providers.GsonJsonElementMessageBodyReader;
 import com.iambadatplaying.rest.providers.GsonJsonElementMessageBodyWriter;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class QuickPlayModule implements ConfigModule {
 
@@ -50,6 +56,36 @@ public class QuickPlayModule implements ConfigModule {
 
 
     @Override
+    public boolean loadConfiguration() {
+        ConfigLoader configLoader = Starter.getInstance().getConfigLoader();
+        if (configLoader == null) {
+            return false;
+        }
+
+        Path userDataPath = configLoader.getUserDataFolderPath();
+
+        if (userDataPath == null) {
+            return false;
+        }
+
+        Path quickplayFolderPath = userDataPath.resolve(DIRECTORY).resolve(ConfigLoader.CONFIG_FILE_NAME);
+        if (!quickplayFolderPath.toFile().exists()) {
+            return false;
+        }
+
+        Optional<JsonElement> optJsonElement;
+        try {
+            optJsonElement = Util.parseJson(new String(Files.readAllBytes(quickplayFolderPath)));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        return optJsonElement.filter(this::loadConfiguration).isPresent();
+
+    }
+
+    @Override
     public boolean loadConfiguration(JsonElement config) {
         if (!config.isJsonObject()) {
             return false;
@@ -85,6 +121,30 @@ public class QuickPlayModule implements ConfigModule {
                     quickplayProfiles.put(key, profileJson);
                 }
         );
+
+        return true;
+    }
+
+    @Override
+    public boolean saveConfiguration() {
+        ConfigLoader configLoader = Starter.getInstance().getConfigLoader();
+        if (configLoader == null) {
+            return false;
+        }
+
+        Path userDataPath = configLoader.getUserDataFolderPath();
+
+        if (userDataPath == null) {
+            return false;
+        }
+
+        try {
+            Path quickplayFolderPath = userDataPath.resolve(DIRECTORY).resolve(ConfigLoader.CONFIG_FILE_NAME);
+            Files.write(quickplayFolderPath, new Gson().toJson(getConfiguration()).getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
 
         return true;
     }
@@ -128,13 +188,15 @@ public class QuickPlayModule implements ConfigModule {
                 GsonJsonElementMessageBodyReader.class,
                 GsonJsonElementMessageBodyWriter.class,
 
+                ContainerRequestOriginFilter.class,
                 ContainerOptionsCorsFilter.class,
-                ContainerOriginFilter.class
+
+                ContainerAllowOriginCorsFilter.class
         };
     }
 
     @Override
-    public Class<?> getRestServlet() {
+    public Class<? extends ConfigServlet> getRestServlet() {
         return QuickPlayServlet.class;
     }
 }

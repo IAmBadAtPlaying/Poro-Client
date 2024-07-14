@@ -65,7 +65,9 @@ public class AutoAcceptQueue extends Task {
     }
 
     protected void doShutdown() {
-        timer.cancel();
+        if (timer != null) {
+            timer.cancel();
+        }
         delay = null;
         timer = null;
     }
@@ -77,7 +79,7 @@ public class AutoAcceptQueue extends Task {
             log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            starter.getTaskManager().removeTask(this.getClass().getSimpleName().toLowerCase().toLowerCase());
+            starter.getTaskManager().shutdownTask(this.getClass().getSimpleName().toLowerCase().toLowerCase());
         }
         return false;
     }

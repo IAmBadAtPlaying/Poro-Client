@@ -1,104 +1,84 @@
 package com.iambadatplaying.rest.servlets;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.data.map.MessageManager;
+import com.iambadatplaying.Starter;
+import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import javax.net.ssl.HttpsURLConnection;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
-public class MessagingServlet extends BaseRESTServlet {
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String[] pathParts = sliceAtSlash(req.getPathInfo());
-        if (pathParts.length == 0) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-        String conversationId = pathParts[0];
-        if (conversationId == null || conversationId.isEmpty()) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-        if (pathParts.length == 1) {
-            // Get conversation
-            resp.setStatus(HttpServletResponse.SC_OK);
-            resp.setHeader("Content-Type", "application/json");
-
-            if (!conversationId.contains("pvp.net")) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                return;
-            }
-
-            if (!conversationId.contains("@")) {
-                conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
-            }
-
-            Optional<JsonObject> optCurrentConversation = starter.getReworkedDataManager().getMapManagers(MessageManager.class).get(conversationId);
-            if (!optCurrentConversation.isPresent()) {
-                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                return;
-            }
-
-            JsonObject jsonObject = optCurrentConversation.get();
-
-
-            resp.getWriter().write(jsonObject.toString());
-            resp.setStatus(HttpServletResponse.SC_OK);
+@Path("/conversations")
+public class MessagingServlet {
+    @POST
+    @Path("/{conversationId}")
+    @Consumes("application/json")
+    public Response sendMessage(@PathParam("conversationId") String conversationId, JsonElement messageJson) {
+        try {
+            conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ServletUtils.createErrorMessage("Invalid Conversation-Id")).build();
         }
 
+        if (!checkValidConversationId(conversationId))
+            return Response.status(Response.Status.BAD_REQUEST).entity(ServletUtils.createErrorMessage("Invalid Conversation-Id")).build();
+
+        if (messageJson == null)
+            return Response.status(Response.Status.BAD_REQUEST).entity(ServletUtils.createErrorMessage("Invalid JSON")).build();
+
+        if (!messageJson.isJsonObject())
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Invalid JSON"))
+                    .build();
+
+        JsonObject jsonObject = messageJson.getAsJsonObject();
+
+        if (!Util.jsonKeysPresent(jsonObject, "body"))
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Missing keys in JSON"))
+                    .build();
+
+
+        String body = jsonObject.get("body").getAsString();
+        if (body.isEmpty()) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Empty message"))
+                    .build();
+        }
+
+        JsonObject lcuMessage = new JsonObject();
+        lcuMessage.addProperty("body", body);
+        lcuMessage.addProperty("type", "chat");
+
+
+        HttpsURLConnection connection = Starter.getInstance().getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId + "/messages", lcuMessage.toString());
+        int responseCode = -1;
+        try {
+            responseCode = connection.getResponseCode();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(ServletUtils.createErrorMessage("Failed to send message via LCU")).build();
+        }
+
+        switch (responseCode) {
+            case 200:
+            case 201:
+                return Response.status(Response.Status.OK).build();
+            default:
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(ServletUtils.createErrorMessage("Failed to send message via LCU", "Returned status code: " + responseCode)).build();
+        }
     }
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        JsonObject requestJson = getJsonObjectFromRequestBody(req);
-        if (requestJson == null) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-        String[] pathParts = sliceAtSlash(req.getPathInfo());
-        if (pathParts.length == 0) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-        String conversationId = pathParts[0];
-        if (conversationId == null || conversationId.isEmpty()) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-        if (pathParts.length == 1) {
-            // Send message
-            if (!conversationId.contains("@")) {
-                conversationId = URLDecoder.decode(conversationId, StandardCharsets.UTF_8.toString());
-            }
-            if (!requestJson.has("body")) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                return;
-            }
-            String body = requestJson.get("body").getAsString();
-            if (body.isEmpty()) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                return;
-            }
-            JsonObject messageJson = new JsonObject();
-            messageJson.addProperty("body", body);
-            messageJson.addProperty("type", "chat");
-
-            JsonObject responseJson = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/lol-chat/v1/conversations/" + conversationId + "/messages", messageJson.toString()));
-
-            if (responseJson == null) {
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                return;
-            }
-            resp.setStatus(HttpServletResponse.SC_OK);
-            resp.setHeader("Content-Type", "application/json");
-            resp.getWriter().write(responseJson.toString());
-
-        }
+    private boolean checkValidConversationId(String conversationId) {
+        return !conversationId.isEmpty() && conversationId.contains("@");
     }
 }

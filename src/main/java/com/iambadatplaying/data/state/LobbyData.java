@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.data.map.GameNameManager;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 
 public class LobbyData extends StateDataManager {
 
-    private static final String UPDATE_TYPE_LOBBY = ReworkedDataManager.UPDATE_TYPE_LOBBY;
+    private static final String UPDATE_TYPE_LOBBY = DataManager.UPDATE_TYPE_LOBBY;
 
     private static final Pattern LOBBY_URI_PATTERN = Pattern.compile("/lol-lobby/v2/lobby$");
 
@@ -68,7 +68,7 @@ public class LobbyData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_LOBBY, currentState));
     }
 
     private Optional<JsonObject> backendToFrontendLobby(JsonObject data) {
@@ -155,7 +155,7 @@ public class LobbyData extends StateDataManager {
         JsonObject frontendMember = member;
 
 
-        Optional<JsonObject> summonerByPuuid = starter.getReworkedDataManager().getMapManagers(GameNameManager.class).get(member.get("puuid").getAsString());
+        Optional<JsonObject> summonerByPuuid = starter.getDataManager().getMapManagers(GameNameManager.class).get(member.get("puuid").getAsString());
         summonerByPuuid.ifPresent(
                 summoner -> {
                     String gameName = summoner.get("gameName").getAsString();
@@ -166,7 +166,7 @@ public class LobbyData extends StateDataManager {
         );
 
         starter
-                .getReworkedDataManager()
+                .getDataManager()
                 .getMapManagers(RegaliaManager.class)
                 .get(member.get("summonerId").getAsBigInteger())
                 .ifPresent(
@@ -183,6 +183,6 @@ public class LobbyData extends StateDataManager {
 
     @Override
     public String getEventName() {
-        return ReworkedDataManager.UPDATE_TYPE_LOBBY;
+        return DataManager.UPDATE_TYPE_LOBBY;
     }
 }

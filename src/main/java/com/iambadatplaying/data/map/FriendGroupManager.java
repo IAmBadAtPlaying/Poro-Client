@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -54,7 +54,7 @@ public class FriendGroupManager extends MapDataManager<Integer> {
                 int id = Integer.parseInt(uriMatcher.group(1));
                 log("Updating friend group with id " + id, Starter.LOG_LEVEL.DEBUG);
                 map.put(id, data.getAsJsonObject());
-                starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_FRIEND_GROUPS, data.getAsJsonObject()));
+                starter.getServer().sendToAllSessions(DataManager.getEventDataString(DataManager.UPDATE_TYPE_FRIEND_GROUPS, data.getAsJsonObject()));
                 break;
             case UPDATE_TYPE_DELETE:
                 String nameToDelete = uriMatcher.group(1);

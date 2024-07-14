@@ -4,18 +4,18 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class LootData extends StateDataManager {
+public class LootDataManager extends StateDataManager {
 
     private static final Pattern LOOT_URI_PATTERN = Pattern.compile("/lol-loot/v2/player-loot-map$");
 
-    public LootData(Starter starter) {
+    public LootDataManager(Starter starter) {
         super(starter);
     }
 
@@ -65,11 +65,11 @@ public class LootData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_LOOT, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(DataManager.UPDATE_TYPE_LOOT, currentState));
     }
 
     @Override
     public String getEventName() {
-        return ReworkedDataManager.UPDATE_TYPE_LOOT;
+        return DataManager.UPDATE_TYPE_LOOT;
     }
 }

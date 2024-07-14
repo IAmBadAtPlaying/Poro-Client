@@ -1,6 +1,8 @@
-package com.iambadatplaying.rest.jerseyServlets;
+package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonObject;
+
+import javax.ws.rs.core.Response;
 
 public class ServletUtils {
 

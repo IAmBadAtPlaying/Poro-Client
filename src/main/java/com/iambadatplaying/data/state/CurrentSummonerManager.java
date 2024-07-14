@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -16,7 +16,7 @@ import static com.iambadatplaying.lcuHandler.ConnectionManager.conOptions.GET;
 
 public class CurrentSummonerManager extends StateDataManager {
 
-    private static final String UPDATE_TYPE_CURRENT_SUMMONER = ReworkedDataManager.UPDATE_TYPE_CURRENT_SUMMONER;
+    private static final String UPDATE_TYPE_CURRENT_SUMMONER = DataManager.UPDATE_TYPE_CURRENT_SUMMONER;
 
     private static final Pattern LOL_SUMMONER_PATTERN = Pattern.compile("/lol-summoner/v1/current-summoner$");
 
@@ -66,7 +66,7 @@ public class CurrentSummonerManager extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_CURRENT_SUMMONER, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_CURRENT_SUMMONER, currentState));
     }
 
     @Override

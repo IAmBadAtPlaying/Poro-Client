@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.frontendHandler.FrontendMessageHandler;
 import com.iambadatplaying.frontendHandler.SocketServer;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
@@ -26,19 +26,19 @@ public class Starter {
     public static final int VERSION_PATCH = 6;
     public static final int DEBUG_FRONTEND_PORT = 3000;
     public static final int DEBUG_FRONTEND_PORT_V2 = 3001;
-    public static final int RESSOURCE_SERVER_PORT = 35199;
+    public static final int RESOURCE_SERVER_PORT = 35199;
     public static final int FRONTEND_SOCKET_PORT = 8887;
     private static final String appDirName = "poroclient";
     public static Starter instance = null;
-    public static int ERROR_INVALID_AUTH = 400;
-    public static int ERROR_INSUFFICIENT_PERMISSIONS = 401;
-    public static int ERROR_CERTIFICATE_SETUP_FAILED = 495;
-    public static int ERROR_HTTP_PATCH_SETUP = 505;
-    public static String[] requiredEndpoints = {"OnJsonApiEvent"};
+    public static final int ERROR_INSUFFICIENT_PERMISSIONS = 401;
+    public static final int ERROR_CERTIFICATE_SETUP_FAILED = 495;
+    public static final int ERROR_HTTP_PATCH_SETUP = 505;
+    public static final int ERROR_MULTIPLE_CONNECTION_ATTEMPTS_FAILED = 522;
+    public static final String[] requiredEndpoints = {"OnJsonApiEvent"};
     private Path taskDirPath = null;
 
 
-    private final Path basePath = null;
+    private Path basePath = null;
 
     private SocketClient client;
     private SocketServer server;
@@ -52,7 +52,7 @@ public class Starter {
 
     private ConnectionStatemachine connectionStatemachine;
 
-    private ReworkedDataManager reworkedDataManager;
+    private DataManager reworkedDataManager;
 
     public static Starter getInstance() {
         if (instance == null) {
@@ -96,7 +96,7 @@ public class Starter {
         configLoader = new ConfigLoader(this);
         resourceServer = new ResourceServer(this);
         connectionManager = new ConnectionManager(this);
-        reworkedDataManager = new ReworkedDataManager(this);
+        reworkedDataManager = new DataManager(this);
         client = new SocketClient(this);
         server = new SocketServer(this);
         frontendMessageHandler = new FrontendMessageHandler(this);
@@ -126,7 +126,7 @@ public class Starter {
             JsonArray messageArray = messageElement.getAsJsonArray();
             if (messageArray.isEmpty()) return;
             JsonObject dataPackage = messageArray.get(2).getAsJsonObject();
-            new Thread(() -> getReworkedDataManager().update(dataPackage)).start();
+            new Thread(() -> getDataManager().update(dataPackage)).start();
             new Thread(() -> getTaskManager().updateAllTasks(message)).start();
         }
     }
@@ -172,6 +172,7 @@ public class Starter {
                 case ERROR:
                 case INFO:
                 case DEBUG:
+                case WARN:
                 case LCU_MESSAGING:
                     break;
                 default:
@@ -180,6 +181,9 @@ public class Starter {
         }
         String prefix = "[" + level.name() + "]";
         switch (level) {
+            case WARN:
+                prefix = "\u001B[35m" + prefix + "\u001B[0m";
+                break;
             case ERROR:
                 prefix = "\u001B[31m" + prefix + "\u001B[0m";
                 break;
@@ -212,6 +216,7 @@ public class Starter {
             try {
                 URL location = this.getClass().getProtectionDomain().getCodeSource().getLocation();
                 Path currentDirPath = Paths.get(location.toURI()).getParent();
+                basePath = currentDirPath;
                 log("Base-Location: " + currentDirPath, LOG_LEVEL.INFO);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -240,7 +245,7 @@ public class Starter {
         return frontendMessageHandler;
     }
 
-    public ReworkedDataManager getReworkedDataManager() {
+    public DataManager getDataManager() {
         return reworkedDataManager;
     }
 

@@ -82,7 +82,7 @@ public class ConfigLoader {
         if (!optReadConfig.isPresent()) {
             log("Failed to read config file", Starter.LOG_LEVEL.ERROR);
             config = new JsonObject();
-            handleCorruptedConfig();
+            handleCorruptedOrEmptyConfig();
             return;
         }
 
@@ -91,28 +91,26 @@ public class ConfigLoader {
         if (!readConfig.isJsonObject()) {
             log("Config file is not a JSON object", Starter.LOG_LEVEL.ERROR);
             config = new JsonObject();
-            handleCorruptedConfig();
+            handleCorruptedOrEmptyConfig();
             return;
         }
 
         config = readConfig.getAsJsonObject();
         if (config.isEmpty()) {
-            handleCorruptedConfig();
+            handleCorruptedOrEmptyConfig();
         }
 
         for (ConfigModule module : configModules.values()) {
             module.setupDirectories();
 
-            if (config.has(module.getClass().getSimpleName())) {
-                JsonElement moduleConfig = config.get(module.getClass().getSimpleName());
-                if (module.loadConfiguration(moduleConfig)) continue;
+            if (!module.loadConfiguration()) {
+                log("Failed to load configuration for " + module.getClass().getSimpleName() + ", using standard Configuration", Starter.LOG_LEVEL.ERROR);
+                module.loadStandardConfiguration();
             }
-            log("Failed to load configuration for " + module.getClass().getSimpleName() + ", using standard Configuration", Starter.LOG_LEVEL.ERROR);
-            module.loadStandardConfiguration();
         }
     }
 
-    private void handleCorruptedConfig() {
+    private void handleCorruptedOrEmptyConfig() {
         log("Config file is corrupted, resetting to default", Starter.LOG_LEVEL.ERROR);
         setupDefaultConfig();
     }
@@ -133,9 +131,8 @@ public class ConfigLoader {
     public void saveConfig() {
         log("Saving config file");
         for (ConfigModule module : configModules.values()) {
-            JsonElement moduleConfig = module.getConfiguration();
-            if (moduleConfig != null) {
-                config.add(module.getClass().getSimpleName(), moduleConfig);
+            if (!module.saveConfiguration()) {
+                log("Failed to save configuration for " + module.getClass().getSimpleName(), Starter.LOG_LEVEL.ERROR);
             }
         }
         Path configPath = Paths.get(APP_FOLDER_PATH.toString(), CONFIG_FILE_NAME);

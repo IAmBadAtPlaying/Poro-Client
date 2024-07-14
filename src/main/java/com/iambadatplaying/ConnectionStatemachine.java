@@ -2,7 +2,7 @@ package com.iambadatplaying;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.frontendHandler.SocketServer;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
@@ -118,7 +118,7 @@ public class ConnectionStatemachine {
 
         log(
                 "Transitioning from " + currentState + " to " + newState,
-                Starter.LOG_LEVEL.DEBUG
+                Starter.LOG_LEVEL.INFO
         );
         this.currentState = newState;
         new Thread(
@@ -140,8 +140,8 @@ public class ConnectionStatemachine {
             JsonObject status = new JsonObject();
             status.addProperty("state", newState.toString());
             server.sendToAllSessions(
-                    ReworkedDataManager.getEventDataString(
-                            ReworkedDataManager.UPDATE_TYPE_INTERNAL_STATE,
+                    DataManager.getEventDataString(
+                            DataManager.UPDATE_TYPE_INTERNAL_STATE,
                             status
                     )
             );

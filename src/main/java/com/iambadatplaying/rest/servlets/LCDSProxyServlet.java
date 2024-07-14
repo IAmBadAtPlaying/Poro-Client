@@ -2,65 +2,90 @@ package com.iambadatplaying.rest.servlets;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.core.Response;
 import java.net.URLEncoder;
+import java.util.Optional;
 
-public class LCDSProxyServlet extends BaseRESTServlet {
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        JsonObject json = getJsonObjectFromRequestBody(req);
-        if (json == null) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-        if (!Util.jsonKeysPresent(json, "destination", "method", "args")) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write(createResponse("Missing required fields").toString());
-            return;
+@Path("/lcds")
+public class LCDSProxyServlet {
+
+    @POST
+    public Response proxyLCDSRequest(String body) {
+        Optional<JsonElement> bodyJson = Util.parseJson(body);
+
+        if (!bodyJson.isPresent()) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Invalid JSON"))
+                    .build();
         }
 
-        JsonElement destination = json.get("destination");
-        JsonElement method = json.get("method");
-        JsonElement args = json.get("args");
+        JsonElement bodyElement = bodyJson.get();
+
+        if (!bodyElement.isJsonObject()) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Invalid JSON"))
+                    .build();
+        }
+
+        JsonObject bodyObject = bodyElement.getAsJsonObject();
+
+        if (!Util.jsonKeysPresent(bodyObject, "destination", "method", "args")) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Invalid JSON"))
+                    .build();
+        }
+
+        JsonElement destination = bodyObject.get("destination");
+        JsonElement method = bodyObject.get("method");
+        JsonElement args = bodyObject.get("args");
 
         if (!destination.isJsonPrimitive()) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write(createResponse("Destination must be a string").toString());
-            return;
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Destination must be a string"))
+                    .build();
         }
 
         if (!method.isJsonPrimitive()) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write(createResponse("Method must be a string").toString());
-            return;
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Method must be a string"))
+                    .build();
         }
 
         if (!args.isJsonArray()) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write(createResponse("Args must be an array").toString());
-            return;
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(ServletUtils.createErrorMessage("Args must be an array"))
+                    .build();
         }
 
-        String destinationString = URLEncoder.encode(destination.getAsString(), "UTF-8");
-        String methodString = URLEncoder.encode(method.getAsString(), "UTF-8");
-        String argsString = URLEncoder.encode(args.toString(), "UTF-8");
+        String destinationString = URLEncoder.encode(destination.getAsString());
+        String methodString = URLEncoder.encode(method.getAsString());
+        String argsString = URLEncoder.encode(args.toString());
 
-
-        String ressource = "/lol-login/v1/session/invoke?destination=" + destinationString + "&method=" + methodString + "&args=" + argsString;
-        JsonObject response = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, ressource));
+        String resource = "/lol-login/v1/session/invoke?destination=" + destinationString + "&method=" + methodString + "&args=" + argsString;
+        Starter starter = Starter.getInstance();
+        JsonObject response = ConnectionManager.getResponseBodyAsJsonObject(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, resource));
         if (response == null) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write(createResponse("Internal server error").toString());
-            return;
+            return Response
+                    .status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ServletUtils.createErrorMessage("Internal server error"))
+                    .build();
         }
 
-        resp.getWriter().write(response.toString());
-        resp.setStatus(HttpServletResponse.SC_OK);
+        return Response
+                .status(Response.Status.OK)
+                .entity(response.toString())
+                .build();
     }
 }

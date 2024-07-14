@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -70,7 +70,7 @@ public class QueueManager extends MapDataManager<Integer> {
                         break;
                 }
 
-                starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_QUEUE, data));
+                starter.getServer().sendToAllSessions(DataManager.getEventDataString(DataManager.UPDATE_TYPE_QUEUE, data));
                 break;
             case UPDATE_TYPE_DELETE:
                 //Queues per se cannot be deleted, only be updated to be 'PlatformDisabled

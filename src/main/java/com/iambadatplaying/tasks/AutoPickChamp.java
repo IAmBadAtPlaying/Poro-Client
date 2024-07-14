@@ -42,7 +42,7 @@ public class AutoPickChamp extends Task {
                 return;
             }
             if (alreadyPicked) return;
-            StateDataManager champSelectManager = starter.getReworkedDataManager().getStateManagers(ReworkedChampSelectData.class);
+            StateDataManager champSelectManager = starter.getDataManager().getStateManagers(ReworkedChampSelectData.class);
             if (champSelectManager == null) return;
             Optional<JsonObject> currentInternalState = champSelectManager.getCurrentState();
             if (!currentInternalState.isPresent()) return;
@@ -83,7 +83,7 @@ public class AutoPickChamp extends Task {
                     JsonObject action = new JsonObject();
                     action.addProperty("championId", championId);
                     action.addProperty("lockIn", true);
-                    HttpURLConnection proxyCon = (HttpURLConnection) new URL("http://localhost:" + Starter.RESSOURCE_SERVER_PORT + "/rest/champSelect/pick").openConnection();
+                    HttpURLConnection proxyCon = (HttpURLConnection) new URL("http://localhost:" + Starter.RESOURCE_SERVER_PORT + "/rest/champSelect/pick").openConnection();
                     proxyCon.setRequestMethod("POST");
                     proxyCon.setDoOutput(true);
                     proxyCon.getOutputStream().write(action.toString().getBytes());

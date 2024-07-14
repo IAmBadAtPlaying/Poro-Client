@@ -11,7 +11,7 @@ import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.HashMap;
 
-public class ReworkedDataManager {
+public class DataManager {
     public static final String UPDATE_TYPE_SELF_PRESENCE = "SelfPresenceUpdate";
     public static final String UPDATE_TYPE_GAMEFLOW_PHASE = "GameflowPhaseUpdate";
     public static final String UPDATE_TYPE_LOBBY = "LobbyUpdate";
@@ -20,6 +20,7 @@ public class ReworkedDataManager {
     public static final String UPDATE_TYPE_CHAMP_SELECT = "ChampSelectUpdate";
     public static final String UPDATE_TYPE_FRIENDS = "FriendUpdate";
     public static final String UPDATE_TYPE_FRIEND_GROUPS = "FriendGroupUpdate";
+    public static final String UPDATE_TYPE_FRIEND_HOVERCARD = "FriendHovercardUpdate";
     public static final String UPDATE_TYPE_CONVERSATION = "ConversationUpdate";
     public static final String UPDATE_TYPE_HONOR_EOG = "HonorEndOfGameUpdate";
     public static final String UPDATE_TYPE_TICKER_MESSAGES = "TickerMessageUpdate";
@@ -31,14 +32,19 @@ public class ReworkedDataManager {
     public static final String UPDATE_TYPE_OWNED_CHAMPIONS = "OwnedChampionsUpdate";
     public static final String UPDATE_TYPE_CURRENT_SUMMONER = "CurrentSummonerUpdate";
     public static final String UPDATE_TYPE_QUEUE = "QueueUpdate";
+
+    public static final String UPDATE_TYPE_ALL_INITIAL_DATA_LOADED = "DataLoaded";
+
     private static final String DATA_STRING_EVENT = "event";
+
     private final Starter starter;
     private final HashMap<String, StateDataManager> stateDataManagers;
-    private final HashMap<String, MapDataManager> mapDataManagers;
+    private final HashMap<String, MapDataManager<?>> mapDataManagers;
     private final HashMap<String, ArrayDataManager> arrayDataManagers;
+
     private boolean initialized = false;
 
-    public ReworkedDataManager(Starter starter) {
+    public DataManager(Starter starter) {
         this.starter = starter;
         this.stateDataManagers = new HashMap<>();
         this.mapDataManagers = new HashMap<>();
@@ -77,13 +83,14 @@ public class ReworkedDataManager {
         addManager(new MessageManager(starter));
         addManager(new FriendGroupManager(starter));
         addManager(new QueueManager(starter));
+        addManager(new FriendHovercardManager(starter));
     }
 
     private void addStateManagers() {
         addManager(new LobbyData(starter));
         addManager(new GameflowData(starter));
         addManager(new ChatMeManager(starter));
-        addManager(new LootData(starter));
+        addManager(new LootDataManager(starter));
         addManager(new PatcherData(starter));
         addManager(new ReworkedChampSelectData(starter));
         addManager(new EOGHonorManager(starter));
@@ -156,27 +163,23 @@ public class ReworkedDataManager {
         }
     }
 
-    //This only sends the initial data, if the there is a current state.
-    public void sendInitialData(Socket socket) {
+    //This method doesnt utilize Threads to ensure that the initial data is sent before any other data
+    public void sendInitialDataBlocking(Socket socket) {
         for (StateDataManager manager : stateDataManagers.values()) {
-            new Thread(() ->
-                    manager.getCurrentState().ifPresent(
-                            state -> socket.sendMessage(
-                                    ReworkedDataManager.getInitialDataString(manager.getEventName(), state
-                                    )
+            manager.getCurrentState().ifPresent(
+                    state -> socket.sendMessage(
+                            DataManager.getInitialDataString(manager.getEventName(), state
                             )
                     )
-            ).start();
+            );
         }
 
         for (ArrayDataManager manager : arrayDataManagers.values()) {
-            new Thread(() ->
-                    manager.getCurrentState().ifPresent(
-                            state -> socket.sendMessage(
-                                    ReworkedDataManager.getInitialDataString(manager.getEventName(), state)
-                            )
+            manager.getCurrentState().ifPresent(
+                    state -> socket.sendMessage(
+                            DataManager.getInitialDataString(manager.getEventName(), state)
                     )
-            ).start();
+            );
         }
     }
 
@@ -229,7 +232,7 @@ public class ReworkedDataManager {
     }
 
     public <T> MapDataManager<T> getMapManagers(Class manager) {
-        return mapDataManagers.get(manager.getName());
+        return (MapDataManager<T>) mapDataManagers.get(manager.getName());
     }
 
     public ArrayDataManager getArrayManagers(Class manager) {

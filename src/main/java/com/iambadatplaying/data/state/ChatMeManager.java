@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.data.map.RegaliaManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 
 public class ChatMeManager extends StateDataManager {
 
-    private static final String UPDATE_TYPE_SELF_PRESENCE = ReworkedDataManager.UPDATE_TYPE_SELF_PRESENCE;
+    private static final String UPDATE_TYPE_SELF_PRESENCE = DataManager.UPDATE_TYPE_SELF_PRESENCE;
 
     private static final Pattern lolChatV1MePattern = Pattern.compile("/lol-chat/v1/me$");
 
@@ -58,7 +58,7 @@ public class ChatMeManager extends StateDataManager {
         if (!Util.jsonKeysPresent(data, "availability", "name", "icon")) return Optional.empty();
         Util.copyJsonAttributes(data, frontendData, "availability", "statusMessage", "name", "icon", "gameName", "gameTag", "pid", "id", "puuid", "lol", "summonerId");
 
-        starter.getReworkedDataManager()
+        starter.getDataManager()
                 .getMapManagers(RegaliaManager.class)
                 .get(data.get("summonerId").getAsBigInteger())
                 .ifPresent(
@@ -82,11 +82,11 @@ public class ChatMeManager extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_SELF_PRESENCE, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_SELF_PRESENCE, currentState));
     }
 
     @Override
     public String getEventName() {
-        return ReworkedDataManager.UPDATE_TYPE_SELF_PRESENCE;
+        return DataManager.UPDATE_TYPE_SELF_PRESENCE;
     }
 }
