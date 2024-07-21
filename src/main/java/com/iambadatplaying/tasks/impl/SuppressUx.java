@@ -1,8 +1,9 @@
-package com.iambadatplaying.tasks;
+package com.iambadatplaying.tasks.impl;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
+import com.iambadatplaying.tasks.Task;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -82,7 +83,7 @@ public class SuppressUx extends Task {
 
     @Override
     public boolean setTaskArgs(JsonObject arguments) {
-        return false;
+        return true;
     }
 
     @Override

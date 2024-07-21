@@ -1,8 +1,9 @@
-package com.iambadatplaying.tasks;
+package com.iambadatplaying.tasks.impl;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
+import com.iambadatplaying.tasks.Task;
 
 import java.net.URLDecoder;
 import java.util.Timer;

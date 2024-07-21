@@ -1,8 +1,11 @@
-package com.iambadatplaying.tasks;
+package com.iambadatplaying.tasks.impl;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.tasks.ARGUMENT_TYPE;
+import com.iambadatplaying.tasks.Task;
+import com.iambadatplaying.tasks.builders.TaskArgumentBuilder;
 
 public class TestTask extends Task {
     private String arg1 = "Unknown";
@@ -38,23 +41,16 @@ public class TestTask extends Task {
     public JsonArray getRequiredArgs() {
         JsonArray requiredArgs = new JsonArray();
 
-        JsonObject arg1 = new JsonObject();
-        arg1.addProperty("displayName", "arg1");
-        arg1.addProperty("required", true);
-        arg1.addProperty("type", "String");
-        arg1.addProperty("description", "This is the first argument");
-        arg1.addProperty("backendKey", "arg1");
-
-        requiredArgs.add(arg1);
+        requiredArgs.add(
+                new TaskArgumentBuilder()
+                        .setDisplayName("arg1")
+                        .setBackendKey("arg1")
+                        .setType(ARGUMENT_TYPE.TEXT)
+                        .setRequired(true)
+                        .setDescription("This is the first argument")
+                        .build()
+        );
 
         return requiredArgs;
-    }
-
-    private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getName() + ": " + s, level);
-    }
-
-    private void log(String s) {
-        starter.log(this.getClass().getName() + ": " + s);
     }
 }

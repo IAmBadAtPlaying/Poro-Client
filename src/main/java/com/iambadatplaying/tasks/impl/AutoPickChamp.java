@@ -1,4 +1,4 @@
-package com.iambadatplaying.tasks;
+package com.iambadatplaying.tasks.impl;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -6,6 +6,11 @@ import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.state.ReworkedChampSelectData;
 import com.iambadatplaying.data.state.StateDataManager;
+import com.iambadatplaying.rest.servlets.ChampSelectServlet;
+import com.iambadatplaying.tasks.ARGUMENT_TYPE;
+import com.iambadatplaying.tasks.Task;
+import com.iambadatplaying.tasks.builders.TaskArgumentBuilder;
+import com.iambadatplaying.tasks.builders.impl.NumberDataBuilder;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -17,11 +22,13 @@ public class AutoPickChamp extends Task {
 
     private final String lol_champ_select_v1_session = "/lol-champ-select/v1/session";
 
-    private volatile boolean alreadyPicked;
+    private volatile boolean alreadyPicked = false;
 
     private Integer championId;
     private Integer delay;
     private Timer timer;
+
+    private static final String DESCRIPTION = "Automatically picks a champion.";
 
     public void notify(JsonArray webSocketEvent) {
         if (!running || starter == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
@@ -49,7 +56,7 @@ public class AutoPickChamp extends Task {
             JsonObject currentChampSelectState = currentInternalState.get();
             Optional<Integer> optLocalPlayerCellId = Util.getOptInt(currentChampSelectState, "localPlayerCellId");
             if (!optLocalPlayerCellId.isPresent()) return;
-            Integer localPlayerCellId = optLocalPlayerCellId.get();
+            int localPlayerCellId = optLocalPlayerCellId.get();
 
             Optional<JsonArray> optMyTeam = Util.getOptJSONArray(currentChampSelectState, "myTeam");
             if (!optMyTeam.isPresent()) return;
@@ -60,11 +67,14 @@ public class AutoPickChamp extends Task {
                 if (player.isEmpty()) continue;
                 if (!Util.jsonKeysPresent(player, "cellId")) continue;
                 if (player.get("cellId").getAsInt() == localPlayerCellId) {
-                    JsonObject pickAction = player.get("pickAction").getAsJsonObject();
-                    if (!Util.jsonKeysPresent(pickAction, "isInProgress", "id")) continue;
-                    if (!pickAction.get("isInProgress").getAsBoolean()) continue;
-                    scheduleLockIn(championId);
-                    break;
+                    if (Util.jsonKeysPresent(player, "pickAction")) {
+                        log("Got here 3");
+                        JsonObject pickAction = player.get("pickAction").getAsJsonObject();
+                        if (!Util.jsonKeysPresent(pickAction, "isInProgress", "id")) continue;
+                        if (!pickAction.get("isInProgress").getAsBoolean()) continue;
+                        scheduleLockIn(championId);
+                        break;
+                    }
                 }
             }
         } catch (Exception e) {
@@ -83,12 +93,7 @@ public class AutoPickChamp extends Task {
                     JsonObject action = new JsonObject();
                     action.addProperty("championId", championId);
                     action.addProperty("lockIn", true);
-                    HttpURLConnection proxyCon = (HttpURLConnection) new URL("http://localhost:" + Starter.RESOURCE_SERVER_PORT + "/rest/champSelect/pick").openConnection();
-                    proxyCon.setRequestMethod("POST");
-                    proxyCon.setDoOutput(true);
-                    proxyCon.getOutputStream().write(action.toString().getBytes());
-                    proxyCon.getResponseCode();
-                    proxyCon.disconnect();
+                    new ChampSelectServlet().pickChampion(action);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -108,7 +113,9 @@ public class AutoPickChamp extends Task {
     }
 
     public void doShutdown() {
-        timer.cancel();
+        if (timer != null) {
+            timer.cancel();
+        }
         alreadyPicked = false;
         timer = null;
     }
@@ -124,7 +131,7 @@ public class AutoPickChamp extends Task {
             log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            log("Failed to set Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.ERROR);
         }
         return false;
     }
@@ -138,34 +145,47 @@ public class AutoPickChamp extends Task {
 
     public JsonArray getRequiredArgs() {
         JsonArray requiredArgs = new JsonArray();
-        JsonObject delay = new JsonObject();
-        delay.addProperty("displayName", "Delay");
-        delay.addProperty("backendKey", "delay");
-        delay.addProperty("type", INPUT_TYPE.NUMBER.toString());
-        delay.addProperty("required", true);
-        delay.addProperty("currentValue", this.delay);
-        delay.addProperty("description", "Time until the champion gets picked in milliseconds");
 
-        JsonObject championId = new JsonObject();
-        championId.addProperty("displayName", "Champion ID");
-        championId.addProperty("backendKey", "championId");
-        championId.addProperty("type", INPUT_TYPE.CHAMPION_SELECT.toString());
-        championId.addProperty("required", true);
-        championId.addProperty("currentValue", this.championId);
-        championId.addProperty("description", "The ID of the champion you want to pick");
+        requiredArgs.add(
+                new TaskArgumentBuilder()
+                        .setDisplayName("Delay")
+                        .setBackendKey("delay")
+                        .setType(ARGUMENT_TYPE.NUMBER)
+                        .setRequired(true)
+                        .setAdditionalData(
+                                new NumberDataBuilder()
+                                        .setMinimumValue(0)
+                                        .setMaximumValue(60_000)
+                                        .build()
+                        )
+                        .setCurrentValue(this.delay)
+                        .setDescription("Time until the champion gets picked in milliseconds")
+                        .build()
+        );
 
-        requiredArgs.add(delay);
-        requiredArgs.add(championId);
+        requiredArgs.add(
+                new TaskArgumentBuilder()
+                        .setDisplayName("Champion ID")
+                        .setBackendKey("championId")
+                        .setType(ARGUMENT_TYPE.OWNED_CHAMPION_SELECT)
+                        .setRequired(true)
+                        .setAdditionalData(
+                                new NumberDataBuilder()
+                                        .setMinimumValue(0)
+                                        .setMaximumValue(999_999)
+                                        .build()
+                        )
+                        .setCurrentValue(this.championId)
+                        .setDescription("The ID of the champion you want to pick")
+                        .build()
+        );
 
         return requiredArgs;
     }
 
-    private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getName() + ": " + s, level);
-    }
 
-    private void log(String s) {
-        starter.log(this.getClass().getName() + ": " + s);
+    @Override
+    public String getDescription() {
+        return DESCRIPTION;
     }
-
 }

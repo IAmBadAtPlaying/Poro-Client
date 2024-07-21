@@ -1,11 +1,16 @@
-package com.iambadatplaying.tasks;
+package com.iambadatplaying.tasks.impl;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
+import com.iambadatplaying.tasks.ARGUMENT_TYPE;
+import com.iambadatplaying.tasks.Task;
+import com.iambadatplaying.tasks.builders.TaskArgumentBuilder;
+import com.iambadatplaying.tasks.builders.impl.NumberDataBuilder;
 
 import java.net.HttpURLConnection;
+import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -16,6 +21,8 @@ public class AutoAcceptQueue extends Task {
 
     private Integer delay;
     private Timer timer;
+
+    private static final String DESCRIPTION = "Automatically accepts the ready check as soon as it appears.";
 
     public void notify(JsonArray webSocketEvent) {
         if (!running || starter == null || webSocketEvent.isEmpty() || webSocketEvent.size() < 3) {
@@ -79,7 +86,7 @@ public class AutoAcceptQueue extends Task {
             log("Modified Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.DEBUG);
             return true;
         } catch (Exception e) {
-            starter.getTaskManager().shutdownTask(this.getClass().getSimpleName().toLowerCase().toLowerCase());
+            log("Failed to set Task-Args for Task " + this.getClass().getSimpleName(), Starter.LOG_LEVEL.ERROR);
         }
         return false;
     }
@@ -93,25 +100,28 @@ public class AutoAcceptQueue extends Task {
     public JsonArray getRequiredArgs() {
         JsonArray requiredArgs = new JsonArray();
 
-        JsonObject delay = new JsonObject();
-        delay.addProperty("displayName", "Delay");
-        delay.addProperty("description", "Time till Ready-Check gets accepted in ms");
-        delay.addProperty("type", INPUT_TYPE.NUMBER.toString());
-        delay.addProperty("required", true);
-        delay.addProperty("currentValue", this.delay);
-        delay.addProperty("backendKey", "delay");
-
-        requiredArgs.add(delay);
+        requiredArgs.add(
+                new TaskArgumentBuilder()
+                        .setDisplayName("Delay")
+                        .setBackendKey("delay")
+                        .setType(ARGUMENT_TYPE.NUMBER)
+                        .setAdditionalData(
+                                new NumberDataBuilder()
+                                        .setMinimumValue(0)
+                                        .setMaximumValue(12_000)
+                                        .build()
+                        )
+                        .setRequired(true)
+                        .setCurrentValue(this.delay)
+                        .build()
+        );
 
         return requiredArgs;
     }
 
-    private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getName() + ": " + s, level);
-    }
-
-    private void log(String s) {
-        starter.log(this.getClass().getName() + ": " + s);
+    @Override
+    public String getDescription() {
+        return DESCRIPTION;
     }
 
 }

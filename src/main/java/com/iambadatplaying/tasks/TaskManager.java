@@ -4,6 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.tasks.impl.AutoAcceptQueue;
+import com.iambadatplaying.tasks.impl.AutoPickChamp;
+import com.iambadatplaying.tasks.impl.PickReminderTask;
+import com.iambadatplaying.tasks.impl.SuppressUx;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -121,7 +125,7 @@ public class TaskManager {
         if (!running || task == null) return false;
         log("Removed task: " + task.getClass().getSimpleName());
         task.shutdown();
-        runningtaskList.remove(task);
+        runningtaskList.remove(task.getClass().getSimpleName().toLowerCase());
         return true;
     }
 
@@ -153,15 +157,7 @@ public class TaskManager {
         JsonArray taskList = new JsonArray();
         if (!running) return taskList;
         for (Task task : allTasksMap.values()) {
-            JsonObject taskObject = new JsonObject();
-            taskObject.addProperty("name", task.getClass().getSimpleName());
-            if (runningtaskList.get(task.getClass().getSimpleName().toLowerCase()) != null) {
-                taskObject.addProperty("running", task.isRunning());
-            } else {
-                taskObject.addProperty("running", false);
-            }
-            taskObject.add("args", task.getRequiredArgs());
-            taskList.add(taskObject);
+            taskList.add(task.getClass().getSimpleName());
         }
         return taskList;
     }
@@ -170,6 +166,10 @@ public class TaskManager {
         if (name == null || name.isEmpty()) return null;
 
         return allTasksMap.get(name.toLowerCase());
+    }
+
+    public TaskLoader getTaskLoader() {
+        return taskLoader;
     }
 
     public Collection<Task> getRunningTasks() {

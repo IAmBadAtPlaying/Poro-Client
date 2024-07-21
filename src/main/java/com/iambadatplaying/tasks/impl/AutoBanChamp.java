@@ -1,8 +1,9 @@
-package com.iambadatplaying.tasks;
+package com.iambadatplaying.tasks.impl;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.tasks.Task;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -79,13 +80,4 @@ public class AutoBanChamp extends Task {
     public JsonArray getRequiredArgs() {
         return null;
     }
-
-    private void log(String s, Starter.LOG_LEVEL level) {
-        starter.log(this.getClass().getName() + ": " + s, level);
-    }
-
-    private void log(String s) {
-        starter.log(this.getClass().getName() + ": " + s);
-    }
-
 }

@@ -10,6 +10,7 @@ import com.iambadatplaying.frontendHandler.SocketServer;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
+import com.iambadatplaying.tasks.TaskLoader;
 import com.iambadatplaying.tasks.TaskManager;
 
 import java.net.URL;
