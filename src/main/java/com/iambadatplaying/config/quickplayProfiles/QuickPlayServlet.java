@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.config.ConfigModule;
+import com.iambadatplaying.config.ConfigServlet;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -16,7 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Path("/")
-public class QuickPlayServlet {
+public class QuickPlayServlet implements ConfigServlet {
 
     @GET
     @Path("/profiles")
@@ -137,7 +138,7 @@ public class QuickPlayServlet {
     public Response deleteQuickPlayProfile(@PathParam("profileId") String profileId) {
         ConfigModule configModule = Starter.getInstance().getConfigLoader().getConfigModule(QuickPlayModule.class);
         if (configModule == null) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE).build();
         }
 
         QuickPlayModule quickModule = (QuickPlayModule) configModule;
@@ -223,6 +224,46 @@ public class QuickPlayServlet {
                 .build();
     }
 
+    @Override
+    public Response getConfig() {
+        ConfigModule configModule = Starter.getInstance().getConfigLoader().getConfigModule(QuickPlayModule.class);
+        if (configModule == null) {
+            return Response
+                    .status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .build();
+        }
+
+        QuickPlayModule quickModule = (QuickPlayModule) configModule;
+        return Response
+                .status(Response.Status.OK)
+                .entity(quickModule.getConfiguration())
+                .build();
+    }
+
+    @POST
+    @Override
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response setConfig(JsonElement data) {
+        ConfigModule configModule = Starter.getInstance().getConfigLoader().getConfigModule(QuickPlayModule.class);
+        if (configModule == null) {
+            return Response
+                    .status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .build();
+        }
+
+        QuickPlayModule quickModule = (QuickPlayModule) configModule;
+
+        if (!quickModule.loadConfiguration()) {
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .build();
+        }
+
+        return Response
+                .status(Response.Status.CREATED)
+                .build();
+    }
+
 
     private Optional<JsonObject> parseQuickPlayProfile(JsonElement element) {
         if (element == null || !element.isJsonObject()) {
@@ -291,7 +332,6 @@ public class QuickPlayServlet {
 
         return Optional.of(newProfile);
     }
-
 
     private Optional<JsonElement> transformLobbyLCUProfile(JsonObject profile) {
         JsonArray lcuProfile = new JsonArray();

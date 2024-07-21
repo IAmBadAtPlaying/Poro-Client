@@ -80,7 +80,7 @@ public class ProxyHandler extends AbstractHandler {
             response.addProperty("error", "League of Legends not running");
 
             httpServletResponse.setContentType("application/json");
-            httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            httpServletResponse.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             httpServletResponse.getWriter().write(
                     response.toString()
             );

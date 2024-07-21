@@ -1,51 +1,78 @@
 package com.iambadatplaying.rest.servlets;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.ConnectionStatemachine;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.Util;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
-public class ShutdownServlet extends BaseRESTServlet {
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
-    @Override
-    public void doPost(javax.servlet.http.HttpServletRequest request, javax.servlet.http.HttpServletResponse response) throws javax.servlet.ServletException, java.io.IOException {
-        JsonObject json = getJsonObjectFromRequestBody(request);
-        if (json == null || json.isEmpty()) {
-            handleNormalShutdown();
-            return;
+@Path("/shutdown")
+public class ShutdownServlet {
+
+    private static final String SHUTDOWN_ALL = "shutdown-all";
+    private static final String SHUTDOWN_SIMPLE = "shutdown";
+
+    private static final long SHUTDOWN_DELAY_MILISECONDS = 1000;
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response shutdown(JsonElement config) {
+        if (config == null) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
         }
-        if (json.has("type")) {
-            String shutdownType = json.get("type").getAsString();
-            switch (shutdownType) {
-                case "shutdown-all":
+
+        if (!config.isJsonObject()) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
+
+        JsonObject jsonObject = config.getAsJsonObject();
+
+        if (Util.jsonKeysPresent(jsonObject, "type")) {
+            String type = jsonObject.get("type").getAsString();
+            switch (type) {
+                case SHUTDOWN_ALL:
                     handleCombinedShutdown();
                     break;
-                case "shutdown":
+                case SHUTDOWN_SIMPLE:
                 default:
-                    handleNormalShutdown();
                     break;
             }
-        } else {
-            handleNormalShutdown();
         }
 
-        response.setStatus(javax.servlet.http.HttpServletResponse.SC_OK);
-        response.setHeader("Content-Type", "application/json");
-        response.setHeader("Access-Control-Allow-Origin", "*");
-
-        JsonObject responseJson = new JsonObject();
-
-        responseJson.addProperty("message", "Shutting down in one second, bye ^^");
-        responseJson.addProperty("httpStatus", javax.servlet.http.HttpServletResponse.SC_OK);
-
-        response.getWriter().println(responseJson);
-        response.getWriter().flush();
-
+        handleNormalShutdown();
+        return Response.ok().build();
     }
 
 
+    private void handleCombinedShutdown() {
+        new Thread(() -> {
+            try {
+                Thread.sleep(SHUTDOWN_DELAY_MILISECONDS);
+            } catch (InterruptedException e) {
+                log("Error while waiting for shutdown", Starter.LOG_LEVEL.ERROR);
+            }
+            Starter starter = Starter.getInstance();
+            log("[Shutdown] Invoking Self-shutdown (combined)", Starter.LOG_LEVEL.INFO);
+            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/process-control/v1/process/quit", ""));
+            starter.getConnectionStatemachine().transition(ConnectionStatemachine.State.STOPPING);
+        }).start();
+    }
+
     private void handleNormalShutdown() {
         new Thread(() -> {
+            try {
+                Thread.sleep(SHUTDOWN_DELAY_MILISECONDS);
+            } catch (InterruptedException e) {
+                log("Error while waiting for shutdown", Starter.LOG_LEVEL.ERROR);
+            }
+            Starter starter = Starter.getInstance();
             log("[Shutdown] Invoking Self-shutdown", Starter.LOG_LEVEL.INFO);
             String discBody = "{\"data\": {\"title\": \"Poro Client disconnected!\", \"details\": \"Have fun!\" }, \"critical\": false, \"detailKey\": \"pre_translated_details\",\"backgroundUrl\" : \"https://cdn.discordapp.com/attachments/313713209314115584/1067507653028364418/Test_2.01.png\",\"iconUrl\": \"/fe/lol-settings/poro_smile.png\", \"titleKey\": \"pre_translated_title\"}";
             starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/player-notifications/v1/notifications", discBody));
@@ -56,11 +83,11 @@ public class ShutdownServlet extends BaseRESTServlet {
         }).start();
     }
 
-    private void handleCombinedShutdown() {
-        new Thread(() -> {
-            starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.RESPONSE_CODE, starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.POST, "/process-control/v1/process/quit", ""));
-            log("[Shutdown] Invoking Self-shutdown", Starter.LOG_LEVEL.INFO);
-            starter.getConnectionStatemachine().transition(ConnectionStatemachine.State.STOPPING);
-        }).start();
+    private void log(String message) {
+        log(message, Starter.LOG_LEVEL.DEBUG);
+    }
+
+    private void log(String message, Starter.LOG_LEVEL level) {
+        Starter.getInstance().log(this.getClass().getSimpleName() + ": " + message, level);
     }
 }

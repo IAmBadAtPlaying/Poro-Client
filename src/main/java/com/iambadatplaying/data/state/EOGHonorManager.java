@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.data.map.GameNameManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 
 public class EOGHonorManager extends StateDataManager {
 
-    private static final String UPDATE_TYPE_HONOR_EOG = ReworkedDataManager.UPDATE_TYPE_HONOR_EOG;
+    private static final String UPDATE_TYPE_HONOR_EOG = DataManager.UPDATE_TYPE_HONOR_EOG;
 
     private static final Pattern HONOR_BALLOT_PATTERN = Pattern.compile("/lol-honor-v2/v1/ballot$");
 
@@ -70,7 +70,7 @@ public class EOGHonorManager extends StateDataManager {
             JsonObject fePlayer = new JsonObject();
             Util.copyJsonAttributes(player, fePlayer, "championName", "skinSplashPath", "summonerName", "puuid", "summonerId");
             String puuid = player.get("puuid").getAsString();
-            starter.getReworkedDataManager()
+            starter.getDataManager()
                     .getMapManagers(GameNameManager.class)
                     .get(puuid)
                     .ifPresent(
@@ -101,11 +101,11 @@ public class EOGHonorManager extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_HONOR_EOG, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_HONOR_EOG, currentState));
     }
 
     @Override
     public String getEventName() {
-        return ReworkedDataManager.UPDATE_TYPE_HONOR_EOG;
+        return DataManager.UPDATE_TYPE_HONOR_EOG;
     }
 }

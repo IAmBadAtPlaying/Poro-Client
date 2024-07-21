@@ -1,17 +1,23 @@
 package com.iambadatplaying.config.dynamicBackground;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.iambadatplaying.ConfigLoader;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.config.ConfigModule;
-import com.iambadatplaying.rest.filter.OptionsCorsFilter;
-import com.iambadatplaying.rest.filter.OriginFilter;
+import com.iambadatplaying.config.ConfigServlet;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerRequestOriginFilter;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerOptionsCorsFilter;
+import com.iambadatplaying.rest.filter.containerResponseFilters.ContainerAllowOriginCorsFilter;
 import com.iambadatplaying.rest.providers.GsonJsonElementMessageBodyReader;
 import com.iambadatplaying.rest.providers.GsonJsonElementMessageBodyWriter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 public class BackgroundModule implements ConfigModule {
 
@@ -24,6 +30,37 @@ public class BackgroundModule implements ConfigModule {
     private CLIENT_BACKGROUND_TYPE backgroundType = CLIENT_BACKGROUND_TYPE.NONE;
     private String background = "";
     private String backgroundContentType = "";
+
+    @Override
+    public boolean loadConfiguration() {
+        ConfigLoader configLoader = Starter.getInstance().getConfigLoader();
+        if (configLoader == null) {
+            System.out.println("ConfigLoader is null");
+            return false;
+        }
+
+        Path userDataPath = configLoader.getUserDataFolderPath();
+
+        if (userDataPath == null) {
+            System.out.println("AppFolderPath is null");
+            return false;
+        }
+
+        Path backgroundFolderPath = userDataPath.resolve(DIRECTORY).resolve(ConfigLoader.CONFIG_FILE_NAME);
+        if (!backgroundFolderPath.toFile().exists()) {
+            return false;
+        }
+
+        Optional<JsonElement> optJsonElement;
+        try {
+            optJsonElement = Util.parseJson(new String(Files.readAllBytes(backgroundFolderPath)));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        return optJsonElement.filter(this::loadConfiguration).isPresent();
+    }
 
     @Override
     public boolean loadConfiguration(JsonElement config) {
@@ -40,6 +77,30 @@ public class BackgroundModule implements ConfigModule {
         backgroundType = CLIENT_BACKGROUND_TYPE.fromString(jsonObject.get(PROPERTY_BACKGROUND_TYPE).getAsString());
         background = jsonObject.get(PROPERTY_BACKGROUND).getAsString();
         backgroundContentType = jsonObject.get(PROPERTY_BACKGROUND_CONTENT_TYPE).getAsString();
+
+        return true;
+    }
+
+    @Override
+    public boolean saveConfiguration() {
+        ConfigLoader configLoader = Starter.getInstance().getConfigLoader();
+        if (configLoader == null) {
+            return false;
+        }
+
+        Path userDataPath = configLoader.getUserDataFolderPath();
+
+        if (userDataPath == null) {
+            return false;
+        }
+
+        try {
+            Path quickplayFolderPath = userDataPath.resolve(DIRECTORY).resolve(ConfigLoader.CONFIG_FILE_NAME);
+            Files.write(quickplayFolderPath, new Gson().toJson(getConfiguration()).getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
 
         return true;
     }
@@ -82,13 +143,15 @@ public class BackgroundModule implements ConfigModule {
                 GsonJsonElementMessageBodyReader.class,
                 GsonJsonElementMessageBodyWriter.class,
 
-                OptionsCorsFilter.class,
-                OriginFilter.class
+                ContainerRequestOriginFilter.class,
+                ContainerOptionsCorsFilter.class,
+
+                ContainerAllowOriginCorsFilter.class
         };
     }
 
     @Override
-    public Class<?> getRestServlet() {
+    public Class<? extends ConfigServlet> getRestServlet() {
         return BackgroundServlet.class;
     }
 

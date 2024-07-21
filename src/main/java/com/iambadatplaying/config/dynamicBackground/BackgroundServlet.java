@@ -1,16 +1,16 @@
 package com.iambadatplaying.config.dynamicBackground;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.Util;
 import com.iambadatplaying.config.ConfigModule;
-import com.iambadatplaying.rest.jerseyServlets.ServletUtils;
+import com.iambadatplaying.config.ConfigServlet;
+import com.iambadatplaying.rest.servlets.ServletUtils;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -20,14 +20,16 @@ import java.nio.file.Files;
 import java.util.Optional;
 
 @Path("/")
-public class BackgroundServlet {
+public class BackgroundServlet implements ConfigServlet {
 
 
     @GET
     public Response getBackground() {
         ConfigModule configModule = Starter.getInstance().getConfigLoader().getConfigModule(BackgroundModule.class);
         if (configModule == null) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response
+                    .status(Response.Status.SERVICE_UNAVAILABLE)
+                    .build();
         }
 
         BackgroundModule backgroundModule = (BackgroundModule) configModule;
@@ -55,19 +57,55 @@ public class BackgroundServlet {
             case LCU_IMAGE:
             case LCU_VIDEO:
                 return Response
-                        .status(Response.Status.MOVED_PERMANENTLY)
-                        .header("Location", backgroundModule.getBackground())
-                        .header("Access-Control-Allow-Origin", "*")
+                        .status(Response.Status.TEMPORARY_REDIRECT)
+                        .header("Location", "http://127.0.0.1:" + Starter.RESOURCE_SERVER_PORT + "/proxy/static" +backgroundModule.getBackground())
                         .build();
             default:
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+                return Response
+                        .status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .build();
         }
+    }
+
+    @POST
+    @Override
+    public Response setConfig(JsonElement data) {
+        if (data == null) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
+
+        if (!data.isJsonObject()) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
+
+        JsonObject jsonObject = data.getAsJsonObject();
+        if (!Util.jsonKeysPresent(jsonObject, BackgroundModule.PROPERTY_BACKGROUND, BackgroundModule.PROPERTY_BACKGROUND_TYPE)) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
+
+        ConfigModule configModule = Starter.getInstance().getConfigLoader().getConfigModule(BackgroundModule.class);
+        if (configModule == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+
+        BackgroundModule backgroundModule = (BackgroundModule) configModule;
+
+        String background = jsonObject.get(BackgroundModule.PROPERTY_BACKGROUND).getAsString();
+        String backgroundType = jsonObject.get(BackgroundModule.PROPERTY_BACKGROUND_TYPE).getAsString();
+
+        backgroundModule.setBackground(background);
+        backgroundModule.setBackgroundType(BackgroundModule.CLIENT_BACKGROUND_TYPE.fromString(backgroundType));
+
+        return Response
+                .status(Response.Status.CREATED)
+                .build();
     }
 
     @GET
     @Path("/info")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getBackgroundInfo() {
+    @Override
+    public Response getConfig() {
         ConfigModule configModule = Starter.getInstance().getConfigLoader().getConfigModule(BackgroundModule.class);
         if (configModule == null) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
@@ -84,13 +122,13 @@ public class BackgroundServlet {
         return Response
                 .status(Response.Status.OK)
                 .entity(backgroundModule.getConfiguration().toString())
-                .header("Access-Control-Allow-Origin", "*")
                 .type(MediaType.APPLICATION_JSON)
                 .build();
     }
 
     @POST
     @Path("/upload")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
     public Response uploadBackground(
             @FormDataParam("file") InputStream inputStream,
@@ -111,7 +149,6 @@ public class BackgroundServlet {
             return Response
                     .status(Response.Status.BAD_REQUEST)
                     .entity(ServletUtils.createErrorJson("File type not supported"))
-                    .header("Access-Control-Allow-Origin", "*")
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
@@ -126,7 +163,6 @@ public class BackgroundServlet {
             return Response
                     .status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ServletUtils.createErrorJson("Failed to save file"))
-                    .header("Access-Control-Allow-Origin", "*")
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
@@ -136,7 +172,6 @@ public class BackgroundServlet {
 
         return Response
                 .status(Response.Status.OK)
-                .header("Access-Control-Allow-Origin", "*")
                 .build();
     }
 
@@ -146,6 +181,7 @@ public class BackgroundServlet {
             case "png":
             case "jpeg":
             case "gif":
+            case "jpg":
             case "webp":
                 module.setBackgroundType(BackgroundModule.CLIENT_BACKGROUND_TYPE.LOCAL_IMAGE);
                 return Optional.of("image/" + fileExtension);
@@ -154,6 +190,7 @@ public class BackgroundServlet {
                 module.setBackgroundType(BackgroundModule.CLIENT_BACKGROUND_TYPE.LOCAL_VIDEO);
                 return Optional.of("video/" + fileExtension);
             default:
+                Starter.getInstance().log("Unsupported file type: " + fileExtension, Starter.LOG_LEVEL.ERROR);
                 return Optional.empty();
         }
     }

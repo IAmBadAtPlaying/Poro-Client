@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -60,11 +60,11 @@ public class SkinInventoryManager extends ArrayDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(getEventName(), currentArray));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(getEventName(), currentArray));
     }
 
     @Override
     public String getEventName() {
-        return ReworkedDataManager.UPDATE_TYPE_OWNED_SKINS;
+        return DataManager.UPDATE_TYPE_OWNED_SKINS;
     }
 }

@@ -20,10 +20,10 @@ import java.lang.reflect.Type;
 @Consumes(MediaType.APPLICATION_JSON)
 public class GsonJsonElementMessageBodyReader implements MessageBodyReader<JsonElement> {
 
-    private final Gson gson;
+    private final Gson GSON;
 
     public GsonJsonElementMessageBodyReader() {
-        gson = new Gson();
+        GSON = new Gson();
     }
 
     @Override
@@ -36,7 +36,7 @@ public class GsonJsonElementMessageBodyReader implements MessageBodyReader<JsonE
                                 MediaType mediaType, MultivaluedMap<String, String> httpHeaders, InputStream entityStream)
             throws IOException {
         try (Reader reader = new InputStreamReader(entityStream)) {
-            return gson.fromJson(reader, JsonElement.class);
+            return GSON.fromJson(reader, JsonElement.class);
         } catch (JsonParseException e) {
             throw new IOException("Failed to parse JSON", e);
         }

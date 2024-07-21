@@ -19,10 +19,10 @@ import java.lang.reflect.Type;
 @Produces(MediaType.APPLICATION_JSON)
 public class GsonJsonElementMessageBodyWriter implements MessageBodyWriter<JsonElement> {
 
-    private final Gson gson;
+    private final Gson GSON;
 
     public GsonJsonElementMessageBodyWriter() {
-        gson = new Gson();
+        GSON = new Gson();
     }
 
     @Override
@@ -35,7 +35,7 @@ public class GsonJsonElementMessageBodyWriter implements MessageBodyWriter<JsonE
                         MediaType mediaType, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream)
             throws IOException {
         try (Writer writer = new OutputStreamWriter(entityStream)) {
-            gson.toJson(jsonElement, writer);
+            GSON.toJson(jsonElement, writer);
         }
     }
 }

@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.Optional;
@@ -87,7 +87,7 @@ public class FriendManager extends MapDataManager<String> {
                 JsonObject updatedState = updatedFriend.get();
                 if (Util.equalJsonElements(updatedState, currentState)) return;
                 map.put(dataObj.get("puuid").getAsString(), updatedState);
-                starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_FRIENDS, updatedState));
+                starter.getServer().sendToAllSessions(DataManager.getEventDataString(DataManager.UPDATE_TYPE_FRIENDS, updatedState));
                 break;
         }
     }

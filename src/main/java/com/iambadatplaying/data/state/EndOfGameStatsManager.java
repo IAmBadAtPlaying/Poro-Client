@@ -3,7 +3,7 @@ package com.iambadatplaying.data.state;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 public class EndOfGameStatsManager extends StateDataManager {
 
-    private static final String UPDATE_TYPE_END_OF_GAME_STATS = ReworkedDataManager.UPDATE_TYPE_STATS_EOG;
+    private static final String UPDATE_TYPE_END_OF_GAME_STATS = DataManager.UPDATE_TYPE_STATS_EOG;
 
     private static final Pattern endOfGameStatsPattern = Pattern.compile("/lol-end-of-game/v1/eog-stats-block$");
 

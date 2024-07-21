@@ -4,8 +4,10 @@ import com.iambadatplaying.ConfigLoader;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.config.ConfigModule;
 import com.iambadatplaying.rest.filter.InitializerFilter;
-import com.iambadatplaying.rest.filter.OptionsCorsFilter;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerRequestOriginFilter;
+import com.iambadatplaying.rest.filter.containerRequestFilters.ContainerOptionsCorsFilter;
 import com.iambadatplaying.rest.filter.OriginFilter;
+import com.iambadatplaying.rest.filter.containerResponseFilters.ContainerAllowOriginCorsFilter;
 import com.iambadatplaying.rest.servlets.*;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -27,19 +29,14 @@ public class RESTContextHandler extends ServletContextHandler {
         addAllServlets();
     }
 
-    private static String buildConfigProviderList(ConfigModule configModule) {
+    private String buildConfigProviderList(ConfigModule configModule) {
         StringBuilder sb = new StringBuilder();
-        sb.append(configModule.getRestServlet());
-        sb.append(",");
-
-        for (Class c : configModule.getServletConfiguration()) {
+        for (Class<?> c : configModule.getServletConfiguration()) {
             if (c == null) continue;
             sb.append(c.getCanonicalName());
             sb.append(",");
         }
-
-        // Remove trailing comma
-        sb.deleteCharAt(sb.length() - 1);
+        sb.append(configModule.getRestServlet().getCanonicalName());
         return sb.toString();
     }
 
@@ -48,8 +45,10 @@ public class RESTContextHandler extends ServletContextHandler {
 
         buildGenericList(
                 sb,
-                OriginFilter.class,
-                OptionsCorsFilter.class
+                ContainerRequestOriginFilter.class,
+                ContainerOptionsCorsFilter.class,
+
+                ContainerAllowOriginCorsFilter.class
         );
 
         buildProviderList(
@@ -60,7 +59,7 @@ public class RESTContextHandler extends ServletContextHandler {
 
         buildServletList(
                 sb,
-                com.iambadatplaying.rest.jerseyServlets.StatusServlet.class
+                StatusServlet.class
         );
 
         // Remove trailing comma
@@ -84,12 +83,13 @@ public class RESTContextHandler extends ServletContextHandler {
 
         buildServletList(
                 sb,
-                com.iambadatplaying.rest.jerseyServlets.TaskHandlerServlet.class,
-                com.iambadatplaying.rest.jerseyServlets.LCDSProxyServlet.class,
-                com.iambadatplaying.rest.jerseyServlets.LootServlet.class,
-                com.iambadatplaying.rest.jerseyServlets.MessagingServlet.class,
-                com.iambadatplaying.rest.jerseyServlets.ShutdownServlet.class,
-                com.iambadatplaying.rest.jerseyServlets.RunesServlet.class
+                TaskHandlerServlet.class,
+                LCDSProxyServlet.class,
+                LootServlet.class,
+                MessagingServlet.class,
+                ShutdownServlet.class,
+                RunesServlet.class,
+                ChampSelectServlet.class
         );
 
         // Remove trailing comma
@@ -97,17 +97,16 @@ public class RESTContextHandler extends ServletContextHandler {
         return sb.toString();
     }
 
-    private static void buildGenericList(StringBuilder sb, Class... classes) {
-        for (Class c : classes) {
+    private static void buildGenericList(StringBuilder sb, Class<?>... classes) {
+        for (Class<?> c : classes) {
             if (c == null) continue;
             sb.append(c.getCanonicalName());
             sb.append(",");
         }
     }
 
-    @SafeVarargs
-    private static void buildServletList(StringBuilder sb, Class... classes) {
-        for (Class c : classes) {
+    private static void buildServletList(StringBuilder sb, Class<?>... classes) {
+        for (Class<?> c : classes) {
             if (c == null) continue;
             if (!c.isAnnotationPresent(javax.ws.rs.Path.class)) {
                 throw new IllegalArgumentException("Class " + c.getCanonicalName() + " is not annotated with @Path");
@@ -117,8 +116,8 @@ public class RESTContextHandler extends ServletContextHandler {
         }
     }
 
-    private static void buildProviderList(StringBuilder sb, Class... classes) {
-        for (Class c : classes) {
+    private static void buildProviderList(StringBuilder sb, Class<?>... classes) {
+        for (Class<?> c : classes) {
             if (c == null) continue;
             if (!c.isAnnotationPresent(javax.ws.rs.ext.Provider.class)) {
                 throw new IllegalArgumentException("Class " + c.getCanonicalName() + " is not annotated with @Provider");
@@ -139,43 +138,12 @@ public class RESTContextHandler extends ServletContextHandler {
         );
 
 
-        ServletHolder taskManagerStatusServletHolder = new ServletHolder(TaskManagerStatusServlet.class);
-        addServlet(taskManagerStatusServletHolder, "/taskManager/status");
-
-        ServletHolder taskManagerStartServletHolder = new ServletHolder(TaskHandlerServlet.class);
-        addServlet(taskManagerStartServletHolder, "/tasks/*");
-
-        ServletHolder champSelectServletHolder = new ServletHolder(ChampSelectServlet.class);
-        addServlet(champSelectServletHolder, "/champSelect/*");
-
-        ServletHolder runesSaveServletHolder = new ServletHolder(RunesSaveServlet.class);
-        addServlet(runesSaveServletHolder, "/runes/save");
-
-        ServletHolder shutdownServletHolder = new ServletHolder(ShutdownServlet.class);
-        addServlet(shutdownServletHolder, "/shutdown");
-
-        ServletHolder lcdsProxyServletHolder = new ServletHolder(LCDSProxyServlet.class);
-        addServlet(lcdsProxyServletHolder, "/lcds");
-
-        ServletHolder conversationServletHolder = new ServletHolder(MessagingServlet.class);
-        addServlet(conversationServletHolder, "/conversations/*");
-
-        ServletHolder test = new ServletHolder(Userconfig.class);
-        addServlet(test, "/userconfig/*");
-
-        ServletHolder lootServletHolder = new ServletHolder(LootServlet.class);
-        addServlet(lootServletHolder, "/loot/*");
-
-        ServletHolder uploadTest = new ServletHolder(UploadServlet.class);
-        addServlet(uploadTest, "/dynamic/*");
-
         FilterHolder initFilterHolder = new FilterHolder(InitializerFilter.class);
         FilterHolder originFilterHolder = new FilterHolder(OriginFilter.class);
+        addFilter(initFilterHolder, "/v1/*", EnumSet.of(DispatcherType.REQUEST));
+        addFilter(originFilterHolder, "/v1/*", EnumSet.of(DispatcherType.REQUEST));
 
-        addFilter(initFilterHolder, "/v2/*", EnumSet.of(DispatcherType.REQUEST));
-        addFilter(originFilterHolder, "/v2/*", EnumSet.of(DispatcherType.REQUEST));
-
-        ServletHolder jerseyServlet = addServlet(ServletContainer.class, "/v2/*");
+        ServletHolder jerseyServlet = addServlet(ServletContainer.class, "/v1/*");
         jerseyServlet.setInitOrder(0);
         jerseyServlet.setInitParameter(
                 "jersey.config.server.provider.classnames",
@@ -197,6 +165,7 @@ public class RESTContextHandler extends ServletContextHandler {
                     "jersey.config.server.provider.classnames",
                     buildConfigProviderList(configModule)
             );
+            log("Successfully added config Module: " + configModule.getClass().getSimpleName(), Starter.LOG_LEVEL.INFO);
         }
     }
 

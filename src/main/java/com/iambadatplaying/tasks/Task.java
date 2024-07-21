@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 
+import java.util.Optional;
+
 
 /**
  * @author IAmBadAtPlaying
@@ -11,7 +13,24 @@ import com.iambadatplaying.Starter;
 public abstract class Task {
 
     protected Starter starter;
-    protected volatile boolean running = false;
+    protected boolean running = false;
+
+    public static final String KEY_TASK_NAME        = "name";
+    public static final String KEY_TASK_ARGUMENTS   = "arguments";
+    public static final String KEY_TASK_RUNNING     = "running";
+    public static final String KEY_TASK_DESCRIPTION = "description";
+
+    public static final String KEY_TASK_ARGUMENT_DISPLAY_NAME = "displayName";
+    public static final String KEY_TASK_ARGUMENT_BACKEND_KEY  = "backendKey";
+    public static final String KEY_TASK_ARGUMENT_TYPE         = "type";
+    public static final String KEY_TASK_ARGUMENT_REQUIRED     = "required";
+    public static final String KEY_TASK_ARGUMENT_CURRENT_VALUE = "currentValue";
+    public static final String KEY_TASK_ARGUMENT_DESCRIPTION  = "description";
+
+    public static final String KEY_TASKS_ADDITIONAL_DATA = "additionalData";
+
+
+    private static final String DEFAULT_DESCRIPTION = "No description available";
 
     /**
      * @param webSocketEvent The websocket Event JsonArray emitted by one of the TriggerApiEvents
@@ -30,7 +49,7 @@ public abstract class Task {
      * This will call {@link #doInitialize()} if the MainInitiator is set and running. If not it returns.
      */
 
-    public void init() {
+    public final void init() {
         if (starter == null || !starter.isInitialized()) {
             System.out.println("Task cant initialize, MainInitiator is null or not running");
         }
@@ -46,7 +65,7 @@ public abstract class Task {
     /**
      * This will set running to false, call {@link #doShutdown()} and then set the mainInitiator to null.
      */
-    public void shutdown() {
+    public final void shutdown() {
         this.running = false;
         doShutdown();
         this.starter = null;
@@ -74,6 +93,10 @@ public abstract class Task {
      */
     public abstract JsonArray getRequiredArgs();
 
+    public String getDescription() {
+        return DEFAULT_DESCRIPTION;
+    }
+
     /**
      * @return Whether the task is running or not
      */
@@ -81,13 +104,11 @@ public abstract class Task {
         return this.running;
     }
 
+    protected final void log(String s, Starter.LOG_LEVEL level) {
+        Optional.ofNullable(starter).ifPresent(starter -> starter.log(this.getClass().getName() + ": " + s, level));
+    }
 
-    public enum INPUT_TYPE {
-        TEXT,
-        COLOR,
-        CHECKBOX,
-        NUMBER,
-        CHAMPION_SELECT, //TODO: Implement
-        SELECT
+    protected final void log(String s) {
+        Optional.ofNullable(starter).ifPresent(starter -> starter.log(this.getClass().getName() + ": " + s));
     }
 }

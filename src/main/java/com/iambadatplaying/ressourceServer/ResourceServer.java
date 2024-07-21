@@ -28,22 +28,23 @@ public class ResourceServer {
         this.starter = starter;
         allowedOrigins = new ArrayList<>();
         if (Starter.isDev) {
-            localHostPattern = Pattern.compile("^(http://)?(localhost|127\\.0\\.0\\.1):(" + Starter.RESSOURCE_SERVER_PORT + "|" + Starter.DEBUG_FRONTEND_PORT + "|" + Starter.DEBUG_FRONTEND_PORT_V2 + ")(/)?$");
+            localHostPattern = Pattern.compile("^(http://)?(localhost|127\\.0\\.0\\.1):(" + Starter.RESOURCE_SERVER_PORT + "|" + Starter.DEBUG_FRONTEND_PORT + "|" + Starter.DEBUG_FRONTEND_PORT_V2 + ")(/)?$");
         } else {
-            localHostPattern = Pattern.compile("^(http://)?(localhost|127\\.0\\.0\\.1):" + Starter.RESSOURCE_SERVER_PORT + "(/)?$");
+            localHostPattern = Pattern.compile("^(http://)?(localhost|127\\.0\\.0\\.1):" + Starter.RESOURCE_SERVER_PORT + "(/)?$");
         }
         addAllowedOrigins();
     }
 
     private void addAllowedOrigins() {
-
+        //Allows certain origins to access the resource server.
+        //For example, if an external website wants to access the resource server, it must be added here.
     }
 
     public void init() {
-        server = new Server(Starter.RESSOURCE_SERVER_PORT);
+        server = new Server(Starter.RESOURCE_SERVER_PORT);
 
         ServerConnector connector = new ServerConnector(server, new HttpConnectionFactory());
-        connector.setPort(Starter.RESSOURCE_SERVER_PORT);
+        connector.setPort(Starter.RESOURCE_SERVER_PORT);
 
         int maxHeaderSize = 1_024 * 8;
         HttpConfiguration httpConfig = connector.getConnectionFactory(HttpConnectionFactory.class).getHttpConfiguration();
@@ -61,10 +62,6 @@ public class ResourceServer {
 
         RESTContextHandler restContext = new RESTContextHandler(starter);
         restContext.setContextPath("/rest");
-
-//        ContextHandler configContext = new ContextHandler();
-//        configContext.setContextPath("/config");
-//        configContext.setHandler(new ConfigHandler(mainInitiator));
 
         // Proxy-prefix to handle Proxy requests
         ContextHandler proxyContext = new ContextHandler();
@@ -145,7 +142,6 @@ public class ResourceServer {
         HandlerList handlerList = new HandlerList();
         handlerList.addHandler(proxyContext);
         handlerList.addHandler(userDataContext);
-//        handlerList.addHandler(configContext);
         handlerList.addHandler(staticContext);
         handlerList.addHandler(restContext);
 
@@ -162,29 +158,34 @@ public class ResourceServer {
         proxyHandler.resetCache();
     }
 
-    public boolean filterWebSocketRequest(ServletUpgradeRequest req, ServletUpgradeResponse resp) {
+    public boolean filterWebSocketRequest(ServletUpgradeRequest req) {
         String origin = req.getHeader("Origin");
 
         //Either local host OR non-browser request
-        if (origin == null) {
-            return false;
-        }
-
-        return !localHostPattern.matcher(origin).find() && !allowedOrigins.contains(origin);
+        return filterOrigin(origin);
     }
 
     public boolean filterRequest(HttpServletRequest req, HttpServletResponse resp) {
         String origin = req.getHeader("Origin");
 
         //Either local host OR non-browser request
+        if (!filterOrigin(origin)) {
+            resp.setHeader("Access-Control-Allow-Origin", origin);
+            resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    public boolean filterOrigin(String origin) {
         if (origin == null) {
             return false;
         }
 
-        if (Starter.isDev || localHostPattern.matcher(origin).find() || allowedOrigins.contains(origin)) {
-            resp.setHeader("Access-Control-Allow-Origin", "*");
-            resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-            resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        if (localHostPattern.matcher(origin).find() || allowedOrigins.contains(origin)) {
             return false;
         }
 

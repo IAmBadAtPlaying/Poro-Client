@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.net.URLDecoder;
@@ -170,7 +170,7 @@ public class MessageManager extends MapDataManager<String> {
     }
 
     private void sendConversation(JsonObject conversation) {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_CONVERSATION, conversation));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(DataManager.UPDATE_TYPE_CONVERSATION, conversation));
     }
 
 

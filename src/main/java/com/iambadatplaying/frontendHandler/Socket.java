@@ -6,6 +6,7 @@ import com.iambadatplaying.Starter;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
 
+import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -89,7 +90,7 @@ public class Socket {
     }
 
     public void sendMessage(String message) {
-        if (messageQueue != null) messageQueue.offer(message);
+        Optional.ofNullable(messageQueue).ifPresent(queue -> queue.offer(message));
     }
 
     @OnWebSocketConnect
@@ -118,7 +119,7 @@ public class Socket {
             @Override
             public void run() {
                 try {
-                    s.getRemote().sendString(new JsonArray().toString());
+                    Optional.ofNullable(messageQueue).ifPresent(queue -> queue.offer(new JsonArray().toString()));
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -131,6 +132,7 @@ public class Socket {
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
         if (starter.getConnectionStatemachine().getCurrentState() != ConnectionStatemachine.State.CONNECTED) {
+            return;
         }
     }
 

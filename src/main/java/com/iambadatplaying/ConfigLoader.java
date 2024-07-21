@@ -23,18 +23,7 @@ public class ConfigLoader {
     public static final String BACKGROUNDS_FOLDER_NAME = "backgrounds";
     public static final String KEY_SCHEMA_VERSION = "schemaVersion";
     public static final Integer CURRENT_SCHEMA_VERSION = 1;
-    // CLIENT PROPERTIES
-    public static final String KEY_SECTION_CLIENT_PROPERTIES = "clientProperties";
-    public static final String PROPERTY_CLIENT_BACKGROUND_TYPE = "clientBackgroundType";
-    public static final String PROPERTY_CLIENT_BACKGROUND = "clientBackground";
-    public static final String PROPERTY_CLIENT_BACKGROUND_CONTENT_TYPE = "clientBackgroundContentType";
-    // QUICK-PLAY PROFILES
-    public static final String KEY_SECTION_QUICK_PLAY_PROFILES = "quickPlayProfiles";
-    public static final String PROPERTY_QUICK_PLAY_PROFILE_NAME = "name";
-    public static final String PROPERTY_QUICK_PLAY_PROFILE_UUID = "uuid";
-    public static final String PROPERTY_QUICK_PLAY_PROFILE_COMMENT = "comment";
-    public static final String PROPERTY_QUICK_PLAY_PROFILE_SCHEMA_VERSION = "schemaVersion";
-    public static final String PROPERTY_QUICK_PLAY_PROFILE_DATA = "data";
+
     private static final String LOCAL_FOLDER_PATH = System.getenv("LOCALAPPDATA");
     private final Starter starter;
     private Path APP_FOLDER_PATH;
@@ -82,7 +71,7 @@ public class ConfigLoader {
         if (!optReadConfig.isPresent()) {
             log("Failed to read config file", Starter.LOG_LEVEL.ERROR);
             config = new JsonObject();
-            handleCorruptedConfig();
+            handleCorruptedOrEmptyConfig();
             return;
         }
 
@@ -91,28 +80,26 @@ public class ConfigLoader {
         if (!readConfig.isJsonObject()) {
             log("Config file is not a JSON object", Starter.LOG_LEVEL.ERROR);
             config = new JsonObject();
-            handleCorruptedConfig();
+            handleCorruptedOrEmptyConfig();
             return;
         }
 
         config = readConfig.getAsJsonObject();
         if (config.isEmpty()) {
-            handleCorruptedConfig();
+            handleCorruptedOrEmptyConfig();
         }
 
         for (ConfigModule module : configModules.values()) {
             module.setupDirectories();
 
-            if (config.has(module.getClass().getSimpleName())) {
-                JsonElement moduleConfig = config.get(module.getClass().getSimpleName());
-                if (module.loadConfiguration(moduleConfig)) continue;
+            if (!module.loadConfiguration()) {
+                log("Failed to load configuration for " + module.getClass().getSimpleName() + ", using standard Configuration", Starter.LOG_LEVEL.ERROR);
+                module.loadStandardConfiguration();
             }
-            log("Failed to load configuration for " + module.getClass().getSimpleName() + ", using standard Configuration", Starter.LOG_LEVEL.ERROR);
-            module.loadStandardConfiguration();
         }
     }
 
-    private void handleCorruptedConfig() {
+    private void handleCorruptedOrEmptyConfig() {
         log("Config file is corrupted, resetting to default", Starter.LOG_LEVEL.ERROR);
         setupDefaultConfig();
     }
@@ -133,9 +120,8 @@ public class ConfigLoader {
     public void saveConfig() {
         log("Saving config file");
         for (ConfigModule module : configModules.values()) {
-            JsonElement moduleConfig = module.getConfiguration();
-            if (moduleConfig != null) {
-                config.add(module.getClass().getSimpleName(), moduleConfig);
+            if (!module.saveConfiguration()) {
+                log("Failed to save configuration for " + module.getClass().getSimpleName(), Starter.LOG_LEVEL.ERROR);
             }
         }
         Path configPath = Paths.get(APP_FOLDER_PATH.toString(), CONFIG_FILE_NAME);
@@ -151,10 +137,6 @@ public class ConfigLoader {
     private void runOnInitiation() {
         if (!setupLocalAppdataFolder()) {
             log("Failed to setup local appdata folder", Starter.LOG_LEVEL.ERROR);
-            return;
-        }
-        if (!setupUserDataFolder()) {
-            log("Failed to setup user data folder", Starter.LOG_LEVEL.ERROR);
         }
     }
 
@@ -169,31 +151,17 @@ public class ConfigLoader {
             }
         }
         APP_FOLDER_PATH = path;
-        return true;
-    }
 
-    private boolean setupUserDataFolder() {
-        Path path = Paths.get(APP_FOLDER_PATH.toString(), USER_DATA_FOLDER_NAME);
-        if (!Files.exists(path)) {
+        Path userDataPath = Paths.get(APP_FOLDER_PATH.toString(), USER_DATA_FOLDER_NAME);
+        if (!Files.exists(userDataPath)) {
             try {
-                Files.createDirectory(path);
+                Files.createDirectory(userDataPath);
             } catch (IOException e) {
                 e.printStackTrace();
                 return false;
             }
         }
-        USER_DATA_FOLDER_PATH = path;
-
-        Path tasksPath = Paths.get(USER_DATA_FOLDER_PATH.toString(), TASKS_FOLDER_NAME);
-        if (!Files.exists(tasksPath)) {
-            try {
-                Files.createDirectory(tasksPath);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
+        USER_DATA_FOLDER_PATH = userDataPath;
         return true;
     }
 

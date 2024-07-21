@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 public abstract class MapDataManager<T> extends BasicDataManager {
 
@@ -20,20 +21,20 @@ public abstract class MapDataManager<T> extends BasicDataManager {
         map = Collections.synchronizedMap(new HashMap<>());
     }
 
-    public static <T> Map<T, JsonObject> getMapFromArray(JsonArray array, String identifier) {
-        Map<T, JsonObject> map = Collections.synchronizedMap(new HashMap<>());
+    public static <T> Map<T, JsonObject> getMapFromArray(JsonArray array, String identifier, Function<JsonElement, T> keyMapper) {
+        Map<T, JsonObject> map = new HashMap<>();
         for (JsonElement element : array) {
             if (!element.isJsonObject()) continue;
             JsonObject object = element.getAsJsonObject();
             if (!object.has(identifier)) continue;
-            T key = (T) object.get(identifier);
+            T key = keyMapper.apply(object.get(identifier));
             map.put(key, object);
         }
         return map;
     }
 
     public Optional<JsonObject> get(T key) {
-        if (map.containsKey(key)) return Optional.of(map.get(key));
+        if (map.containsKey(key)) return Optional.ofNullable(map.get(key));
         Optional<JsonObject> value = load(key);
         value.ifPresent(jsonObject -> map.put(key, jsonObject));
         return value;

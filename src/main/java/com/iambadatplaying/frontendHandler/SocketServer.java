@@ -51,7 +51,7 @@ public class SocketServer {
             @Override
             public void configure(WebSocketServletFactory factory) {
                 factory.setCreator((req, resp) -> {
-                    if (Starter.getInstance().getResourceServer().filterWebSocketRequest(req, resp)) {
+                    if (Starter.getInstance().getResourceServer().filterWebSocketRequest(req)) {
                         return null;
                     }
 

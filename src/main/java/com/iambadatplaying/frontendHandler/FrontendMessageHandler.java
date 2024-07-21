@@ -6,7 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.iambadatplaying.ConnectionStatemachine;
 import com.iambadatplaying.Starter;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.data.map.FriendGroupManager;
 import com.iambadatplaying.data.map.FriendManager;
 import com.iambadatplaying.data.map.QueueManager;
@@ -24,56 +24,48 @@ public class FrontendMessageHandler {
 
 
     public void sendInitialData(Socket socket) {
+        sendOptionalMapManagerStates(socket);
+        starter.getDataManager().sendInitialDataBlocking(socket);
+        sendInitialUpdatesDone(socket);
+    }
+
+    private void sendOptionalMapManagerStates(Socket socket) {
         sendFriendList(socket);
         sendFriendGroups(socket);
         sendAvailableQueues(socket);
-        starter.getReworkedDataManager().sendInitialData(socket);
-        sendTasks(socket);
     }
 
     public void sendFriendGroups(Socket socket) {
-        JsonObject friendGroups = starter.getReworkedDataManager().getMapManagers(FriendGroupManager.class).getMapAsJson();
-        socket.sendMessage(ReworkedDataManager.getInitialDataString(ReworkedDataManager.UPDATE_TYPE_FRIEND_GROUPS, friendGroups));
+        JsonObject friendGroups = starter.getDataManager().getMapManagers(FriendGroupManager.class).getMapAsJson();
+        socket.sendMessage(DataManager.getInitialDataString(DataManager.UPDATE_TYPE_FRIEND_GROUPS, friendGroups));
     }
 
     public void sendCurrentState(Socket socket) {
         ConnectionStatemachine csm = starter.getConnectionStatemachine();
         JsonObject newStateObject = new JsonObject();
         newStateObject.addProperty("state", csm.getCurrentState().name());
-        socket.sendMessage(ReworkedDataManager.getInitialDataString(ReworkedDataManager.UPDATE_TYPE_INTERNAL_STATE, newStateObject));
+        socket.sendMessage(DataManager.getInitialDataString(DataManager.UPDATE_TYPE_INTERNAL_STATE, newStateObject));
+    }
+
+    private void sendInitialUpdatesDone(Socket socket) {
+        JsonObject data = new JsonObject();
+        data.addProperty("done", true);
+        socket.sendMessage(DataManager.getEventDataString(DataManager.UPDATE_TYPE_ALL_INITIAL_DATA_LOADED, data));
     }
 
     private void sendTasks(Socket socket) {
         JsonArray tasks = starter.getTaskManager().getTaskAndArgs();
-        socket.sendMessage(ReworkedDataManager.getEventDataString("InitialTaskUpdate", tasks));
+        socket.sendMessage(DataManager.getEventDataString("InitialTaskUpdate", tasks));
     }
 
     private void sendAvailableQueues(Socket socket) {
-        JsonObject queues = starter.getReworkedDataManager().getMapManagers(QueueManager.class).getMapAsJson();
-        socket.sendMessage(ReworkedDataManager.getInitialDataString(ReworkedDataManager.UPDATE_TYPE_QUEUE, queues));
+        JsonObject queues = starter.getDataManager().getMapManagers(QueueManager.class).getMapAsJson();
+        socket.sendMessage(DataManager.getInitialDataString(DataManager.UPDATE_TYPE_QUEUE, queues));
     }
 
     private void sendFriendList(Socket socket) {
-        JsonObject feFriendArray = starter.getReworkedDataManager().getMapManagers(FriendManager.class).getMapAsJson();
-        socket.sendMessage(ReworkedDataManager.getEventDataString("InitialFriendUpdate", feFriendArray));
-    }
-
-    private void handleForwardRequest(String requestType, String endpoint, String body, Integer requestNum, Socket socket, boolean isRiotConnection) {
-        ConnectionManager.conOptions type = ConnectionManager.conOptions.getByString(requestType);
-        HttpsURLConnection con;
-        if (isRiotConnection) {
-            con = starter.getConnectionManager().buildRiotConnection(type, endpoint, body);
-        } else con = starter.getConnectionManager().buildConnection(type, endpoint, body);
-
-        String resp = (String) starter.getConnectionManager().getResponse(ConnectionManager.responseFormat.STRING, con);
-        if (resp != null && !resp.isEmpty()) {
-            resp = resp.trim();
-        }
-        JsonElement respElement = JsonParser.parseString(resp);
-        JsonArray respArray = new JsonArray();
-        respArray.add(requestNum);
-        respArray.add(respElement);
-        socket.sendMessage(respArray.toString());
+        JsonObject feFriendArray = starter.getDataManager().getMapManagers(FriendManager.class).getMapAsJson();
+        socket.sendMessage(DataManager.getEventDataString("InitialFriendUpdate", feFriendArray));
     }
 
     private void log(String s, Starter.LOG_LEVEL level) {

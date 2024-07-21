@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import java.util.Optional;
@@ -78,11 +78,11 @@ public class GameflowData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(ReworkedDataManager.UPDATE_TYPE_GAMEFLOW_PHASE, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(DataManager.UPDATE_TYPE_GAMEFLOW_PHASE, currentState));
     }
 
     @Override
     public String getEventName() {
-        return ReworkedDataManager.UPDATE_TYPE_GAMEFLOW_PHASE;
+        return DataManager.UPDATE_TYPE_GAMEFLOW_PHASE;
     }
 }

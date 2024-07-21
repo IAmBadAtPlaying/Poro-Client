@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
-import com.iambadatplaying.data.ReworkedDataManager;
+import com.iambadatplaying.data.DataManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -25,7 +25,7 @@ public class ReworkedChampSelectData extends StateDataManager {
     private static final String JSON_KEY_LOCAL_PLAYER_CELL_ID = "localPlayerCellId";
     private static final String JSON_KEY_STATE = "state";
 
-    private static final String UPDATE_TYPE_CHAMP_SELECT = ReworkedDataManager.UPDATE_TYPE_CHAMP_SELECT;
+    private static final String UPDATE_TYPE_CHAMP_SELECT = DataManager.UPDATE_TYPE_CHAMP_SELECT;
 
     private static final Pattern CHAMP_SELECT_SESSION_PATTERN = Pattern.compile("/lol-champ-select/v1/session$");
     private Map<Integer, JsonObject> cellIdMemberMap;
@@ -300,7 +300,7 @@ public class ReworkedChampSelectData extends StateDataManager {
 
     @Override
     public void sendCurrentState() {
-        starter.getServer().sendToAllSessions(ReworkedDataManager.getEventDataString(UPDATE_TYPE_CHAMP_SELECT, currentState));
+        starter.getServer().sendToAllSessions(DataManager.getEventDataString(UPDATE_TYPE_CHAMP_SELECT, currentState));
     }
 
     @Override
