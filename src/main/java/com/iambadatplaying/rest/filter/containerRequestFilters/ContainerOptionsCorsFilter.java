@@ -15,6 +15,7 @@ public class ContainerOptionsCorsFilter implements ContainerRequestFilter {
             requestContext.abortWith(Response.status(Response.Status.OK)
                     .header("Access-Control-Allow-Headers", "origin, content-type, accept, authorization")
                     .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD")
+                    .header("Access-Control-Allow-Origin", "*")
                     .build());
         }
     }
