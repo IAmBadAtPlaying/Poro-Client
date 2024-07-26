@@ -71,7 +71,7 @@ public class EOGHonorManager extends StateDataManager {
             Util.copyJsonAttributes(player, fePlayer, "championName", "skinSplashPath", "summonerName", "puuid", "summonerId");
             String puuid = player.get("puuid").getAsString();
             starter.getDataManager()
-                    .getMapManagers(GameNameManager.class)
+                    .getMapManager(GameNameManager.class)
                     .get(puuid)
                     .ifPresent(
                             gameName ->

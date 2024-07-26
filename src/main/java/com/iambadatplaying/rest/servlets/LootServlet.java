@@ -16,7 +16,6 @@ import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Path("/loot")
@@ -180,7 +179,7 @@ public class LootServlet {
         int ownedQuantity =
                 Starter.getInstance()
                         .getDataManager()
-                        .getStateManagers(LootDataManager.class)
+                        .getStateManager(LootDataManager.class)
                         .getCurrentState()
                         .flatMap(state -> Optional.ofNullable(state.getAsJsonObject(lootId)))
                         .map(currentState -> Util.getOptInt(currentState, "count").orElse(-1))

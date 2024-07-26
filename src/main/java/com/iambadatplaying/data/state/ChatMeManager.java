@@ -59,7 +59,7 @@ public class ChatMeManager extends StateDataManager {
         Util.copyJsonAttributes(data, frontendData, "availability", "statusMessage", "name", "icon", "gameName", "gameTag", "pid", "id", "puuid", "lol", "summonerId");
 
         starter.getDataManager()
-                .getMapManagers(RegaliaManager.class)
+                .getMapManager(RegaliaManager.class)
                 .get(data.get("summonerId").getAsBigInteger())
                 .ifPresent(
                         regalia -> frontendData.add("regalia", regalia)
