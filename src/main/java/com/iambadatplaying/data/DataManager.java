@@ -84,6 +84,7 @@ public class DataManager {
         addManager(new FriendGroupManager(starter));
         addManager(new QueueManager(starter));
         addManager(new FriendHovercardManager(starter));
+        addManager(new SummonerIdToPuuidManager(starter));
     }
 
     private void addStateManagers() {
@@ -227,15 +228,15 @@ public class DataManager {
         }
     }
 
-    public StateDataManager getStateManagers(Class manager) {
+    public StateDataManager getStateManager(Class manager) {
         return stateDataManagers.get(manager.getName());
     }
 
-    public <T> MapDataManager<T> getMapManagers(Class manager) {
+    public <T> MapDataManager<T> getMapManager(Class manager) {
         return (MapDataManager<T>) mapDataManagers.get(manager.getName());
     }
 
-    public ArrayDataManager getArrayManagers(Class manager) {
+    public ArrayDataManager getArrayManager(Class manager) {
         return arrayDataManagers.get(manager.getName());
     }
 

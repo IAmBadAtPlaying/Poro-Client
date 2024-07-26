@@ -64,7 +64,7 @@ public class RegaliaManager extends MapDataManager<BigInteger> {
     }
 
     private void updateChatMe(BigInteger summonerId) {
-        StateDataManager chatMeManager = starter.getDataManager().getStateManagers(ChatMeManager.class);
+        StateDataManager chatMeManager = starter.getDataManager().getStateManager(ChatMeManager.class);
         if (chatMeManager == null) return;
         Optional<JsonObject> optChatMeData = chatMeManager.getCurrentState();
         if (!optChatMeData.isPresent()) return;
@@ -74,12 +74,12 @@ public class RegaliaManager extends MapDataManager<BigInteger> {
         if (!summonerId.equals(chatMeData.get("summonerId").getAsBigInteger())) return;
 
         chatMeData.add("regalia", getRegalia(summonerId));
-        starter.getDataManager().getStateManagers(ChatMeManager.class).setCurrentState(chatMeData);
-        starter.getDataManager().getStateManagers(ChatMeManager.class).sendCurrentState();
+        starter.getDataManager().getStateManager(ChatMeManager.class).setCurrentState(chatMeData);
+        starter.getDataManager().getStateManager(ChatMeManager.class).sendCurrentState();
     }
 
     private void updateLobbyMemeberRegalia(BigInteger summonerId) {
-        StateDataManager lobbyManager = starter.getDataManager().getStateManagers(LobbyData.class);
+        StateDataManager lobbyManager = starter.getDataManager().getStateManager(LobbyData.class);
         if (lobbyManager == null) return;
         Optional<JsonObject> optLobbyData = lobbyManager.getCurrentState();
         if (!optLobbyData.isPresent()) return;
@@ -100,8 +100,8 @@ public class RegaliaManager extends MapDataManager<BigInteger> {
 
         lobbyData.add("members", members);
 
-        starter.getDataManager().getStateManagers(LobbyData.class).setCurrentState(lobbyData);
-        starter.getDataManager().getStateManagers(LobbyData.class).sendCurrentState();
+        starter.getDataManager().getStateManager(LobbyData.class).setCurrentState(lobbyData);
+        starter.getDataManager().getStateManager(LobbyData.class).sendCurrentState();
     }
 
     public JsonObject updateRegalia(BigInteger summonerId) {

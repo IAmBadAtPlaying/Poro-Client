@@ -6,8 +6,11 @@ import com.google.gson.JsonObject;
 import com.iambadatplaying.Starter;
 import com.iambadatplaying.Util;
 import com.iambadatplaying.data.DataManager;
+import com.iambadatplaying.data.map.GameNameManager;
+import com.iambadatplaying.data.map.SummonerIdToPuuidManager;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 
+import java.math.BigInteger;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -60,7 +63,9 @@ public class InvitationManager extends ArrayDataManager {
     protected Optional<JsonArray> fetchCurrentState() {
         if (currentArray != null) return Optional.of(currentArray);
         JsonArray data = ConnectionManager.getResponseBodyAsJsonArray(starter.getConnectionManager().buildConnection(ConnectionManager.conOptions.GET, "/lol-lobby/v2/received-invitations"));
-        return Optional.of(data);
+        log("Got data " + data, Starter.LOG_LEVEL.DEBUG);
+        if (data == null) return Optional.empty();
+        return backendToFrontendInvitations(data);
     }
 
     private Optional<JsonArray> backendToFrontendInvitations(JsonArray data) {
@@ -73,9 +78,27 @@ public class InvitationManager extends ArrayDataManager {
             if (!Util.jsonKeysPresent(obj, "canAcceptInvitation", "invitationId", "invitationType", "gameConfig")) {
                 continue;
             }
-            JsonObject frontendObj = new JsonObject();
+            final JsonObject frontendObj = new JsonObject();
             Util.copyJsonAttributes(obj, frontendObj, "canAcceptInvitation", "invitationId", "invitationType", "gameConfig", "fromSummonerName");
             newInvitations.add(obj.get("invitationId").getAsString());
+            log("Looking for puuidObj with summonerId " + obj.get("fromSummonerId").getAsBigInteger(), Starter.LOG_LEVEL.DEBUG);
+            starter.getDataManager()
+                            .getMapManager(SummonerIdToPuuidManager.class)
+                                    .get(obj.get("fromSummonerId").getAsBigInteger())
+                                            .ifPresent(
+                                                    puuidObj -> {
+                                                        log("Got puuidObj " + puuidObj, Starter.LOG_LEVEL.DEBUG);
+                                                        starter.getDataManager()
+                                                                .getMapManager(GameNameManager.class)
+                                                                .get(puuidObj.get(SummonerIdToPuuidManager.KEY_PUUID).getAsString())
+                                                                .ifPresent(
+                                                                        gameName -> {
+                                                                            frontendObj.addProperty("fromGameName", gameName.get("gameName").getAsString());
+                                                                            frontendObj.addProperty("fromTagLine", gameName.get("tagLine").getAsString());
+                                                                        }
+                                                                );
+                                                    }
+                                            );
             frontendData.add(frontendObj);
         }
 

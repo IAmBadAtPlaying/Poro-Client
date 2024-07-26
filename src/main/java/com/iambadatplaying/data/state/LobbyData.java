@@ -155,7 +155,7 @@ public class LobbyData extends StateDataManager {
         JsonObject frontendMember = member;
 
 
-        Optional<JsonObject> summonerByPuuid = starter.getDataManager().getMapManagers(GameNameManager.class).get(member.get("puuid").getAsString());
+        Optional<JsonObject> summonerByPuuid = starter.getDataManager().getMapManager(GameNameManager.class).get(member.get("puuid").getAsString());
         summonerByPuuid.ifPresent(
                 summoner -> {
                     String gameName = summoner.get("gameName").getAsString();
@@ -167,7 +167,7 @@ public class LobbyData extends StateDataManager {
 
         starter
                 .getDataManager()
-                .getMapManagers(RegaliaManager.class)
+                .getMapManager(RegaliaManager.class)
                 .get(member.get("summonerId").getAsBigInteger())
                 .ifPresent(
                         regalia -> frontendMember.add("regalia", regalia)

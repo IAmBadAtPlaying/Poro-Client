@@ -12,8 +12,6 @@ import com.iambadatplaying.tasks.Task;
 import com.iambadatplaying.tasks.builders.TaskArgumentBuilder;
 import com.iambadatplaying.tasks.builders.impl.NumberDataBuilder;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -49,7 +47,7 @@ public class AutoPickChamp extends Task {
                 return;
             }
             if (alreadyPicked) return;
-            StateDataManager champSelectManager = starter.getDataManager().getStateManagers(ReworkedChampSelectData.class);
+            StateDataManager champSelectManager = starter.getDataManager().getStateManager(ReworkedChampSelectData.class);
             if (champSelectManager == null) return;
             Optional<JsonObject> currentInternalState = champSelectManager.getCurrentState();
             if (!currentInternalState.isPresent()) return;

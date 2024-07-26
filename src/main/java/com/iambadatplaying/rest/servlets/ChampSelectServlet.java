@@ -28,7 +28,7 @@ public class ChampSelectServlet {
     @Path("/donate-reroll")
     public Response donateReroll() {
         Starter starter = Starter.getInstance();
-        StateDataManager manager = starter.getDataManager().getStateManagers(ReworkedChampSelectData.class);
+        StateDataManager manager = starter.getDataManager().getStateManager(ReworkedChampSelectData.class);
         if (manager == null) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE).build();
         }
@@ -186,7 +186,7 @@ public class ChampSelectServlet {
 
     private int performChampionAction(String actionType, Integer championId, Boolean lockIn) {
         Optional<JsonObject> optCurrentState = Starter.getInstance().getDataManager()
-                .getStateManagers(ReworkedChampSelectData.class).getCurrentState();
+                .getStateManager(ReworkedChampSelectData.class).getCurrentState();
         if (!optCurrentState.isPresent()) return -1;
         JsonObject currentChampSelectState = optCurrentState.get();
         if (currentChampSelectState.isEmpty() && !currentChampSelectState.has("localPlayerCellId")) {
