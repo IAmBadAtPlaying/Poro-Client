@@ -39,7 +39,7 @@ public class ShutdownServlet {
             switch (type) {
                 case SHUTDOWN_ALL:
                     handleCombinedShutdown();
-                    break;
+                    return Response.ok().build();
                 case SHUTDOWN_SIMPLE:
                 default:
                     break;

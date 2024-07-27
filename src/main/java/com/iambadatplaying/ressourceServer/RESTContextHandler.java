@@ -40,7 +40,7 @@ public class RESTContextHandler extends ServletContextHandler {
         return sb.toString();
     }
 
-    private static String buildStatusConfig() {
+    private static String buildStaticConfig() {
         StringBuilder sb = new StringBuilder();
 
         buildGenericList(
@@ -59,7 +59,8 @@ public class RESTContextHandler extends ServletContextHandler {
 
         buildServletList(
                 sb,
-                StatusServlet.class
+                StatusServlet.class,
+                ShutdownServlet.class
         );
 
         // Remove trailing comma
@@ -87,7 +88,6 @@ public class RESTContextHandler extends ServletContextHandler {
                 LCDSProxyServlet.class,
                 LootServlet.class,
                 MessagingServlet.class,
-                ShutdownServlet.class,
                 RunesServlet.class,
                 ChampSelectServlet.class
         );
@@ -134,7 +134,7 @@ public class RESTContextHandler extends ServletContextHandler {
         statusServletHolder.setInitOrder(0);
         statusServletHolder.setInitParameter(
                 "jersey.config.server.provider.classnames",
-                buildStatusConfig()
+                buildStaticConfig()
         );
 
 
