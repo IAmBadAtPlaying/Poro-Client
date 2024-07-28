@@ -10,9 +10,10 @@ import com.iambadatplaying.frontendHandler.SocketServer;
 import com.iambadatplaying.lcuHandler.ConnectionManager;
 import com.iambadatplaying.lcuHandler.SocketClient;
 import com.iambadatplaying.ressourceServer.ResourceServer;
-import com.iambadatplaying.tasks.TaskLoader;
 import com.iambadatplaying.tasks.TaskManager;
 
+import java.awt.*;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,9 +32,6 @@ public class Starter {
     public static final int FRONTEND_SOCKET_PORT = 8887;
     private static final String appDirName = "poroclient";
     public static Starter instance = null;
-    public static final int ERROR_INSUFFICIENT_PERMISSIONS = 401;
-    public static final int ERROR_CERTIFICATE_SETUP_FAILED = 495;
-    public static final int ERROR_HTTP_PATCH_SETUP = 505;
     public static final int ERROR_MULTIPLE_CONNECTION_ATTEMPTS_FAILED = 522;
     public static final String[] requiredEndpoints = {"OnJsonApiEvent"};
     private Path taskDirPath = null;
@@ -80,7 +78,22 @@ public class Starter {
         resourceServer.init();
         connectionManager.init();
         server.init();
+        openClient();
         connectionStatemachine.transition(ConnectionStatemachine.State.AWAITING_LEAGUE_PROCESS);
+    }
+
+    private void openClient() {
+        URI uri;
+        if (Starter.isDev) {
+            uri = URI.create("http://127.0.0.1:" + DEBUG_FRONTEND_PORT);
+        } else {
+           uri = URI.create("http://127.0.0.1:" + RESOURCE_SERVER_PORT + "/static");
+        }
+        try {
+            Desktop.getDesktop().browse(uri);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void leagueProcessReady() {
@@ -278,5 +291,26 @@ public class Starter {
         INFO,
         WARN,
         ERROR
+    }
+
+    public enum EXIT_CODE {
+        INSUFFICIENT_PERMISSIONS(401, "Insufficient Permissions"),
+        CERTIFICATE_SETUP_FAILED(495, "Certificate Setup Failed"),
+        HTTP_PATCH_SETUP_FAILED(505, "HTTP Patch Setup Failed"),
+        MULTIPLE_CONNECTION_ATTEMPTS_FAILED(522, "Multiple Connection Attempts Failed"),
+        SERVER_BIND_FAILED(500, "Server Bind Failed");
+
+        private int code;
+        private final String message;
+
+        EXIT_CODE(int code, String message) {
+            this.code = code;
+            this.message = message;
+        }
+    }
+
+    public void exit(EXIT_CODE code) {
+        log("Exiting with code: " + code.code + " - " + code.message, LOG_LEVEL.ERROR);
+        System.exit(code.code);
     }
 }

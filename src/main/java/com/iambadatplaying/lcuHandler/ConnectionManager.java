@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.iambadatplaying.Starter;
+import com.iambadatplaying.Util;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -21,20 +22,20 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
 public class ConnectionManager {
-    private String authString = null;
-    private String preUrl = null;
-    private String port = null;
-    private String riotAuthString = null;
-    private String riotPort = null;
-    private Starter starter = null;
-    private boolean leagueAuthDataAvailable = false;
-    private SSLContext sslContextGlobal = null;
+    private String     authString              = null;
+    private String     preUrl                  = null;
+    private String     port                    = null;
+    private String     riotAuthString          = null;
+    private String     riotPort                = null;
+    private Starter    starter                 = null;
+    private boolean    leagueAuthDataAvailable = false;
+    private SSLContext sslContextGlobal        = null;
+
+    private static final String KEY_PS_WMI_CLASS = "__CLASS";
+    private static final String KEY_PS_WMI_COMMANDLINE = "CommandLine";
 
     public ConnectionManager(Starter starter) {
         this.preUrl = null;
@@ -142,51 +143,70 @@ public class ConnectionManager {
     }
 
     public void init() {
-        if (!allowHttpPatchMethod()) System.exit(Starter.ERROR_HTTP_PATCH_SETUP);
-        if (!allowUnsecureConnections()) System.exit(Starter.ERROR_CERTIFICATE_SETUP_FAILED);
+        if (!allowHttpPatchMethod()) starter.exit(Starter.EXIT_CODE.HTTP_PATCH_SETUP_FAILED);
+        if (!allowUnsecureConnections()) starter.exit(Starter.EXIT_CODE.CERTIFICATE_SETUP_FAILED);
     }
 
     public boolean getAuthFromProcess() {
         // For Windows only
-        ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe", "/c", "wmic", "process", "where", "name=\"LeagueClientUx.exe\"", "get", "commandline");
+        String[] command = {
+                "powershell.exe",
+                "-Command",
+                "(Get-WmiObject -Query \\\"SELECT CommandLine FROM Win32_Process WHERE Name='LeagueClientUx.exe'\\\")",
+                "|",
+                "ConvertTo-Json"
+        };
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
         try {
             Process leagueUxProcess = processBuilder.start();
             String commandline = inputStreamToString(leagueUxProcess.getInputStream()).trim();
-            if ("CommandLine".equals(commandline.trim())) {
-                log("CommandLine returned no arguments -> Missing permissions, will exit", Starter.LOG_LEVEL.ERROR);
-                System.exit(Starter.ERROR_INSUFFICIENT_PERMISSIONS);
+            // Check if the process can be found
+            if (commandline.isEmpty()) {
                 return false;
-            } else {
-                String[] args = commandline.split("\" \"");
-                if (args.length <= 1) return false;
-                String portString = "--app-port=";
-                String authString = "--remoting-auth-token=";
-                String riotPortString = "--riotclient-app-port=";
-                String riotAuthString = "--riotclient-auth-token=";
-                for (int i = 0; i < args.length; i++) {
-                    if (args[i].startsWith(portString)) {
-                        String port = args[i].substring(portString.length());
-                        log("Port: " + port, Starter.LOG_LEVEL.INFO);
-                        this.preUrl = "https://127.0.0.1:" + port;
-                        this.port = port;
-                    } else if (args[i].startsWith(authString)) {
-                        String auth = args[i].substring(authString.length());
-                        log("Auth: " + auth, Starter.LOG_LEVEL.INFO);
-                        this.authString = "Basic " + Base64.getEncoder().encodeToString(("riot:" + auth).trim().getBytes());
-                        log("Auth Header: " + this.authString, Starter.LOG_LEVEL.INFO);
-                    } else if (args[i].startsWith(riotAuthString)) {
-                        String riotAuth = args[i].substring(riotAuthString.length());
-                        log("Riot Auth: " + riotAuth, Starter.LOG_LEVEL.INFO);
-                        this.riotAuthString = "Basic " + Base64.getEncoder().encodeToString(("riot:" + riotAuth).trim().getBytes());
-                        log("Auth Header: " + this.riotAuthString, Starter.LOG_LEVEL.INFO);
-                    } else if (args[i].startsWith(riotPortString)) {
-                        String riotPort = args[i].substring(riotPortString.length());
-                        log("Riot Port: " + riotPort, Starter.LOG_LEVEL.INFO);
-                        this.riotPort = riotPort;
-                    }
-                }
-                return true;
             }
+            Optional<JsonElement> optJson = Util.parseJson(commandline);
+            if (!optJson.isPresent() || !optJson.get().isJsonObject()) {
+                return false;
+            }
+            JsonObject jsonObject = optJson.get().getAsJsonObject();
+            if (!Util.jsonKeysPresent(jsonObject, KEY_PS_WMI_CLASS, KEY_PS_WMI_COMMANDLINE)) {
+                return false;
+            }
+            JsonElement commandLineElement = jsonObject.get(KEY_PS_WMI_COMMANDLINE);
+            if (commandLineElement.isJsonNull()) {
+                starter.exit(Starter.EXIT_CODE.INSUFFICIENT_PERMISSIONS);
+            }
+            String commandLineArgs = commandLineElement.getAsString();
+
+            String[] args = commandLineArgs.split("\" \"");
+            String portString = "--app-port=";
+            String authString = "--remoting-auth-token=";
+            String riotPortString = "--riotclient-app-port=";
+            String riotAuthString = "--riotclient-auth-token=";
+            for (int i = 0; i < args.length; i++) {
+                if (args[i].startsWith(portString)) {
+                    String port = args[i].substring(portString.length());
+                    log("Port: " + port, Starter.LOG_LEVEL.INFO);
+                    this.preUrl = "https://127.0.0.1:" + port;
+                    this.port = port;
+                } else if (args[i].startsWith(authString)) {
+                    String auth = args[i].substring(authString.length());
+                    log("Auth: " + auth, Starter.LOG_LEVEL.INFO);
+                    this.authString = "Basic " + Base64.getEncoder().encodeToString(("riot:" + auth).trim().getBytes());
+                    log("Auth Header: " + this.authString, Starter.LOG_LEVEL.INFO);
+                } else if (args[i].startsWith(riotAuthString)) {
+                    String riotAuth = args[i].substring(riotAuthString.length());
+                    log("Riot Auth: " + riotAuth, Starter.LOG_LEVEL.INFO);
+                    this.riotAuthString = "Basic " + Base64.getEncoder().encodeToString(("riot:" + riotAuth).trim().getBytes());
+                    log("Auth Header: " + this.riotAuthString, Starter.LOG_LEVEL.INFO);
+                } else if (args[i].startsWith(riotPortString)) {
+                    String riotPort = args[i].substring(riotPortString.length());
+                    log("Riot Port: " + riotPort, Starter.LOG_LEVEL.INFO);
+                    this.riotPort = riotPort;
+                }
+            }
+
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
         }
