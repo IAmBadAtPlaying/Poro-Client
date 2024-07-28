@@ -12,6 +12,10 @@ public class Util {
     private Util() {
     }
 
+    public static final void exit() {
+        System.exit(0);
+    }
+
     public static Optional<JsonElement> parseJson(String json) {
         try {
             return Optional.of(JsonParser.parseString(json));

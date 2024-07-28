@@ -303,7 +303,7 @@ public class ConnectionStatemachine {
         failedConnectionAttempts++;
         if (failedConnectionAttempts >= MAXIMUM_CONNECTION_ATTEMPTS) {
             log("Repeated connection attempts failed, stopping", Starter.LOG_LEVEL.ERROR);
-            transition(State.STOPPING);
+            starter.exit(Starter.EXIT_CODE.MULTIPLE_CONNECTION_ATTEMPTS_FAILED);
         }
     }
 

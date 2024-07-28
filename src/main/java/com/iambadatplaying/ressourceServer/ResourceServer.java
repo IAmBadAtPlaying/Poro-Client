@@ -151,6 +151,7 @@ public class ResourceServer {
             server.start();
         } catch (Exception e) {
             starter.log("Error starting resource server: " + e.getMessage(), Starter.LOG_LEVEL.ERROR);
+            starter.exit(Starter.EXIT_CODE.SERVER_BIND_FAILED);
         }
     }
 

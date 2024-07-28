@@ -66,6 +66,7 @@ public class SocketServer {
             log("[Frontend] Socket server started");
         } catch (Exception e) {
             e.printStackTrace();
+            starter.exit(Starter.EXIT_CODE.SERVER_BIND_FAILED);
         }
     }
 
